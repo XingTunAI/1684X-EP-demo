@@ -63,6 +63,12 @@
    - `scripts/run_yolov8_cpp_single.sh`：单卡运行 YOLOv8 C++ demo。
    - `scripts/run_yolov8_cpp_dual.sh`：双卡并发运行 YOLOv8 C++ demo。
 13. 在 `docs/run-yolo.md` 中补充编译位置建议：首版优先在 RK3588 板端原生编译，服务器主要用于 TPU-MLIR 转模型、量化、CI 或后续大型工程交叉编译。
+14. 将本地仓库打包并迁移到 Ubuntu 服务器：
+   - 本地路径：`C:\QIU\XingTunAI\1684X-EP-demo`
+   - 服务器路径：`~/XingTunAI/1684X-EP-demo`
+   - 迁移内容：仓库源码、文档、脚本和 `.git` 历史。
+   - 排除内容：`sophon-debs-0.5.1_LTS/`、`tools/__pycache__/`。
+   - 迁移后在服务器上执行 `chmod +x scripts/*.sh`，确保板端/服务器 Linux 环境可直接运行脚本。
 
 ## 当前本地依赖状态
 
