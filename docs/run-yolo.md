@@ -2,6 +2,12 @@
 
 本文用于在 RK3588 + 两张 BM1684X PCIe 从卡上先跑通官方 YOLOv8 C++ demo。
 
+服务器侧工作目录：
+
+```text
+/data/users/ubuntu/workspace/Sophgo/bm1684/1684X-EP-demo
+```
+
 ## 为什么先跑 C++ 版
 
 当前 `sophon-debs-0.5.1_LTS` 中已有：
@@ -62,41 +68,42 @@ sophon-demo/sample/YOLOv8_plus_det/datasets/coco.names
 
 ## 3. 编译 YOLOv8 C++ demo
 
-### 编译位置建议
+### Docker 编译入口
 
-首版建议直接在 RK3588 板子上原生编译，不需要服务器。
+当前采用服务器上的 1688 Docker BSP 环境准备和编译，最终把产物放到 RK3588 板子上运行。
 
-原因：
+进入服务器工作目录：
 
-- 当前是 `RK3588 主机 + BM1684X PCIe 从卡`，官方 C++ 样例走 `pcie` 编译路径。
-- 板端安装了 `sophon-libsophon`、`sophon-ffmpeg-dev`、`sophon-opencv-dev` 后，头文件和库就在 `/opt/sophon/`。
-- 这个 YOLOv8 demo 工程不大，RK3588 编译压力可接受。
-- 在 PC/服务器上交叉编译反而需要准备 aarch64 交叉工具链和完整 sysroot，前期排错成本更高。
-
-如果只是跑官方已编译好的 BM1684X bmodel，不需要在服务器做模型转换。
-
-服务器更适合下面这些情况：
-
-- 需要用 TPU-MLIR 把 ONNX/PT 模型转换成 BM1684X bmodel。
-- 需要做 INT8 量化和精度评估。
-- 后续 C++ 工程变大，板端编译太慢。
-- 要做 CI 自动构建。
-
-Windows PC 不建议直接编译板端程序。若一定要用 PC 编译，应使用 Linux 环境或服务器，并准备：
-
-```text
-aarch64-linux-gnu-g++
-板端 /opt/sophon 相关头文件和库
-与板端系统匹配的 sysroot
+```bash
+cd /data/users/ubuntu/workspace/Sophgo/bm1684/1684X-EP-demo
 ```
 
-当前阶段优先顺序：
+进入 Docker：
 
-```text
-1. RK3588 板端原生编译 C++ YOLO demo
-2. 跑通后再考虑服务器交叉编译
-3. 需要自定义模型时再上服务器/PC 做 TPU-MLIR 转模型
+```bash
+bash scripts/enter_rk_build_docker.sh
 ```
+
+该脚本等价于 `~/.bashrc` 里的 `run_docker_bm1684x_v23_09_sp5_neutral_bsp` 风格：
+
+```bash
+local SRC="$(pwd)"
+sudo docker rm -f bm1684x_v23_09_sp5_neutral_bsp 2>/dev/null
+
+sudo docker run -it \
+  --name bm1684x_v23_09_sp5_neutral_bsp \
+  --privileged \
+  --net=host \
+  --shm-size=1g \
+  -v "${SRC}:/workspace" \
+  -v "${SRC}:${SRC}" \
+  -v /dev:/dev \
+  -w /workspace \
+  bm1688_docker:latest \
+  /bin/bash
+```
+
+进入容器后工作目录是 `/workspace`。YOLO 最终运行仍在 RK3588 板子上，因为 BM1684X PCIe 设备在板子上。
 
 ```bash
 bash scripts/build_yolov8_cpp.sh

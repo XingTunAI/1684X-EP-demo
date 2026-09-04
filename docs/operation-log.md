@@ -62,13 +62,23 @@
    - `scripts/build_yolov8_cpp.sh`：编译官方 `sample/YOLOv8_plus_det/cpp/yolov8_bmcv`。
    - `scripts/run_yolov8_cpp_single.sh`：单卡运行 YOLOv8 C++ demo。
    - `scripts/run_yolov8_cpp_dual.sh`：双卡并发运行 YOLOv8 C++ demo。
-13. 在 `docs/run-yolo.md` 中补充编译位置建议：首版优先在 RK3588 板端原生编译，服务器主要用于 TPU-MLIR 转模型、量化、CI 或后续大型工程交叉编译。
+13. 在 `docs/run-yolo.md` 中补充编译位置建议；后续根据服务器 `.bashrc` 中的 Docker 习惯，调整为服务器 Docker 编译/准备，RK3588 板端运行验证。
 14. 将本地仓库打包并迁移到 Ubuntu 服务器：
    - 本地路径：`C:\QIU\XingTunAI\1684X-EP-demo`
-   - 服务器路径：`~/XingTunAI/1684X-EP-demo`
+   - 初始服务器路径：`~/XingTunAI/1684X-EP-demo`
    - 迁移内容：仓库源码、文档、脚本和 `.git` 历史。
    - 排除内容：`sophon-debs-0.5.1_LTS/`、`tools/__pycache__/`。
    - 迁移后在服务器上执行 `chmod +x scripts/*.sh`，确保板端/服务器 Linux 环境可直接运行脚本。
+15. 根据服务器 workspace 目录结构，将仓库移动到更合适的算能目录：
+   - 最终服务器路径：`/data/users/ubuntu/workspace/Sophgo/bm1684/1684X-EP-demo`
+   - `~/workspace` 是 `/data/users/ubuntu/workspace` 的软链接。
+   - 服务器已有 `Sophgo/bm1684`、`Sophgo/bm1688`、`Sophgo/sophon-tools` 等目录；考虑 BM1684/BM1684X 归类关系，本项目放入 `Sophgo/bm1684`。
+16. 按用户指定的 Docker 方式新增并调整 `scripts/enter_rk_build_docker.sh`：
+   - 使用服务器 `.bashrc` 中 `run_docker_bm1684x_v23_09_sp5_neutral_bsp` 的风格。
+   - 镜像：`bm1688_docker:latest`
+   - 默认容器名：`bm1684x_v23_09_sp5_neutral_bsp`
+   - 挂载当前目录到 `/workspace`
+   - 同时挂载当前目录原路径和 `/dev`
 
 ## 当前本地依赖状态
 
