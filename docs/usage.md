@@ -35,6 +35,16 @@ bm-smi
 
 ## 3. 下载 YOLOv8 模型和测试数据
 
+推荐直接按 [YOLOv8 跑通准备文档](run-yolo.md) 执行。板端一键准备命令：
+
+```bash
+bash scripts/prepare_yolov8_demo.sh
+bash scripts/build_yolov8_cpp.sh
+bash scripts/run_yolov8_cpp_single.sh 0
+```
+
+下面保留官方手动步骤，方便排查问题。
+
 ```bash
 cd sophon-demo/sample/YOLOv8_plus_det
 chmod -R +x scripts/

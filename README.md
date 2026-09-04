@@ -15,6 +15,7 @@
 - [操作记录](docs/operation-log.md)
 - [开发路线图](docs/roadmap.md)
 - [板端状态记录](docs/board-status.md)
+- [YOLOv8 跑通准备文档](docs/run-yolo.md)
 
 ## 仓库结构
 
