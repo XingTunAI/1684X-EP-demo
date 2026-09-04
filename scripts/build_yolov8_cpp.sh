@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SOPHON_DEMO_DIR="${1:-${SOPHON_DEMO_DIR:-${PROJECT_ROOT}/third_party/sophon-demo}}"
 YOLO_CPP_DIR="${SOPHON_DEMO_DIR}/sample/YOLOv8_plus_det/cpp/yolov8_bmcv"
+YOLO_MAIN_SRC="${PROJECT_ROOT}/src/yolov8_bmcv/main.cpp"
 
 if [[ ! -d "${YOLO_CPP_DIR}" ]]; then
   echo "Cannot find YOLOv8 C++ directory: ${YOLO_CPP_DIR}" >&2
@@ -12,7 +13,12 @@ if [[ ! -d "${YOLO_CPP_DIR}" ]]; then
   exit 2
 fi
 
-echo "[1/3] Checking SOPHON install paths"
+if [[ ! -f "${YOLO_MAIN_SRC}" ]]; then
+  echo "Cannot find repository YOLOv8 C++ source: ${YOLO_MAIN_SRC}" >&2
+  exit 2
+fi
+
+echo "[1/4] Checking SOPHON install paths"
 test -d /opt/sophon/sophon-ffmpeg-latest/lib/cmake
 test -d /opt/sophon/sophon-opencv-latest/lib/cmake/opencv4
 test -d /opt/sophon/libsophon-current/lib
@@ -35,7 +41,10 @@ if [[ "${#missing_headers[@]}" -gt 0 ]]; then
   exit 2
 fi
 
-echo "[2/3] Building YOLOv8 C++ PCIe demo"
+echo "[2/3] Syncing repository YOLOv8 C++ source"
+cp "${YOLO_MAIN_SRC}" "${YOLO_CPP_DIR}/main.cpp"
+
+echo "[3/4] Building YOLOv8 C++ PCIe demo"
 pushd "${YOLO_CPP_DIR}" >/dev/null
 rm -rf build
 mkdir build
@@ -45,7 +54,7 @@ make -j"$(nproc)"
 popd >/dev/null
 popd >/dev/null
 
-echo "[3/3] Checking executable"
+echo "[4/4] Checking executable"
 test -x "${YOLO_CPP_DIR}/yolov8_bmcv.pcie"
 
 echo

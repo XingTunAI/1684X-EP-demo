@@ -286,10 +286,10 @@ find models/BM1684X -maxdepth 1 -type f -name "*.bmodel" -printf "%f %s\n" | sor
 
 ### BMCV handle 警告
 
-运行过程中可能出现：
+旧版官方样例在卡 1 视频写出阶段可能出现：
 
 ```text
 [BMCV][error] Error, please check if the handle used for handle and bm_image are the same
 ```
 
-如果程序仍持续输出 `det_nums` 并最终打印 `SUMMARY: yolov8 test`，说明推理链路已经跑通。该问题后续可通过修改官方 C++ 样例的 BMCV handle 和输出路径绑定来进一步收敛。
+本仓库的 `src/yolov8_bmcv/main.cpp` 已经绑定 `VideoWriter` 的 `dev_id`。正常执行 `bash scripts/build_yolov8_cpp.sh` 后，构建脚本会自动把该源码同步到官方样例目录并重新编译，不需要再手动打 patch。

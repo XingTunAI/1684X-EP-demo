@@ -146,36 +146,17 @@ watch -n 1 bm-smi
 
 说明推理流程通常仍在跑，错误多半来自视频写出阶段：官方样例里 `VideoCapture` 使用了 `dev_id`，但 `VideoWriter` 没有绑定同一张卡。卡 1 解码出来的 `cv::Mat` 带着 1 号卡的设备内存，写出器默认落到 0 号卡时就会触发 handle 不一致。
 
-先在仓库根目录给官方样例打补丁：
-
-```bash
-python3 tools/run_multicard_yolov8.py \
-  --demo-dir=$DEMO_ROOT/third_party/sophon-demo/sample/YOLOv8_plus_det \
-  --fix-card-writer
-```
-
-补丁会把官方 `cpp/yolov8_bmcv/main.cpp` 中的：
-
-```cpp
-writer.open(output_path, output_fourcc, frameRate, cv::Size(w, h));
-```
-
-改成：
+本仓库已经在 `src/yolov8_bmcv/main.cpp` 中保存修复后的源码。`scripts/build_yolov8_cpp.sh` 会在编译前自动把该源码同步到官方 demo 目录，其中关键写法是：
 
 ```cpp
 writer.open(output_path, output_fourcc, frameRate, cv::Size(w, h), true, dev_id);
 ```
 
-然后重新编译 C++ 样例：
+重新编译 C++ 样例即可生效：
 
 ```bash
-cd $DEMO_ROOT/third_party/sophon-demo/sample/YOLOv8_plus_det/cpp/yolov8_bmcv
-rm -rf build
-mkdir -p build
-cd build
-cmake ..
-make -j$(nproc)
-cd ..
+cd $DEMO_ROOT
+bash scripts/build_yolov8_cpp.sh
 ```
 
 重新运行 1 号卡或多卡命令后，再观察终端是否还打印上述 handle 错误。
