@@ -72,35 +72,28 @@ sophon-demo/sample/YOLOv8_plus_det/datasets/coco.names
 
 当前采用服务器上的 1688 Docker BSP 环境准备和编译，最终把产物放到 RK3588 板子上运行。
 
+用户已创建容器：
+
+```text
+1684x_ep_demo
+```
+
 进入服务器工作目录：
 
 ```bash
 cd /data/users/ubuntu/workspace/Sophgo/bm1684/1684X-EP-demo
 ```
 
-进入 Docker：
+如果容器处于退出状态，先启动：
 
 ```bash
-bash scripts/enter_rk_build_docker.sh
+sudo docker start 1684x_ep_demo
 ```
 
-该脚本等价于 `~/.bashrc` 里的 `run_docker_bm1684x_v23_09_sp5_neutral_bsp` 风格：
+进入容器：
 
 ```bash
-local SRC="$(pwd)"
-sudo docker rm -f bm1684x_v23_09_sp5_neutral_bsp 2>/dev/null
-
-sudo docker run -it \
-  --name bm1684x_v23_09_sp5_neutral_bsp \
-  --privileged \
-  --net=host \
-  --shm-size=1g \
-  -v "${SRC}:/workspace" \
-  -v "${SRC}:${SRC}" \
-  -v /dev:/dev \
-  -w /workspace \
-  bm1688_docker:latest \
-  /bin/bash
+sudo docker exec -it 1684x_ep_demo /bin/bash
 ```
 
 进入容器后工作目录是 `/workspace`。YOLO 最终运行仍在 RK3588 板子上，因为 BM1684X PCIe 设备在板子上。

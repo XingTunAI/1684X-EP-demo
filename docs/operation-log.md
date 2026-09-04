@@ -73,12 +73,7 @@
    - 最终服务器路径：`/data/users/ubuntu/workspace/Sophgo/bm1684/1684X-EP-demo`
    - `~/workspace` 是 `/data/users/ubuntu/workspace` 的软链接。
    - 服务器已有 `Sophgo/bm1684`、`Sophgo/bm1688`、`Sophgo/sophon-tools` 等目录；考虑 BM1684/BM1684X 归类关系，本项目放入 `Sophgo/bm1684`。
-16. 按用户指定的 Docker 方式新增并调整 `scripts/enter_rk_build_docker.sh`：
-   - 使用服务器 `.bashrc` 中 `run_docker_bm1684x_v23_09_sp5_neutral_bsp` 的风格。
-   - 镜像：`bm1688_docker:latest`
-   - 默认容器名：`bm1684x_v23_09_sp5_neutral_bsp`
-   - 挂载当前目录到 `/workspace`
-   - 同时挂载当前目录原路径和 `/dev`
+16. 用户已手动创建 Docker 容器 `1684x_ep_demo`，镜像为 `bm1688_docker:latest`。不再保留 Docker 创建脚本；文档改为使用 `sudo docker start 1684x_ep_demo` 和 `sudo docker exec -it 1684x_ep_demo /bin/bash` 进入已有容器。
 
 ## 当前本地依赖状态
 
