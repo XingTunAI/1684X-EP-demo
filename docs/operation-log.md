@@ -42,6 +42,20 @@
    ```
 
    迁移时保留 `.git`、`README.md`、`docs/`、`tools/`、`src/`、`configs/` 等仓库内容。`sophon-demo/` 是官方外部参考仓库，已被 `.gitignore` 排除，未复制到新仓库目录；需要时可按下方命令重新拉取。
+9. 根据板端 `lspci` / `lspci -vvv` 输出新增 `docs/board-status.md`，记录：
+   - RK3588 已枚举到两张 `1f1c:1686` 算能 PCIe 加速设备。
+   - 两张设备均已绑定 `bmdrv`。
+   - 第一张设备链路为 `Speed 8GT/s, Width x1`。
+   - 第二张设备链路为 `Speed 5GT/s, Width x1`。
+   - 补充 `sophon-debs-0.5.1_LTS` 安装顺序和安装后验证命令。
+10. 读取本地 `sophon-debs-0.5.1_LTS/` 目录，确认当前包含：
+   - `sophon-driver_0.5.1-LTS-rk3588fix2_arm64.deb`
+   - `sophon-libsophon_0.5.1-LTS_arm64.deb`
+   - `sophon-mw-sophon-ffmpeg_0.14.0_arm64.deb`
+   - `sophon-mw-sophon-ffmpeg-dev_0.14.0_arm64.deb`
+   - `sophon-mw-sophon-opencv_0.14.0_arm64.deb`
+   - `sophon-mw-sophon-opencv-dev_0.14.0_arm64.deb`
+11. 添加 `scripts/install_sophon_debs.sh`，用于在 RK3588 板端安装上述 deb 包并执行基础验证。
 
 ## 当前本地依赖状态
 

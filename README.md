@@ -14,6 +14,7 @@
 - [使用文档](docs/usage.md)
 - [操作记录](docs/operation-log.md)
 - [开发路线图](docs/roadmap.md)
+- [板端状态记录](docs/board-status.md)
 
 ## 仓库结构
 
@@ -21,6 +22,7 @@
 .
 ├── configs/                  # 后续 demo 配置文件
 ├── docs/                     # 设计、使用、操作记录、路线图
+├── scripts/                  # 板端安装和辅助脚本
 ├── src/                      # 后续自研 C++/Web demo 代码
 ├── tools/                    # 当前可用工具脚本
 ├── .gitignore

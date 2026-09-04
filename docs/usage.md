@@ -19,6 +19,12 @@ git clone --depth 1 -b release https://github.com/sophgo/sophon-demo.git
 
 安装方式以算能官网对应 SDK 版本的 ARM PCIe 文档为准。
 
+当前板端 PCIe 枚举和 `sophon-debs-0.5.1_LTS` 安装建议见：
+
+```text
+docs/board-status.md
+```
+
 安装完成后先确认设备可见：
 
 ```bash
