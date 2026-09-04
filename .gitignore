@@ -1,0 +1,33 @@
+# Local copy of the official SOPHON demo repository.
+sophon-demo/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime outputs
+logs/
+results/
+outputs/
+*.mp4
+*.avi
+*.mkv
+*.h264
+*.h265
+
+# Large model/data packages
+*.bmodel
+*.onnx
+*.pt
+*.tar.gz
+*.zip
+datasets/
+models/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
