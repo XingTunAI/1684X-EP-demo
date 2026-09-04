@@ -56,6 +56,13 @@
    - `sophon-mw-sophon-opencv_0.14.0_arm64.deb`
    - `sophon-mw-sophon-opencv-dev_0.14.0_arm64.deb`
 11. 添加 `scripts/install_sophon_debs.sh`，用于在 RK3588 板端安装上述 deb 包并执行基础验证。
+12. 为开始跑 YOLO 做准备，新增：
+   - `docs/run-yolo.md`：RK3588 + BM1684X PCIe 跑通 YOLOv8 C++ demo 的完整步骤。
+   - `scripts/prepare_yolov8_demo.sh`：安装基础工具、拉取官方 `sophon-demo`、下载 BM1684X YOLOv8 模型和测试数据。
+   - `scripts/build_yolov8_cpp.sh`：编译官方 `sample/YOLOv8_plus_det/cpp/yolov8_bmcv`。
+   - `scripts/run_yolov8_cpp_single.sh`：单卡运行 YOLOv8 C++ demo。
+   - `scripts/run_yolov8_cpp_dual.sh`：双卡并发运行 YOLOv8 C++ demo。
+13. 在 `docs/run-yolo.md` 中补充编译位置建议：首版优先在 RK3588 板端原生编译，服务器主要用于 TPU-MLIR 转模型、量化、CI 或后续大型工程交叉编译。
 
 ## 当前本地依赖状态
 
