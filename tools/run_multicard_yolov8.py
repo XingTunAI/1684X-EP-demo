@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -47,12 +48,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--input",
-        required=True,
+        required=False,
         help="Input video path, or comma-separated paths, relative to demo-dir or absolute.",
     )
     parser.add_argument(
         "--bmodel",
-        required=True,
+        required=False,
         help="BModel path relative to demo-dir or an absolute path.",
     )
     parser.add_argument(
@@ -62,6 +63,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--conf-thresh", default="0.25")
     parser.add_argument("--nms-thresh", default="0.7")
+    parser.add_argument(
+        "--fix-card-writer",
+        action="store_true",
+        help=(
+            "Patch the official YOLOv8 BMCV C++ sample so VideoWriter uses "
+            "the same dev_id as VideoCapture. Rebuild the sample after patching."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -95,9 +104,55 @@ def resolve_path(base: Path, value: str) -> str:
     return str(path if path.is_absolute() else base / path)
 
 
+def patch_card_writer(demo_dir: Path) -> bool:
+    main_cpp = demo_dir / "cpp" / "yolov8_bmcv" / "main.cpp"
+    if not main_cpp.exists():
+        print(f"Cannot find source file to patch: {main_cpp}", file=sys.stderr)
+        return False
+
+    source = main_cpp.read_text(encoding="utf-8")
+    fixed = (
+        "writer.open(output_path, output_fourcc, frameRate, cv::Size(w, h), "
+        "true, dev_id);"
+    )
+    if fixed in source:
+        print(f"Card writer fix already present: {main_cpp}")
+        return True
+
+    pattern = re.compile(
+        r"writer\.open\(\s*output_path\s*,\s*output_fourcc\s*,\s*frameRate\s*,"
+        r"\s*cv::Size\(w,\s*h\)\s*\)\s*;"
+    )
+    patched, count = pattern.subn(fixed, source, count=1)
+    if count != 1:
+        print(
+            "Cannot patch VideoWriter automatically; expected writer.open(...) "
+            f"line was not found in {main_cpp}.",
+            file=sys.stderr,
+        )
+        return False
+
+    backup = main_cpp.with_suffix(".cpp.bak")
+    if not backup.exists():
+        backup.write_text(source, encoding="utf-8")
+    main_cpp.write_text(patched, encoding="utf-8")
+    print(f"Patched VideoWriter dev_id binding in: {main_cpp}")
+    print("Rebuild before running:")
+    print(f"  cd {demo_dir / 'cpp' / 'yolov8_bmcv'}")
+    print("  rm -rf build && mkdir -p build && cd build && cmake .. && make -j$(nproc)")
+    return True
+
+
 def main() -> int:
     args = parse_args()
     demo_dir = args.demo_dir.resolve()
+    if args.fix_card_writer:
+        return 0 if patch_card_writer(demo_dir) else 2
+
+    if not args.input or not args.bmodel:
+        print("--input and --bmodel are required unless --fix-card-writer is used.")
+        return 2
+
     app = demo_dir / "cpp" / "yolov8_bmcv" / "yolov8_bmcv.pcie"
     if not app.exists():
         print(f"Cannot find C++ demo executable: {app}", file=sys.stderr)

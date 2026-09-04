@@ -88,6 +88,11 @@
    - 在 `third_party/sophon-demo/sample/YOLOv8_plus_det` 执行 `scripts/download.sh` 后，测试视频和 `coco.names` 下载成功；模型目录一度只创建了空 `models/`，后续手动下载并解压 `BM1684X.tar.gz` 后确认模型完整。
    - 当前板端 `bm-smi` 能看到两张 BM1684X PCIe 卡，Lib/Driver 版本均为 `0.5.1 LTS SP5`。
    - 官方 `YOLOv8_plus_det/cpp/yolov8_bmcv` 已重新编译生成 `yolov8_bmcv.pcie`。
+19. 修复卡 1 运行 YOLOv8 视频样例时的 BMCV handle 不一致错误：
+   - 根因是官方样例的 `VideoCapture` 绑定了 `dev_id`，但 `VideoWriter` 没有绑定同一张卡。
+   - 新增 `patches/yolov8_bmcv_card_writer_dev_id.patch` 和 `scripts/patch_yolov8_cpp_card_writer.sh`。
+   - `tools/run_multicard_yolov8.py --fix-card-writer` 也可直接给官方样例打同样补丁。
+   - 板端手动验证双卡运行正常，`bm-smi` 可看到 `dev_id=0` 和 `dev_id=1` 上的 `yolov8_bmcv.pcie` 进程。
    - 单卡 `dev_id=0` 视频推理验证通过，结果：
 
      ```text
@@ -107,13 +112,13 @@
      ```
 
    - 运行 `--dev_id=1` 时，`bm-smi` 的进程列表中仍可能出现 TPU-ID 0 的少量内存占用。这来自底层库枚举/初始化多张设备和 on-chip CPU/usercpu 资源，不代表主推理跑在 0 号卡；实际推理设备以对应卡的 `TPU-Util`、功耗和内存增长为准。
-   - 运行过程中出现过以下 BMCV 警告：
+   - 修复前运行过程中出现过以下 BMCV 警告：
 
      ```text
      [BMCV][error] Error, please check if the handle used for handle and bm_image are the same
      ```
 
-     程序仍持续输出 `det_nums` 并最终打印 `SUMMARY`，因此本轮先判定推理链路通过；后续再单独修改官方 C++ 样例的 handle/输出路径绑定问题。
+     当时程序仍持续输出 `det_nums` 并最终打印 `SUMMARY`，但后续已通过绑定 `VideoWriter` 的 `dev_id` 修复该告警路径。
 
 ## 外部依赖说明
 

@@ -138,6 +138,48 @@ bash scripts/run_yolov8_cpp_dynamic.sh
 watch -n 1 bm-smi
 ```
 
+如果卡 1 运行时出现：
+
+```text
+[BMCV][error] Error, please check if the handle used for handle and bm_image are the same
+```
+
+说明推理流程通常仍在跑，错误多半来自视频写出阶段：官方样例里 `VideoCapture` 使用了 `dev_id`，但 `VideoWriter` 没有绑定同一张卡。卡 1 解码出来的 `cv::Mat` 带着 1 号卡的设备内存，写出器默认落到 0 号卡时就会触发 handle 不一致。
+
+先在仓库根目录给官方样例打补丁：
+
+```bash
+python3 tools/run_multicard_yolov8.py \
+  --demo-dir=$DEMO_ROOT/third_party/sophon-demo/sample/YOLOv8_plus_det \
+  --fix-card-writer
+```
+
+补丁会把官方 `cpp/yolov8_bmcv/main.cpp` 中的：
+
+```cpp
+writer.open(output_path, output_fourcc, frameRate, cv::Size(w, h));
+```
+
+改成：
+
+```cpp
+writer.open(output_path, output_fourcc, frameRate, cv::Size(w, h), true, dev_id);
+```
+
+然后重新编译 C++ 样例：
+
+```bash
+cd $DEMO_ROOT/third_party/sophon-demo/sample/YOLOv8_plus_det/cpp/yolov8_bmcv
+rm -rf build
+mkdir -p build
+cd build
+cmake ..
+make -j$(nproc)
+cd ..
+```
+
+重新运行 1 号卡或多卡命令后，再观察终端是否还打印上述 handle 错误。
+
 ## 6. HDMI/XFCE 显示
 
 RK3588 主机可通过 HDMI 输出显示内容。在 XFCE/Xorg `:0` 环境中，官方 YOLOv8 C++ demo 默认将检测框写入结果视频，不直接弹出 HDMI 窗口。先运行推理：

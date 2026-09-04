@@ -1,0 +1,11 @@
+--- a/main.cpp
++++ b/main.cpp
+@@ -182,7 +182,7 @@ int main(int argc, char* argv[]) {
+         cv::VideoWriter writer;
+         std::string output_path = "results/output.mp4";
+         auto output_fourcc = cv::VideoWriter::fourcc('H', '2', '6', '4'); //use "H","2","6","4" for h264, "H","V","C","1" for h265.
+-        writer.open(output_path, output_fourcc, frameRate, cv::Size(w, h));
++        writer.open(output_path, output_fourcc, frameRate, cv::Size(w, h), true, dev_id);
+         bool end_flag = false;
+         vector<cv::Mat> batch_mats;
+         vector<bm_image> batch_imgs;
