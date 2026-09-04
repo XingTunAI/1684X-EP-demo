@@ -48,7 +48,8 @@
 - `third_party/sophon-demo/sample/YOLOv8_plus_det`
   - 推荐作为模型推理基础样例。
   - 支持 BM1684X。
-  - 有 Python 和 C++，参数里已有 `--dev_id`。
+  - 当前只使用 C++ 版作为验证主线；官方 Python 版仅作参考，暂不作为执行路径。
+  - C++ 参数里已有 `--dev_id`，适合单卡和多卡手动验证。
 - `third_party/sophon-demo/tutorial/yolov8_ffmpeg_encode`
   - 推荐作为端到端视频链路基础样例。
   - 流程是 `ffmpeg decode + bmcv preprocess + bmrt yolov8 inference + cpu postprocess + bmcv rectangle + ffmpeg encode`。
@@ -71,8 +72,8 @@ make -j$(nproc)
 cd ..
 ./yolov8_bmcv.pcie \
   --input=../../datasets/test_car_person_1080P.mp4 \
-  --bmodel=../../models/BM1684X/yolov8s_int8_1b.bmodel \
-  --dev_id=1 \
+  --bmodel=../../models/BM1684X/yolov8s_fp32_1b.bmodel \
+  --dev_id=0 \
   --conf_thresh=0.25 \
   --nms_thresh=0.7 \
   --classnames=../../datasets/coco.names
@@ -85,8 +86,10 @@ python3 tools/run_multicard_yolov8.py \
   --demo-dir "third_party/sophon-demo/sample/YOLOv8_plus_det" \
   --devices '1|2|primary|0001:11:00.0|Gen3_x1,0|1|secondary|0004:41:00.0|Gen2_x1' \
   --input datasets/test_car_person_1080P.mp4,datasets/test_car_person_1080P.mp4 \
-  --bmodel models/BM1684X/yolov8s_int8_1b.bmodel
+  --bmodel models/BM1684X/yolov8s_fp32_1b.bmodel
 ```
+
+注意：这里的 `tools/run_multicard_yolov8.py` 只是启动多个 C++ 可执行文件的调度脚本，不调用官方 Python 推理 demo，也不依赖 `sophon.sail`。
 
 参考硬件拓扑中两张设备链路能力不同：`dev_id 1` 为 Gen3 主卡，`dev_id 0` 为 Gen2 副卡。多路任务应通过 `--devices` 的权重和任务顺序指定，例如主路优先分配给 `dev_id 1`。
 

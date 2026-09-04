@@ -32,7 +32,7 @@ sophon-demo/sample/YOLOv8_plus_det
 原因：
 
 - 官方支持 BM1684X。
-- 有 Python 和 C++ 两套实现。
+- 官方有 Python 和 C++ 两套实现；当前验证主线只采用 C++，Python 版暂不纳入执行路径。
 - 已提供 `--dev_id` 参数，适合多卡验证。
 - 官方下载脚本会准备测试视频、COCO 类别名和 BM1684X bmodel。
 
@@ -114,5 +114,5 @@ Process 1 -> dev_id 0 -> secondary/light stream
 
 - RK3588 的 PCIe 拓扑和供电会影响能接几张 1684X。
 - ARM PCIe 环境需要对应版本的 libsophon、sophon-ffmpeg、sophon-opencv、sophon-sail。
-- Python 首版易验证，但高并发和低延迟演示应转 C++。
+- 官方 Python demo 需要 `sophon.sail`，当前板端首版先不依赖它；高并发和低延迟演示统一走 C++。
 - 模型、视频和运行结果体积较大，不建议提交到 git。

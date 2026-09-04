@@ -66,6 +66,7 @@ bash scripts/prepare_yolov8_demo.sh
 
 ```text
 third_party/sophon-demo/sample/YOLOv8_plus_det/models/BM1684X/yolov8s_int8_1b.bmodel
+third_party/sophon-demo/sample/YOLOv8_plus_det/models/BM1684X/yolov8s_fp32_1b.bmodel
 third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/test_car_person_1080P.mp4
 third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/coco.names
 ```
@@ -103,16 +104,16 @@ bmlib_runtime.h
 
 ## 4. 单卡运行
 
-运行主卡 `dev_id=1`。该设备对应 `0001:11:00.0`，链路为 PCIe Gen3 x1：
-
-```bash
-bash scripts/run_yolov8_cpp_single.sh 1
-```
-
-运行副卡 `dev_id=0`。该设备对应 `0004:41:00.0`，链路为 PCIe Gen2 x1：
+当前单卡验证先运行 `dev_id=0`。该设备对应 `0004:41:00.0`，链路为 PCIe Gen2 x1：
 
 ```bash
 bash scripts/run_yolov8_cpp_single.sh 0
+```
+
+后续再单独回归 `dev_id=1`。该设备对应 `0001:11:00.0`，链路为 PCIe Gen3 x1：
+
+```bash
+bash scripts/run_yolov8_cpp_single.sh 1
 ```
 
 输出视频位置：
@@ -242,12 +243,49 @@ lsmod | grep -i -E "bm|sophon"
 dmesg | grep -i -E "bm|sophon|pci" | tail -n 100
 ```
 
-### Python YOLO 跑不了
+### 官方 Python YOLO 暂不作为执行路径
 
-如果环境中未安装 `sophon-sail`，Python 版可能在以下位置失败：
+当前首版验证只跑 C++ 版。官方 Python demo 可保留在 `third_party/sophon-demo` 中作参考，但不作为本项目默认执行路径。如果环境中未安装 `sophon-sail`，Python 版可能在以下位置失败：
 
 ```python
 import sophon.sail as sail
 ```
 
-建议优先使用 C++ 版完成基础验证。
+因此基础验证、单卡、多卡和 HDMI 相关流程均优先使用 C++ 版完成。
+
+### 从 Windows 传到板端后脚本报 `/bin/bash^M`
+
+这是 CRLF 换行导致的。执行：
+
+```bash
+find ~/1684X-EP-demo -type f -name "*.sh" -exec sed -i 's/\r$//' {} \;
+```
+
+然后重新运行脚本。
+
+### `download.sh` 后 `models/BM1684X` 不存在
+
+如果 `datasets/test_car_person_1080P.mp4` 和 `datasets/coco.names` 已存在，但模型目录为空，可手动下载模型包：
+
+```bash
+cd ~/1684X-EP-demo/third_party/sophon-demo/sample/YOLOv8_plus_det/models
+python3 -m dfss --url=open@sophgo.com:sophon-demo/YOLOv8_plus_det/BM1684X.tar.gz
+tar xvf BM1684X.tar.gz
+rm BM1684X.tar.gz
+cd ..
+find models/BM1684X -maxdepth 1 -type f -name "*.bmodel" -printf "%f %s\n" | sort
+```
+
+### `--dev_id=1` 时 `bm-smi` 仍显示 TPU-ID 0 进程
+
+官方样例和底层库启动时会枚举多张设备，并尝试初始化 on-chip CPU/usercpu 相关资源。因此同一个进程可能在非目标卡上出现少量内存占用。判断实际推理设备时，以目标卡的 `TPU-Util`、功耗和内存增长为准。
+
+### BMCV handle 警告
+
+运行过程中可能出现：
+
+```text
+[BMCV][error] Error, please check if the handle used for handle and bm_image are the same
+```
+
+如果程序仍持续输出 `det_nums` 并最终打印 `SUMMARY: yolov8 test`，说明推理链路已经跑通。该问题后续可通过修改官方 C++ 样例的 BMCV handle 和输出路径绑定来进一步收敛。

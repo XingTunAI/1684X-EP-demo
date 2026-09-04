@@ -75,7 +75,7 @@ sophon-mw-sophon-opencv-dev_0.14.0_arm64.deb
 如果安装包中不包含 `sophon-sail`，则：
 
 - 只用这批包，优先跑 C++ BMCV/BMRT/FFmpeg 路线。
-- 如果要跑 `sample/YOLOv8_plus_det/python/yolov8_bmcv.py`，还需要补充 sophon-sail 的 arm64 安装包或对应 Python wheel。
+- 官方 Python demo 暂不作为本项目默认执行路径；只有确实要跑 `sample/YOLOv8_plus_det/python/yolov8_bmcv.py` 时，才需要补充 sophon-sail 的 arm64 安装包或对应 Python wheel。
 
 ## 安装顺序建议
 
@@ -146,7 +146,7 @@ ldconfig -p | grep -E "bmrt|bmlib|bmcv"
 ls /opt/sophon
 ```
 
-如果已经补装 sophon-sail，再验证 Python SAIL：
+如果已经补装 sophon-sail，可选验证 Python SAIL：
 
 ```bash
 python3 - <<'PY'
@@ -156,18 +156,18 @@ print("device count:", sail.get_available_tpu_num())
 PY
 ```
 
-如果 `sophon.sail` 导入失败，需要检查 sophon-sail 是否安装，以及 Python 版本是否和 wheel/deb 匹配。
+如果 `sophon.sail` 导入失败，不影响当前 C++ 验证主线；只有要跑官方 Python demo 时，才需要继续检查 sophon-sail 是否安装，以及 Python 版本是否和 wheel/deb 匹配。
 
 ## Demo 验证步骤
 
-确认 `bm-smi` 能看到两张卡后，回到本项目使用文档继续：
+确认 `bm-smi` 能看到两张卡后，回到本项目使用文档继续。下面命令中的 `tools/run_multicard_yolov8.py` 是 C++ 程序启动器，不是官方 Python 推理 demo：
 
 ```bash
 python3 tools/run_multicard_yolov8.py \
   --demo-dir "$SOPHON_DEMO_DIR/sample/YOLOv8_plus_det" \
   --devices '1|2|primary|0001:11:00.0|Gen3_x1,0|1|secondary|0004:41:00.0|Gen2_x1' \
   --input datasets/test_car_person_1080P.mp4,datasets/test_car_person_1080P.mp4 \
-  --bmodel models/BM1684X/yolov8s_int8_1b.bmodel
+  --bmodel models/BM1684X/yolov8s_fp32_1b.bmodel
 ```
 
 另开终端观察：

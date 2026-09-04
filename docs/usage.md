@@ -16,7 +16,7 @@ git clone --depth 1 -b release https://github.com/sophgo/sophon-demo.git third_p
 - libsophon
 - sophon-ffmpeg
 - sophon-opencv
-- sophon-sail（仅 Python 版需要；C++ 验证路线可以先不装）
+- sophon-sail（当前 C++ 验证路线不需要；官方 Python demo 暂不作为执行路径）
 
 安装方式以算能官网对应 SDK 版本的 ARM PCIe 文档为准。
 
@@ -73,6 +73,7 @@ chmod -R +x scripts/
 ```text
 datasets/test_car_person_1080P.mp4
 models/BM1684X/yolov8s_int8_1b.bmodel
+models/BM1684X/yolov8s_fp32_1b.bmodel
 ```
 
 ## 4. 单卡验证（C++ 版）
@@ -80,7 +81,7 @@ models/BM1684X/yolov8s_int8_1b.bmodel
 ```bash
 cd <repo-dir>
 bash scripts/build_yolov8_cpp.sh
-bash scripts/run_yolov8_cpp_single.sh 1
+bash scripts/run_yolov8_cpp_single.sh 0
 ```
 
 成功后会在样例目录下生成 `results/output.mp4`，并在终端打印预处理、推理、后处理等耗时。这里不使用 Python `sophon.sail`。
@@ -94,8 +95,10 @@ python3 tools/run_multicard_yolov8.py \
   --demo-dir "third_party/sophon-demo/sample/YOLOv8_plus_det" \
   --devices '1|2|primary|0001:11:00.0|Gen3_x1,0|1|secondary|0004:41:00.0|Gen2_x1' \
   --input datasets/test_car_person_1080P.mp4,datasets/test_car_person_1080P.mp4 \
-  --bmodel models/BM1684X/yolov8s_int8_1b.bmodel
+  --bmodel models/BM1684X/yolov8s_fp32_1b.bmodel
 ```
+
+这里的 Python 脚本只是多进程启动器，负责按 `dev_id` 拉起官方 C++ 程序 `yolov8_bmcv.pcie`。它不调用 `sophon-demo/sample/YOLOv8_plus_det/python/yolov8_bmcv.py`，也不依赖 `sophon.sail`。
 
 参数说明：
 
@@ -141,7 +144,7 @@ RK3588 主机可通过 HDMI 输出显示内容。在 XFCE/Xorg `:0` 环境中，
 
 ```bash
 cd <repo-dir>
-bash scripts/run_yolov8_cpp_single.sh 1
+bash scripts/run_yolov8_cpp_single.sh 0
 ```
 
 再将结果视频播放到 HDMI：
@@ -185,6 +188,6 @@ cd third_party/sophon-demo/tutorial/yolov8_ffmpeg_encode
 
 1. 运行 `bm-smi`，展示 RK3588 已发现多张 1684X PCIe 从卡。
 2. 运行单卡 YOLOv8 视频推理，展示基本能力。
-3. 运行 `tools/run_multicard_yolov8.py`，展示多卡并发。
+3. 运行 C++ 多卡脚本或 `tools/run_multicard_yolov8.py` 启动器，展示多卡并发。
 4. 切换到 `yolov8_ffmpeg_encode`，展示检测后视频可以重新编码输出。
 5. 根据客户场景替换视频和模型，例如人车检测、安全帽检测、车牌识别或 OCR。

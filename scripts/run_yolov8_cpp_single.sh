@@ -4,9 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SOPHON_DEMO_DIR="${SOPHON_DEMO_DIR:-${PROJECT_ROOT}/third_party/sophon-demo}"
-DEV_ID="${1:-1}"
+DEV_ID="${1:-0}"
 INPUT="${2:-../../datasets/test_car_person_1080P.mp4}"
-BMODEL="${3:-../../models/BM1684X/yolov8s_int8_1b.bmodel}"
+BMODEL="${3:-../../models/BM1684X/yolov8s_fp32_1b.bmodel}"
 CLASSNAMES="${4:-../../datasets/coco.names}"
 
 YOLO_CPP_DIR="${SOPHON_DEMO_DIR}/sample/YOLOv8_plus_det/cpp/yolov8_bmcv"

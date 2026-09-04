@@ -64,6 +64,56 @@
    - SOPHON OpenCV HighGUI/X11 后端不可用时，`--display=1` 不作为推荐路线。
    - `--display_fifo` + 系统 `ffplay` 可用于 HDMI 实时预览。
    - `dev_id=1` 主卡和 `dev_id=0` 副卡均已完成短时推理预览验证。
+18. 在 RK3588 板端重新清理 demo 环境并按文档手动验证：
+   - 删除旧的 `/home/linaro/1684X-EP-demo` 和 `/home/linaro/sophon-demo`，避免软链接和历史文件影响。
+   - 从 Windows 本地目录 `C:\QIU\XingTunAI\1684X-EP-demo` 通过 `scp` 传到板端 `/home/linaro/1684X-EP-demo`。
+   - 传输后目录属主为 `root:root`，建议执行：
+
+     ```bash
+     sudo chown -R linaro:linaro ~/1684X-EP-demo
+     ```
+
+   - Windows 传输后的 shell 脚本出现 CRLF 换行问题，执行脚本时报：
+
+     ```text
+     /bin/bash^M: bad interpreter: No such file or directory
+     ```
+
+     使用以下命令修复：
+
+     ```bash
+     find ~/1684X-EP-demo -type f -name "*.sh" -exec sed -i 's/\r$//' {} \;
+     ```
+
+   - 在 `third_party/sophon-demo/sample/YOLOv8_plus_det` 执行 `scripts/download.sh` 后，测试视频和 `coco.names` 下载成功；模型目录一度只创建了空 `models/`，后续手动下载并解压 `BM1684X.tar.gz` 后确认模型完整。
+   - 当前板端 `bm-smi` 能看到两张 BM1684X PCIe 卡，Lib/Driver 版本均为 `0.5.1 LTS SP5`。
+   - 官方 `YOLOv8_plus_det/cpp/yolov8_bmcv` 已重新编译生成 `yolov8_bmcv.pcie`。
+   - 单卡 `dev_id=0` 视频推理验证通过，结果：
+
+     ```text
+     SUMMARY: yolov8 test
+     [   yolov8 preprocess]  loops: 592 avg: 1.944000 ms
+     [    yolov8 inference]  loops: 592 avg: 28.256000 ms
+     [  yolov8 postprocess]  loops: 592 avg: 60.754000 ms
+     ```
+
+   - 单卡 `dev_id=1` 视频推理验证通过，结果：
+
+     ```text
+     SUMMARY: yolov8 test
+     [   yolov8 preprocess]  loops: 592 avg: 1.884000 ms
+     [    yolov8 inference]  loops: 592 avg: 28.127000 ms
+     [  yolov8 postprocess]  loops: 592 avg: 53.173000 ms
+     ```
+
+   - 运行 `--dev_id=1` 时，`bm-smi` 的进程列表中仍可能出现 TPU-ID 0 的少量内存占用。这来自底层库枚举/初始化多张设备和 on-chip CPU/usercpu 资源，不代表主推理跑在 0 号卡；实际推理设备以对应卡的 `TPU-Util`、功耗和内存增长为准。
+   - 运行过程中出现过以下 BMCV 警告：
+
+     ```text
+     [BMCV][error] Error, please check if the handle used for handle and bm_image are the same
+     ```
+
+     程序仍持续输出 `det_nums` 并最终打印 `SUMMARY`，因此本轮先判定推理链路通过；后续再单独修改官方 C++ 样例的 handle/输出路径绑定问题。
 
 ## 外部依赖说明
 
