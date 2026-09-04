@@ -90,7 +90,7 @@
    - 官方 `YOLOv8_plus_det/cpp/yolov8_bmcv` 已重新编译生成 `yolov8_bmcv.pcie`。
 19. 修复卡 1 运行 YOLOv8 视频样例时的 BMCV handle 不一致错误：
    - 根因是官方样例的 `VideoCapture` 绑定了 `dev_id`，但 `VideoWriter` 没有绑定同一张卡。
-   - 新增 `patches/yolov8_bmcv_card_writer_dev_id.patch` 和 `scripts/patch_yolov8_cpp_card_writer.sh`。
+   - 新增 `patches/yolov8_bmcv_card_writer_dev_id.patch`，并保留 `tools/run_multicard_yolov8.py --fix-card-writer` 作为应用入口。
    - `tools/run_multicard_yolov8.py --fix-card-writer` 也可直接给官方样例打同样补丁。
    - 板端手动验证双卡运行正常，`bm-smi` 可看到 `dev_id=0` 和 `dev_id=1` 上的 `yolov8_bmcv.pcie` 进程。
    - 单卡 `dev_id=0` 视频推理验证通过，结果：

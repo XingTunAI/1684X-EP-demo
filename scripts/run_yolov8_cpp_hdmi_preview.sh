@@ -39,7 +39,7 @@ fi
 
 if ! "${EXE}" --help 2>&1 | grep -q -- "--display_fifo"; then
   echo "The YOLOv8 C++ executable does not include HDMI FIFO display support." >&2
-  echo "Run scripts/patch_yolov8_cpp_hdmi_display.sh, then rebuild." >&2
+  echo "Apply patches/yolov8_bmcv_hdmi_display.patch and patches/yolov8_bmcv_hdmi_fifo.patch, then rebuild." >&2
   exit 2
 fi
 

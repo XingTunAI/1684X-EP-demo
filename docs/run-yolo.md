@@ -195,7 +195,11 @@ bash scripts/play_yolov8_hdmi.sh \
 
 ```bash
 cd <repo-dir>
-bash scripts/patch_yolov8_cpp_hdmi_display.sh
+(
+  cd third_party/sophon-demo/sample/YOLOv8_plus_det/cpp/yolov8_bmcv
+  patch -p1 <../../../../../../patches/yolov8_bmcv_hdmi_display.patch
+  patch -p1 <../../../../../../patches/yolov8_bmcv_hdmi_fifo.patch
+)
 bash scripts/build_yolov8_cpp.sh
 ```
 

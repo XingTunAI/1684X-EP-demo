@@ -102,7 +102,11 @@ VideoCapture -> toBMI -> Detect -> draw_result -> VideoWriter
 ```bash
 cd <repo-dir>
 export SOPHON_DEMO_DIR="${SOPHON_DEMO_DIR:-$HOME/sophon-demo}"
-bash scripts/patch_yolov8_cpp_hdmi_display.sh
+(
+  cd "$SOPHON_DEMO_DIR/sample/YOLOv8_plus_det/cpp/yolov8_bmcv"
+  patch -p1 <"<repo-dir>/patches/yolov8_bmcv_hdmi_display.patch"
+  patch -p1 <"<repo-dir>/patches/yolov8_bmcv_hdmi_fifo.patch"
+)
 bash scripts/build_yolov8_cpp.sh "$SOPHON_DEMO_DIR"
 ```
 
