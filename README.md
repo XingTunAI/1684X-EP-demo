@@ -108,9 +108,14 @@ bash scripts/play_yolov8_hdmi.sh \
   "$SOPHON_DEMO_DIR/sample/YOLOv8_plus_det/cpp/yolov8_bmcv/results/output.mp4"
 ```
 
+## 当前状态
+
+- 已在真实 RK3588 + BM1684X EP 环境上安装 SOPHON SDK，并跑通单卡 YOLOv8 C++ 推理。
+- 已确认 `bm-smi` 能枚举两张 BM1684X PCIe 从卡。
+- 已完成双卡并发验证，`dev_id=1` 主卡和 `dev_id=0` 副卡均可运行 `yolov8_bmcv.pcie`。
+- 已修复卡 1 视频写出阶段的 BMCV handle 不一致问题，仓库内置修复后的 `src/yolov8_bmcv/main.cpp`。
+
 ## 后续规划
 
-- 在真实 RK3588 + BM1684X EP 环境上安装 SDK 并跑通单卡。
-- 确认 `bm-smi` 能枚举所有 PCIe 从卡。
 - 把 `tutorial/yolov8_ffmpeg_encode` 改成支持 `--dev_id`、多输入、多输出 RTSP。
 - 按客户实际场景替换模型：人车检测、工服安全帽、车牌、烟火、OCR 都可以沿用同一套 pipeline。
