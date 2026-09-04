@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOPHON_DEMO_DIR="${1:-sophon-demo}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SOPHON_DEMO_DIR="${1:-${PROJECT_ROOT}/third_party/sophon-demo}"
 SOPHON_DEMO_REPO="${SOPHON_DEMO_REPO:-https://github.com/sophgo/sophon-demo.git}"
 SOPHON_DEMO_BRANCH="${SOPHON_DEMO_BRANCH:-release}"
 

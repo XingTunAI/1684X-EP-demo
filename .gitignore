@@ -1,5 +1,5 @@
 # Local copy of the official SOPHON demo repository.
-sophon-demo/
+third_party/sophon-demo/
 
 # Local SOPHON SDK deb packages.
 sophon-debs-*/

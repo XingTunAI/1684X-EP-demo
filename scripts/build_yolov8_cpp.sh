@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOPHON_DEMO_DIR="${1:-sophon-demo}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SOPHON_DEMO_DIR="${1:-${SOPHON_DEMO_DIR:-${PROJECT_ROOT}/third_party/sophon-demo}}"
 YOLO_CPP_DIR="${SOPHON_DEMO_DIR}/sample/YOLOv8_plus_det/cpp/yolov8_bmcv"
 
 if [[ ! -d "${YOLO_CPP_DIR}" ]]; then
@@ -13,6 +15,25 @@ fi
 echo "[1/3] Checking SOPHON install paths"
 test -d /opt/sophon/sophon-ffmpeg-latest/lib/cmake
 test -d /opt/sophon/sophon-opencv-latest/lib/cmake/opencv4
+test -d /opt/sophon/libsophon-current/lib
+
+missing_headers=()
+for header in bmruntime_interface.h bmcv_api_ext.h bmlib_runtime.h; do
+  if ! find -L /opt/sophon/libsophon-current/include /usr/include /usr/local/include \
+      -name "${header}" -print -quit 2>/dev/null | grep -q .; then
+    missing_headers+=("${header}")
+  fi
+done
+
+if [[ "${#missing_headers[@]}" -gt 0 ]]; then
+  echo "Missing libsophon development headers:" >&2
+  printf '  %s\n' "${missing_headers[@]}" >&2
+  echo >&2
+  echo "Install sophon-libsophon-dev, or copy the include directory from the matching SDK package." >&2
+  echo "Expected SDK source example:" >&2
+  echo "  libsophon_0.5.1_aarch64/opt/sophon/libsophon-0.5.1/include" >&2
+  exit 2
+fi
 
 echo "[2/3] Building YOLOv8 C++ PCIe demo"
 pushd "${YOLO_CPP_DIR}" >/dev/null

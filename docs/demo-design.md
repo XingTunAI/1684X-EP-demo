@@ -2,28 +2,28 @@
 
 ## 目标
 
-给客户展示 `RK3588 主机 + 多张 BM1684X PCIe 从卡` 的典型使用方式：
+展示 `RK3588 主机 + 多张 BM1684X PCIe 从卡` 的典型使用方式：
 
 - RK3588 负责系统控制、任务编排、业务 UI、网络输入输出。
 - BM1684X 负责视频解码、BMCV 图像预处理、NPU 模型推理、视频编码。
 - 多张 BM1684X 通过设备号 `dev_id` 被主机调度，每张卡承载一路或多路视频任务。
 
-## 首版场景
+## 推荐场景
 
-建议首版选择“多路视频目标检测”：
+推荐采用“多路视频目标检测”：
 
 1. 输入：本地 MP4、RTSP 摄像头流，或多路测试视频。
 2. 处理：BM1684X 硬件解码，BMCV resize/format convert，YOLOv8/YOLOv5 推理，画检测框。
 3. 输出：保存检测后视频，或编码推送到 RTSP 服务。
-4. 监控：使用 `bm-smi` 展示多张卡的负载、显存和编解码资源占用。
+4. 监控：使用 `bm-smi` 展示多张卡的 TPU 利用率、显存、温度和功耗；视频编解码状态通过程序日志和输出文件验证。
 
-这个场景客户容易理解，也能同时覆盖算力和音视频处理能力。
+该场景便于展示多卡算力、视频编解码和端到端业务处理能力。
 
 ## 推荐技术基底
 
 ### 模型推理
 
-优先用：
+推荐使用：
 
 ```text
 sophon-demo/sample/YOLOv8_plus_det
@@ -46,7 +46,7 @@ YOLOv5 更经典，客户认知成本低；YOLOv8 更新一些。首版建议用
 
 ### 视频编解码链路
 
-优先参考：
+推荐参考：
 
 ```text
 sophon-demo/tutorial/yolov8_ffmpeg_encode
@@ -69,37 +69,45 @@ sophon-demo/application/YOLOv8_multi_QT
 sophon-demo/application/YOLOv5_multi_QT
 ```
 
-这类样例适合展会或客户现场演示，但首版调试成本高于命令行 demo。
+此类样例适合展会或客户演示，但调试成本高于命令行 demo。
 
 ## 多卡调度思路
 
-首版采用“一个进程绑定一张卡”的方式：
+推荐采用“一个进程绑定一张卡”的方式，并根据 PCIe 链路能力配置任务权重。参考硬件映射如下：
 
 ```text
-Process 0 -> dev_id 0 -> input stream 0
-Process 1 -> dev_id 1 -> input stream 1
-Process 2 -> dev_id 2 -> input stream 2
+dev_id 0 -> 0004:41:00.0 -> 1686/SM7 -> PCIe Gen2 x1, 5GT/s
+dev_id 1 -> 0001:11:00.0 -> 1686/SM7 -> PCIe Gen3 x1, 8GT/s
+```
+
+默认调度顺序建议优先使用 `dev_id 1`：
+
+```text
+Process 0 -> dev_id 1 -> main/high-bitrate stream
+Process 1 -> dev_id 0 -> secondary/light stream
 ```
 
 优点：
 
-- 改动小，最容易跑通。
+- 改动范围小，便于快速验证。
 - 和官方 `--dev_id` 参数一致。
 - 单张卡异常时不影响其它卡的进程结构。
 
-后续版本再做统一调度器：
+后续版本可进一步实现统一调度器：
 
 - 一个主进程读取配置。
 - 为每个 `dev_id` 创建 worker。
 - worker 内部管理解码线程、推理线程、编码线程。
 - 汇总 FPS、延迟、设备状态到 Web UI。
 
+调度器应保留设备拓扑配置，例如 PCIe BDF、链路速度、角色和任务权重。演示时应避免将 `dev_id 0` 和 `dev_id 1` 表述为完全等价设备。
+
 ## 建议演示指标
 
 - 总路数：例如 2/4/8 路 1080P 视频。
 - 每路 FPS：展示端到端处理帧率。
 - 单路延迟：从解码到编码输出的耗时。
-- 每张卡利用率：由 `bm-smi` 展示。
+- 每张卡 TPU 利用率：由 `bm-smi` 展示。
 - 输出形态：保存文件或 RTSP 推流。
 
 ## 风险点

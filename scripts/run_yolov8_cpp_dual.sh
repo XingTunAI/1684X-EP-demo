@@ -1,44 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOPHON_DEMO_DIR="${SOPHON_DEMO_DIR:-sophon-demo}"
-YOLO_CPP_DIR="${SOPHON_DEMO_DIR}/sample/YOLOv8_plus_det/cpp/yolov8_bmcv"
-EXE="${YOLO_CPP_DIR}/yolov8_bmcv.pcie"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SOPHON_DEMO_DIR="${SOPHON_DEMO_DIR:-${PROJECT_ROOT}/third_party/sophon-demo}"
+TEST_VIDEO="${SOPHON_DEMO_DIR}/sample/YOLOv8_plus_det/datasets/test_car_person_1080P.mp4"
 
-if [[ ! -x "${EXE}" ]]; then
-  echo "Cannot find executable: ${EXE}" >&2
-  echo "Run scripts/build_yolov8_cpp.sh first." >&2
-  exit 2
-fi
-
-run_one() {
-  local dev_id="$1"
-  local log_file="yolov8_dev${dev_id}.log"
-  (
-    cd "${YOLO_CPP_DIR}"
-    ./yolov8_bmcv.pcie \
-      --input=../../datasets/test_car_person_1080P.mp4 \
-      --bmodel=../../models/BM1684X/yolov8s_int8_1b.bmodel \
-      --dev_id="${dev_id}" \
-      --conf_thresh=0.25 \
-      --nms_thresh=0.7 \
-      --classnames=../../datasets/coco.names
-  ) >"${log_file}" 2>&1 &
-  echo $!
-}
-
-echo "Starting YOLOv8 on dev_id=0 and dev_id=1"
-PID0="$(run_one 0)"
-PID1="$(run_one 1)"
-
-echo "Process dev0: ${PID0}"
-echo "Process dev1: ${PID1}"
-echo "Logs:"
-echo "  yolov8_dev0.log"
-echo "  yolov8_dev1.log"
-echo
-echo "Use another terminal to watch devices:"
-echo "  watch -n 1 bm-smi"
-
-wait "${PID0}"
-wait "${PID1}"
+# Two demo streams are assigned by weight:
+#   task0 -> dev_id 1, Gen3 primary
+#   task1 -> dev_id 1 again if a third stream is added, otherwise dev_id 0 for this second stream
+# For an explicit two-card smoke test, keep one input per card below.
+DEVICE_SPECS="${DEVICE_SPECS:-1|1|primary|0001:11:00.0|Gen3_x1,0|1|secondary|0004:41:00.0|Gen2_x1}" \
+INPUTS="${INPUTS:-${TEST_VIDEO},${TEST_VIDEO}}" \
+bash "${SCRIPT_DIR}/run_yolov8_cpp_dynamic.sh"

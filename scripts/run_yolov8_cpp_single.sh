@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOPHON_DEMO_DIR="${SOPHON_DEMO_DIR:-sophon-demo}"
-DEV_ID="${1:-0}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SOPHON_DEMO_DIR="${SOPHON_DEMO_DIR:-${PROJECT_ROOT}/third_party/sophon-demo}"
+DEV_ID="${1:-1}"
 INPUT="${2:-../../datasets/test_car_person_1080P.mp4}"
 BMODEL="${3:-../../models/BM1684X/yolov8s_int8_1b.bmodel}"
 CLASSNAMES="${4:-../../datasets/coco.names}"
@@ -17,6 +19,7 @@ if [[ ! -x "${EXE}" ]]; then
 fi
 
 echo "Running YOLOv8 C++ demo on dev_id=${DEV_ID}"
+echo "Board mapping: dev_id=1 is Gen3 primary, dev_id=0 is Gen2 secondary."
 pushd "${YOLO_CPP_DIR}" >/dev/null
 ./yolov8_bmcv.pcie \
   --input="${INPUT}" \

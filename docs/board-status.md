@@ -1,10 +1,10 @@
-# RK3588 + BM1684X EP 板端状态记录
+# RK3588 + BM1684X EP 硬件状态
 
-本文记录当前板子上看到的 PCIe 设备情况，以及使用 `sophon-debs-0.5.1_LTS` 的安装验证建议。
+本文记录一套 RK3588 + 双 BM1684X PCIe 从卡环境的参考 PCIe 拓扑，并给出 `sophon-debs-0.5.1_LTS` 安装与验证建议。
 
-## 当前 PCIe 枚举结果
+## PCIe 枚举结果
 
-用户在 RK3588 板子上执行：
+在 RK3588 主机上执行：
 
 ```bash
 sudo -s
@@ -12,7 +12,7 @@ lspci
 lspci -vvv
 ```
 
-从输出看，系统中有 3 个 RK3588 PCIe Root Port：
+参考输出中包含 3 个 RK3588 PCIe Root Port：
 
 ```text
 0001:10:00.0 PCI bridge: Rockchip Electronics Co., Ltd Device 3588
@@ -33,9 +33,9 @@ lspci -vvv
 0002:21:00.0 Ethernet controller: Realtek RTL8111/8168/8411
 ```
 
-## 关键结论
+## 硬件结论
 
-当前板子已经识别到两张算能 PCIe 从卡：
+系统已识别到两张算能 PCIe 从卡：
 
 | PCIe BDF | 类型 | Vendor/Device | 驱动状态 | 链路状态 |
 | --- | --- | --- | --- | --- |
@@ -46,8 +46,8 @@ lspci -vvv
 
 - PCIe 枚举已成功。
 - `bmdrv` 已绑定到两张算能设备。
-- 现在可以进入 libsophon/runtime/SAIL/多媒体栈验证。
-- 两张卡都是 `x1` 链路；第一张跑到 8GT/s，第二张跑到 5GT/s。首版 demo 可以跑，但后续如果要做极限吞吐，需要关注 PCIe 链路带宽。
+- 可继续进行 libsophon/runtime/SAIL/多媒体栈验证。
+- 两张卡均为 `x1` 链路；其中 `0001:11:00.0` 为 8GT/s，`0004:41:00.0` 为 5GT/s。多路视频吞吐测试中应关注 PCIe 链路带宽。
 
 ## 使用 sophon-debs-0.5.1_LTS 的建议
 
@@ -61,7 +61,7 @@ lsb_release -a || cat /etc/os-release
 
 RK3588 一般是 `arm64/aarch64`，所以 deb 包也应是 arm64 版本。
 
-当前目录中看到的 deb 包：
+推荐准备以下 deb 包：
 
 ```text
 sophon-driver_0.5.1-LTS-rk3588fix2_arm64.deb
@@ -72,14 +72,14 @@ sophon-mw-sophon-opencv_0.14.0_arm64.deb
 sophon-mw-sophon-opencv-dev_0.14.0_arm64.deb
 ```
 
-这批包里暂时没有看到 `sophon-sail`。因此：
+如果安装包中不包含 `sophon-sail`，则：
 
 - 只用这批包，优先跑 C++ BMCV/BMRT/FFmpeg 路线。
 - 如果要跑 `sample/YOLOv8_plus_det/python/yolov8_bmcv.py`，还需要补充 sophon-sail 的 arm64 安装包或对应 Python wheel。
 
 ## 安装顺序建议
 
-在 deb 目录中先查看包名：
+在 deb 目录中查看包名：
 
 ```bash
 ls -lh sophon-debs-0.5.1_LTS
@@ -164,9 +164,9 @@ PY
 
 ```bash
 python3 tools/run_multicard_yolov8.py \
-  --demo-dir sophon-demo/sample/YOLOv8_plus_det \
-  --devices 0,1 \
-  --input datasets/test_car_person_1080P.mp4 \
+  --demo-dir "$SOPHON_DEMO_DIR/sample/YOLOv8_plus_det" \
+  --devices '1|2|primary|0001:11:00.0|Gen3_x1,0|1|secondary|0004:41:00.0|Gen2_x1' \
+  --input datasets/test_car_person_1080P.mp4,datasets/test_car_person_1080P.mp4 \
   --bmodel models/BM1684X/yolov8s_int8_1b.bmodel
 ```
 
@@ -176,7 +176,7 @@ python3 tools/run_multicard_yolov8.py \
 watch -n 1 bm-smi
 ```
 
-## 当前注意事项
+## 注意事项
 
 - `lspci -vvv` 中出现 `lspci: Unable to load libkmod resources: error -2`，这通常不影响 PCIe 枚举本身；但建议确认系统中 `kmod`/`libkmod` 安装完整。
 - 第一张卡 Root Port 标称 `Width x2`，实际 endpoint 链路是 `Width x1`；第二张卡也是 `Width x1`。这可能由转接板、线缆、插槽、设备树或硬件设计决定。

@@ -1,0 +1,29 @@
+model: third_party/sophon-demo/sample/YOLOv8_plus_det/models/BM1684X/yolov8s_int8_1b.bmodel
+classnames: third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/coco.names
+
+# Board mapping confirmed on RK3588:
+#   dev_id 1 -> 0001:11:00.0 -> PCIe Gen3 x1, primary/high-weight device
+#   dev_id 0 -> 0004:41:00.0 -> PCIe Gen2 x1, secondary/light-weight device
+devices:
+  - id: 1
+    role: primary
+    pcie_bdf: "0001:11:00.0"
+    pcie_link: "Gen3 x1"
+    weight: 2
+  - id: 0
+    role: secondary
+    pcie_bdf: "0004:41:00.0"
+    pcie_link: "Gen2 x1"
+    weight: 1
+
+tasks:
+  - name: main
+    input: third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/test_car_person_1080P.mp4
+    prefer: primary
+  - name: secondary
+    input: third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/test_car_person_1080P.mp4
+    prefer: secondary
+
+thresholds:
+  confidence: 0.25
+  nms: 0.7

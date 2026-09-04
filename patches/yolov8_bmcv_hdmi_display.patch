@@ -1,0 +1,75 @@
+--- a/main.cpp
++++ b/main.cpp
+@@ -24,7 +24,11 @@ int main(int argc, char* argv[]) {
+         "{nms_thresh | 0.7 | iou threshold for nms}"
+         "{help | 0 | print help information.}"
+         "{classnames | ../../datasets/coco.names | class names file path}"
+-        "{input | ../../datasets/test | input path, images direction.}";
++        "{input | ../../datasets/test | input path, images direction.}"
++        "{display | 0 | display result frames with OpenCV HighGUI.}"
++        "{display_wait | 1 | OpenCV waitKey delay in milliseconds.}"
++        "{display_width | 1280 | display window width, 0 disables resizing.}"
++        "{save_video | 1 | save rendered video to results/output.mp4.}";
+     cv::CommandLineParser parser(argc, argv, keys);
+     if (parser.get<bool>("help")) {
+         parser.printMessage();
+@@ -34,6 +38,11 @@ int main(int argc, char* argv[]) {
+     string bmodel_file = parser.get<string>("bmodel");
+     string input = parser.get<string>("input");
+     int dev_id = parser.get<int>("dev_id");
++    bool display = parser.get<bool>("display");
++    int display_wait = parser.get<int>("display_wait");
++    int display_width = parser.get<int>("display_width");
++    bool save_video = parser.get<bool>("save_video");
++    string window_name = "YOLOv8-dev" + std::to_string(dev_id);
+ 
+     // check params
+     struct stat info;
+@@ -182,7 +191,15 @@ int main(int argc, char* argv[]) {
+         cv::VideoWriter writer;
+         std::string output_path = "results/output.mp4";
+         auto output_fourcc = cv::VideoWriter::fourcc('H', '2', '6', '4'); //use "H","2","6","4" for h264, "H","V","C","1" for h265.
+-        writer.open(output_path, output_fourcc, frameRate, cv::Size(w, h));
++        if (save_video) {
++            writer.open(output_path, output_fourcc, frameRate, cv::Size(w, h));
++        }
++        if (display) {
++            cv::namedWindow(window_name, cv::WINDOW_NORMAL);
++            if (display_width > 0 && w > 0 && h > 0) {
++                cv::resizeWindow(window_name, display_width, display_width * h / w);
++            }
++        }
+         bool end_flag = false;
+         vector<cv::Mat> batch_mats;
+         vector<bm_image> batch_imgs;
+@@ -206,13 +224,28 @@ int main(int argc, char* argv[]) {
+                     id++;
+                     cout << id << ", det_nums: " << boxes[i].size() << endl;
+                     yolov8.draw_result(batch_mats[i], boxes[i]);
+-                    writer.write(batch_mats[i]);
++                    if (display) {
++                        cv::Mat display_mat = batch_mats[i];
++                        if (display_width > 0 && display_mat.cols > display_width) {
++                            int display_height = display_width * display_mat.rows / display_mat.cols;
++                            cv::resize(display_mat, display_mat, cv::Size(display_width, display_height));
++                        }
++                        cv::imshow(window_name, display_mat);
++                        int key = cv::waitKey(display_wait);
++                        if (key == 27 || key == 'q' || key == 'Q') {
++                            end_flag = true;
++                        }
++                    }
++                    if (save_video) {
++                        writer.write(batch_mats[i]);
++                    }
+                     bm_image_destroy(batch_imgs[i]);
+                 }
+                 batch_mats.clear();
+                 batch_imgs.clear();
+                 boxes.clear();
+             }
+         }
++        if (display) cv::destroyWindow(window_name);
+         writer.release();
+         cap.release();
+     }

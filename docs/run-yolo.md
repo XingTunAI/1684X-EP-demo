@@ -1,27 +1,31 @@
 # YOLOv8 跑通准备文档
 
-本文用于在 RK3588 + 两张 BM1684X PCIe 从卡上先跑通官方 YOLOv8 C++ demo。
+本文说明如何在 RK3588 + 双 BM1684X PCIe 从卡环境中编译和运行官方 YOLOv8 C++ demo。
 
-服务器侧工作目录：
+文档中的 `<repo-dir>` 表示本仓库目录。官方 `sophon-demo` 默认放在 `<repo-dir>/third_party/sophon-demo`；如需使用其它位置，可手动设置 `$SOPHON_DEMO_DIR`。
 
-```text
-/data/users/ubuntu/workspace/Sophgo/bm1684/1684X-EP-demo
-```
+## C++ 版优先级
 
-## 为什么先跑 C++ 版
-
-当前 `sophon-debs-0.5.1_LTS` 中已有：
+基础运行环境通常包含：
 
 - `sophon-driver`
 - `sophon-libsophon`
 - `sophon-ffmpeg`
 - `sophon-opencv`
 
-但暂时没有 `sophon-sail`，所以先跑 C++ BMCV/BMRuntime 路线。Python SAIL 版等补齐 `sophon-sail` 后再跑。
+C++ 编译需要 `sophon-libsophon-dev` 中的开发头文件：
 
-## 0. 前置状态
+```text
+bmruntime_interface.h
+bmcv_api_ext.h
+bmlib_runtime.h
+```
 
-板端 `lspci -vvv` 已看到两张算能设备，并且都绑定了 `bmdrv`：
+这些文件通常来自 `sophon-libsophon-dev`，也可从同版本 SDK 包中的 libsophon `include` 目录获取。C++ BMCV/BMRuntime 路线依赖较少，适合作为首轮验证路径。
+
+## 0. 硬件识别
+
+板端 `lspci -vvv` 应能看到两张算能 PCIe 设备，并绑定 `bmdrv`：
 
 ```text
 0001:11:00.0 Processing accelerators: Device 1f1c:1686
@@ -31,7 +35,7 @@ Kernel driver in use: bmdrv
 
 ## 1. 安装 SOPHON deb
 
-把 `sophon-debs-0.5.1_LTS` 放在本仓库根目录，然后执行：
+将 `sophon-debs-0.5.1_LTS` 放在本仓库根目录，然后执行：
 
 ```bash
 bash scripts/install_sophon_debs.sh sophon-debs-0.5.1_LTS
@@ -51,7 +55,7 @@ lspci | grep -i -E "1f1c|processing"
 bash scripts/prepare_yolov8_demo.sh
 ```
 
-这个脚本会：
+该脚本会执行以下操作：
 
 - 安装 `git/cmake/make/g++/pkg-config/python3-pip`。
 - 拉取官方 `sophon-demo` 的 `release` 分支。
@@ -61,80 +65,146 @@ bash scripts/prepare_yolov8_demo.sh
 准备完成后应存在：
 
 ```text
-sophon-demo/sample/YOLOv8_plus_det/models/BM1684X/yolov8s_int8_1b.bmodel
-sophon-demo/sample/YOLOv8_plus_det/datasets/test_car_person_1080P.mp4
-sophon-demo/sample/YOLOv8_plus_det/datasets/coco.names
+third_party/sophon-demo/sample/YOLOv8_plus_det/models/BM1684X/yolov8s_int8_1b.bmodel
+third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/test_car_person_1080P.mp4
+third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/coco.names
 ```
 
 ## 3. 编译 YOLOv8 C++ demo
 
-### Docker 编译入口
+### 板端编译入口
 
-当前采用服务器上的 1688 Docker BSP 环境准备和编译，最终把产物放到 RK3588 板子上运行。
-
-用户已创建容器：
-
-```text
-1684x_ep_demo
-```
-
-进入服务器工作目录：
+RK3588 是主机，BM1684X 是 PCIe 从卡；推荐直接在 RK3588 板端编译和运行。进入本仓库目录：
 
 ```bash
-cd /data/users/ubuntu/workspace/Sophgo/bm1684/1684X-EP-demo
-```
-
-如果容器处于退出状态，先启动：
-
-```bash
-sudo docker start 1684x_ep_demo
-```
-
-进入容器：
-
-```bash
-sudo docker exec -it 1684x_ep_demo /bin/bash
-```
-
-进入容器后工作目录是 `/workspace`。YOLO 最终运行仍在 RK3588 板子上，因为 BM1684X PCIe 设备在板子上。
-
-```bash
+cd <repo-dir>
 bash scripts/build_yolov8_cpp.sh
 ```
 
 注意：RK3588 是主机，BM1684X 是 PCIe 从卡，所以这里使用官方样例的 `pcie` 编译路径，输出文件是：
 
 ```text
-sophon-demo/sample/YOLOv8_plus_det/cpp/yolov8_bmcv/yolov8_bmcv.pcie
+third_party/sophon-demo/sample/YOLOv8_plus_det/cpp/yolov8_bmcv/yolov8_bmcv.pcie
+```
+
+如果脚本报缺少：
+
+```text
+bmruntime_interface.h
+bmcv_api_ext.h
+bmlib_runtime.h
+```
+
+如果缺少以上文件，说明系统未安装 libsophon 开发包。需要从同版本 SDK 补装 `sophon-libsophon-dev`，或将 SDK 中的 include 目录复制到：
+
+```text
+/opt/sophon/libsophon-current/include
 ```
 
 ## 4. 单卡运行
 
-先跑 `dev_id=0`：
-
-```bash
-bash scripts/run_yolov8_cpp_single.sh 0
-```
-
-再跑 `dev_id=1`：
+运行主卡 `dev_id=1`。该设备对应 `0001:11:00.0`，链路为 PCIe Gen3 x1：
 
 ```bash
 bash scripts/run_yolov8_cpp_single.sh 1
 ```
 
+运行副卡 `dev_id=0`。该设备对应 `0004:41:00.0`，链路为 PCIe Gen2 x1：
+
+```bash
+bash scripts/run_yolov8_cpp_single.sh 0
+```
+
 输出视频位置：
 
 ```text
-sophon-demo/sample/YOLOv8_plus_det/cpp/yolov8_bmcv/results/output.mp4
+third_party/sophon-demo/sample/YOLOv8_plus_det/cpp/yolov8_bmcv/results/output.mp4
+```
+
+在 HDMI + XFCE/Xorg 环境中，可将结果视频直接播放到 HDMI：
+
+```bash
+cd <repo-dir>
+bash scripts/play_yolov8_hdmi.sh \
+  "third_party/sophon-demo/sample/YOLOv8_plus_det/cpp/yolov8_bmcv/results/output.mp4"
 ```
 
 ## 5. 双卡并发运行
 
-确认单卡都能跑后，再跑双卡：
+单卡验证通过后，运行双卡并发：
 
 ```bash
 bash scripts/run_yolov8_cpp_dual.sh
 ```
+
+`run_yolov8_cpp_dual.sh` 内部会调用动态分配脚本，并明确指定：
+
+```text
+task0 -> dev_id 1 -> 主卡/Gen3
+task1 -> dev_id 0 -> 副卡/Gen2
+```
+
+多路输入可通过 `INPUTS` 指定视频列表，通过 `DEVICE_SPECS` 指定设备权重：
+
+```bash
+DEVICE_SPECS="1|2|primary|0001:11:00.0|Gen3_x1,0|1|secondary|0004:41:00.0|Gen2_x1" \
+INPUTS="<main-video>,<side-video-1>,<side-video-2>" \
+bash scripts/run_yolov8_cpp_dynamic.sh
+```
+
+上述配置的分配结果为：
+
+```text
+<main-video>   -> dev_id 1
+<side-video-1> -> dev_id 1
+<side-video-2> -> dev_id 0
+```
+
+每个任务会复制一份独立工作目录到 `${RUN_ROOT}/<run_id>/`，输出文件分别保存在各自的 `results/output.mp4`，不会互相覆盖。`RUN_ROOT` 默认在系统临时目录下，也可以通过环境变量改到其他位置。
+
+双卡运行完成后，可指定播放其中一路结果到 HDMI：
+
+```bash
+bash scripts/play_yolov8_hdmi.sh \
+  "${RUN_ROOT}/<run_id>/task0_dev1/results/output.mp4"
+```
+
+如需为不同卡指定不同工作，可按输入顺序和 `DEVICE_SPECS` 权重配置：
+
+```text
+主路/高码率/重要画面 -> dev_id 1 -> 0001:11:00.0 -> Gen3 x1
+副路/低码率/备用画面 -> dev_id 0 -> 0004:41:00.0 -> Gen2 x1
+```
+
+注意：官方 C++ 样例采用“检测后写文件”模式，并非实时 HDMI 预览。本仓库提供补丁，在 `cpp/yolov8_bmcv/main.cpp` 的 `draw_result` 后增加实时显示输出。
+
+补丁应用后，C++ 可执行文件支持：
+
+```text
+--display=1
+--display_wait=1
+--display_width=1280
+--display_fifo=<path>
+--save_video=0
+```
+
+如果 SOPHON OpenCV 未启用 GTK/X11 HighGUI 后端，推荐使用 `--display_fifo` 配合系统 `ffplay`。本仓库的 HDMI 预览脚本默认使用该方式，并已在 `dev_id=1` 主卡和 `dev_id=0` 副卡上完成短时验证。
+
+应用补丁并重新编译：
+
+```bash
+cd <repo-dir>
+bash scripts/patch_yolov8_cpp_hdmi_display.sh
+bash scripts/build_yolov8_cpp.sh
+```
+
+运行 HDMI 实时预览：
+
+```bash
+SAVE_VIDEO=0 DISPLAY_SIZE=960x540 bash scripts/run_yolov8_cpp_hdmi_preview.sh 1
+```
+
+其中最后一个参数为卡号：`1` 表示主卡/Gen3，`0` 表示副卡/Gen2。
 
 另开一个终端观察：
 
@@ -164,7 +234,7 @@ sudo apt install ./sophon-debs-0.5.1_LTS/sophon-mw-sophon-opencv-dev_0.14.0_arm6
 
 ### `bm-smi` 看不到两张卡
 
-先确认驱动和 PCIe：
+确认驱动和 PCIe 状态：
 
 ```bash
 lspci | grep -i -E "1f1c|processing"
@@ -174,10 +244,10 @@ dmesg | grep -i -E "bm|sophon|pci" | tail -n 100
 
 ### Python YOLO 跑不了
 
-当前 deb 包里没有 `sophon-sail`，所以 Python 版大概率会在这里失败：
+如果环境中未安装 `sophon-sail`，Python 版可能在以下位置失败：
 
 ```python
 import sophon.sail as sail
 ```
 
-首版先跑 C++ 版。
+建议优先使用 C++ 版完成基础验证。
