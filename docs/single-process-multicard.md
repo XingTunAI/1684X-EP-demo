@@ -53,6 +53,18 @@ bm-smi --dev=2
 
 ## 验证依据
 
+任务运行期间，在另一个终端窗口执行：
+
+```bash
+pgrep -af '[y]olov8_multicard.pcie'
+```
+
+取本次运行的主进程 PID，再执行以下命令（示例 `553379` 需替换为本次 PID）：
+
+```bash
+ps -T -p 553379 -o pid,spid,comm
+```
+
 - 三条 `READY` 使用同一个 PID，分别对应 `dev_id=0,1,2`，之后输出 `START ... workers=3`。
 - 运行时 `pgrep -af '[y]olov8_multicard.pcie'` 应看到一个推理进程。
 - 分别查询三张卡的 Processes。当前板端 `bm-smi` 的 PID 列实际记录工作线程 ID（TID）；用 `ps -T -p <主进程PID> -o pid,spid,comm` 核对它们属于同一 PID。不能要求该列的数字一定相同。
@@ -76,6 +88,22 @@ bm-smi --dev=2
 `MAX_OVERLAPPING_DETECT_CALLS=3`。`ps -T` 和逐卡 `bm-smi` 的线程 ID 一一匹配，证明同一进程内三个工作线程分别使用三张设备。板端还有其他业务进程占用设备，这些数字仅作为并发功能验证，不是空载性能基准。
 
 板端日志：`/tmp/codex-single-process-20260905-145931.log`、`/tmp/codex-single-process-confirm.log`；设备快照：`/tmp/codex-native-smi-{0,1,2}.txt`。
+
+### 用户复核截图
+
+2026-09-05 15:13:28 的三个设备窗口中，工作线程与左上角 `ps -T` 的对应关系如下：
+
+| dev_id / TPU-ID | bm-smi PID 列 / ps SPID | ps PID（主进程） |
+|---|---|---|
+| 0 | 553383 | 553379 |
+| 1 | 553384 | 553379 |
+| 2 | 553385 | 553379 |
+
+![单进程三卡验证：线程归属与三个设备窗口](images/single-process-three-cards.png)
+
+该截图结合上述运行日志，支持结论：已实现并验证单进程、多线程调用三张 BM1684X 进行并发处理。设备窗口的占用率也包含其他服务，不能仅凭占用率判断本程序的性能。
+
+### 采集文本记录
 
 `bm-smi` 的标准输出可能含终端控制字符，采集可读文本应使用它自己的 `--file` 参数，例如：
 

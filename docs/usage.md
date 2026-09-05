@@ -135,7 +135,7 @@ bash scripts/run_yolov8_cpp_dynamic.sh
 另开一个终端观察设备状态：
 
 ```bash
-watch -n 1 bm-smi
+bm-smi
 ```
 
 如果卡 1 运行时出现：

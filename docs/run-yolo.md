@@ -214,7 +214,7 @@ SAVE_VIDEO=0 DISPLAY_SIZE=960x540 bash scripts/run_yolov8_cpp_hdmi_preview.sh 1
 另开一个终端观察：
 
 ```bash
-watch -n 1 bm-smi
+bm-smi
 ```
 
 ## 6. 常见问题

@@ -173,7 +173,7 @@ python3 tools/run_multicard_yolov8.py \
 另开终端观察：
 
 ```bash
-watch -n 1 bm-smi
+bm-smi
 ```
 
 ## 注意事项
