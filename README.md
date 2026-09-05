@@ -14,6 +14,7 @@
 - [使用文档](docs/usage.md)
 - [操作记录](docs/operation-log.md)
 - [验证参考](docs/roadmap.md)
+- [单进程多卡并发验证](docs/single-process-multicard.md)
 - [板端状态记录](docs/board-status.md)
 - [YOLOv8 跑通准备文档](docs/run-yolo.md)
 - [HDMI/XFCE 显示说明](docs/hdmi-display.md)
