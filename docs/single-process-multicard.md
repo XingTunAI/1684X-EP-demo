@@ -27,6 +27,30 @@ DEMO="$PWD/third_party/sophon-demo/sample/YOLOv8_plus_det"
 
 默认视频结束后重新打开，处理至少 60 秒（不含初始化，实际退出还受 SDK 调用耗时影响）。`--seconds=0` 表示每卡仅处理一遍。Ctrl+C 请求结束；正在执行的 SDK 调用返回后退出。
 
+## 三个终端窗口持续观察
+
+保持运行并发程序的窗口，再打开三个连接到同一块 Rockchip 板端的终端窗口。每个窗口只运行下面对应的一条命令。
+
+窗口 1，查看卡 0：
+
+```bash
+bm-smi --dev=0
+```
+
+窗口 2，查看卡 1：
+
+```bash
+bm-smi --dev=1
+```
+
+窗口 3，查看卡 2：
+
+```bash
+bm-smi --dev=2
+```
+
+`bm-smi` 默认持续刷新，不加 `--noloop`，也不需要外套 `watch`。将三个窗口并排摆放，在三卡任务运行期间观察各自的利用率、显存和 Processes。按 Ctrl+C 退出对应窗口的监控。
+
 ## 验证依据
 
 - 三条 `READY` 使用同一个 PID，分别对应 `dev_id=0,1,2`，之后输出 `START ... workers=3`。
