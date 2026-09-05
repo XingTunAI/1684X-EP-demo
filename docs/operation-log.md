@@ -27,7 +27,7 @@
    - YOLOv5/YOLOv8 都适合做首版客户 demo。
    - `YOLOv8_plus_det` 适合证明 BM1684X 推理算力。
    - `yolov8_ffmpeg_encode` 适合证明解码、预处理、推理、画框、编码的完整视频链路。
-   - 多卡调度可以先用多进程按 `--dev_id` 分发，后续再收敛成 C++ pipeline。
+   - 多卡验证可以用多进程按 `--dev_id` 分发。
 6. 创建本仓库自己的文档和工具：
    - `README.md`
    - `docs/demo-design.md`

@@ -205,8 +205,6 @@ cd third_party/sophon-demo/tutorial/yolov8_ffmpeg_encode
   --input=test_car_person_1080P.mp4
 ```
 
-后续可将该样例改造成支持多 `dev_id`、多输入和多输出地址的版本。
-
 ## 8. 推荐演示流程
 
 1. 运行 `bm-smi`，展示 RK3588 已发现多张 1684X PCIe 从卡。
