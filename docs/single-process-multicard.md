@@ -10,7 +10,6 @@
 
 ```bash
 cd /userdata/1684X-EP-demo
-git pull --ff-only
 cmake -S src/yolov8_multicard -B build/yolov8_multicard \
   -DCMAKE_BUILD_TYPE=Release \
   -Dlibsophon_DIR=/opt/sophon/libsophon-0.5.1/data
