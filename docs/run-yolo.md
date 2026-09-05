@@ -259,10 +259,11 @@ import sophon.sail as sail
 
 ### 从 Windows 传到板端后脚本报 `/bin/bash^M`
 
-这是 CRLF 换行导致的。执行：
+这是 CRLF 换行导致的。本项目的 `.gitattributes` 不负责被忽略的独立官方仓库。准备脚本会在下载前自动修复官方 YOLOv8 脚本；已经传到板端的文件可在项目根目录执行：
 
 ```bash
-find ~/1684X-EP-demo -type f -name "*.sh" -exec sed -i 's/\r$//' {} \;
+cd /userdata/1684X-EP-demo
+find scripts third_party/sophon-demo/sample/YOLOv8_plus_det/scripts -type f -name "*.sh" -exec sed -i 's/\r$//' {} \;
 ```
 
 然后重新运行脚本。

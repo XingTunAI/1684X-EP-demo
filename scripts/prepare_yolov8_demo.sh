@@ -13,7 +13,7 @@ sudo apt install -y git cmake make g++ pkg-config python3 python3-pip
 
 echo "[2/4] Preparing official sophon-demo repository"
 if [[ ! -d "${SOPHON_DEMO_DIR}/.git" ]]; then
-  git clone --depth 1 -b "${SOPHON_DEMO_BRANCH}" "${SOPHON_DEMO_REPO}" "${SOPHON_DEMO_DIR}"
+  git -c core.autocrlf=false clone --depth 1 -b "${SOPHON_DEMO_BRANCH}" "${SOPHON_DEMO_REPO}" "${SOPHON_DEMO_DIR}"
 else
   echo "${SOPHON_DEMO_DIR} already exists, skip clone"
 fi
@@ -26,6 +26,8 @@ fi
 
 echo "[3/4] Downloading YOLOv8 BM1684X model and test data"
 pushd "${YOLO_DIR}" >/dev/null
+# Official scripts may have CRLF after a Windows checkout or file transfer.
+find scripts -type f -name '*.sh' -exec sed -i 's/\r$//' {} \;
 chmod -R +x scripts/
 ./scripts/download.sh --BM1684X
 popd >/dev/null
