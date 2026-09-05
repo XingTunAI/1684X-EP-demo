@@ -1,15 +1,18 @@
-# Source Layout
+# 源码说明
 
-这里放仓库自带的 demo 源码和后续自研代码。
+这里保存本仓库用于复现和验证的 C++ 源码。
 
-首版不会直接复制官方 `sophon-demo` 的大量源码，但会保存需要稳定复现的改动源码：
+## 官方样例修复版：yolov8_bmcv
 
-- `src/yolov8_bmcv/main.cpp`：基于官方 `YOLOv8_plus_det/cpp/yolov8_bmcv/main.cpp` 的已修版本，`VideoWriter` 会绑定当前 `dev_id`，避免卡 1 视频写出阶段出现 BMCV handle 不一致错误。
+[yolov8_bmcv/main.cpp](yolov8_bmcv/main.cpp) 基于官方 `YOLOv8_plus_det/cpp/yolov8_bmcv/main.cpp`，将 `VideoWriter` 绑定到当前 `dev_id`，修复卡 1 视频写出阶段的 BMCV handle 不一致问题。
 
-`scripts/build_yolov8_cpp.sh` 会在编译前把上述源码同步到官方样例目录，再构建 `yolov8_bmcv.pcie`。
+[build_yolov8_cpp.sh](../scripts/build_yolov8_cpp.sh) 会在编译前把这份源码同步到官方样例目录，再构建 `yolov8_bmcv.pcie`。每个进程指定一张卡；使用 [run_yolov8_cpp_dynamic.sh](../scripts/run_yolov8_cpp_dynamic.sh) 启动多卡时，采用多进程方式。
 
-后续建议在这里落地：
+## 单进程多卡验证版：yolov8_multicard
 
-- `src/multicard_pipeline/`：C++ 多卡视频分析 pipeline。
-- `src/device_monitor/`：`bm-smi` 或 BMLIB 状态采集。
-- `src/web_ui/`：客户演示界面。
+- [yolov8_multicard/main.cpp](yolov8_multicard/main.cpp)：在一个进程中为每张卡创建独立工作线程、模型实例和解码器，全部准备好后统一开始处理。
+- [yolov8_multicard/CMakeLists.txt](yolov8_multicard/CMakeLists.txt)：复用 `third_party/sophon-demo` 中的 YOLOv8 检测实现，独立构建 `yolov8_multicard.pcie`。
+
+此版本已在 SDK 0.5.1 的 RK3588 + 三张 BM1684X 环境完成单进程三卡验证，仅执行视频解码和检测，不画框、不编码、不输出视频。默认处理 60 秒，视频提前结束时重新打开。
+
+当前板端 `bm-smi` 的 PID 列记录工作线程 ID，需要结合 `ps -T` 核对线程所属主进程。编译运行命令、三个终端窗口的监控方式和验证证据见 [单进程多卡并发验证](../docs/single-process-multicard.md)。
