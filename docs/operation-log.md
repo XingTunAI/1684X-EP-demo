@@ -66,7 +66,7 @@
    - `dev_id=1` 主卡和 `dev_id=0` 副卡均已完成短时推理预览验证。
 18. 在 RK3588 板端重新清理 demo 环境并按文档手动验证：
    - 删除旧的 `/home/linaro/1684X-EP-demo` 和 `/home/linaro/sophon-demo`，避免软链接和历史文件影响。
-   - 从 Windows 本地目录 `C:\QIU\XingTunAI\1684X-EP-demo` 通过 `scp` 传到板端 `/home/linaro/1684X-EP-demo`。
+   - 从 Windows 本地目录 `工程根目录` 通过 `scp` 传到板端 `/home/linaro/1684X-EP-demo`。
    - 传输后目录属主为 `root:root`，建议执行：
 
      ```bash

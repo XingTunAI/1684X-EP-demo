@@ -10,6 +10,7 @@
 
 ## 文档
 
+- [当前 Demo 演示说明、实测结果与进度](docs/demo-summary-20260907.md)
 - [Demo 设计说明](docs/demo-design.md)
 - [使用文档](docs/usage.md)
 - [操作记录](docs/operation-log.md)
@@ -18,6 +19,13 @@
 - [板端状态记录](docs/board-status.md)
 - [YOLOv8 跑通准备文档](docs/run-yolo.md)
 - [HDMI/XFCE 显示说明](docs/hdmi-display.md)
+- [单卡 1080P/25 FPS 解码压测](docs/single-card-decode.md)
+- [单卡解码测试结论（2026-09-07）](docs/decode-results-20260907.md)
+- [单卡解码＋推理压测操作](docs/single-card-analysis.md)
+- [单卡解码＋推理实测结论（2026-09-07）](docs/analysis-results-20260907.md)
+- [32 路分析与图像路径优化对照](docs/analysis-optimization-20260907.md)
+- [单卡完整链路压测：解码、推理、编码与检测结果](src/single_card_pipeline/README.md)
+- [本地压测视频与来源](docs/test-media.md)
 
 ## 仓库结构
 
@@ -59,6 +67,8 @@
   - 配置里已有 `dev_id`。
 
 ## 快速验证
+
+单卡纯解码自动压测在 RK3588 上执行 `bash scripts/run_single_card_decode_auto.sh`：默认按 8/16/24/32 路加压，输出 Markdown 报告、逐路 CSV 和原始 JSON。说明见[单卡解码压测](src/single_card_decode/README.md)。
 
 可先运行 C++ 版样例，确认 RK3588 能够调用 BM1684X，并避开 Python `sophon.sail` 依赖：
 
