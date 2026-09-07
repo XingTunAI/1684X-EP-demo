@@ -232,6 +232,7 @@ int YoloV8_det::forward(bm_tensor_t& input_tensor, std::vector<bm_tensor_t>& out
     // input_data.read((char*)input, 3*1024*1024*sizeof(float));
     // bm_memcpy_s2d(handle, input_tensor.device_mem, input);
 
+    const auto submitted_begin = std::chrono::steady_clock::now();
     bool ok;
     if (reuse_output_buffers) {
         output_tensors = resident_outputs;
@@ -242,12 +243,18 @@ int YoloV8_det::forward(bm_tensor_t& input_tensor, std::vector<bm_tensor_t>& out
                                output_tensors.data(), netinfo->output_num);
         if (ok) device_output_allocations += netinfo->output_num;
     }
-    assert(ok == true);
+    const auto submitted_end = std::chrono::steady_clock::now();
+    if (!ok) throw std::runtime_error("BMRuntime launch failed");
     auto ret = bm_thread_sync(handle);
+    const auto synced = std::chrono::steady_clock::now();
     if (ret != BM_SUCCESS) {
         throw std::runtime_error("BMRuntime 操作失败");
     }
     bm_free_device(handle, input_tensor.device_mem);
+    const auto released = std::chrono::steady_clock::now();
+    inference_submit_ms = std::chrono::duration<double, std::milli>(submitted_end - submitted_begin).count();
+    inference_sync_ms = std::chrono::duration<double, std::milli>(synced - submitted_end).count();
+    input_release_ms = std::chrono::duration<double, std::milli>(released - synced).count();
     return 0;
 }
 

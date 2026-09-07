@@ -1,0 +1,82 @@
+[
+  {
+    "streams": 1,
+    "scope": "whole stage first-to-last sample, includes warmup",
+    "cpu_busy_percent_excluding_idle_iowait": {
+      "cpu": 11.32361614289325,
+      "cpu0": 13.435507327441549,
+      "cpu1": 5.750727232042963,
+      "cpu2": 12.714854866249288,
+      "cpu3": 38.759779107225036,
+      "cpu4": 3.552278820375335,
+      "cpu5": 1.5158270173874275,
+      "cpu6": 5.637254901960785,
+      "cpu7": 10.097065714604485
+    },
+    "min_mem_available_kib": 7217612
+  },
+  {
+    "streams": 2,
+    "scope": "whole stage first-to-last sample, includes warmup",
+    "cpu_busy_percent_excluding_idle_iowait": {
+      "cpu": 20.05671103525169,
+      "cpu0": 24.254712845243315,
+      "cpu1": 15.024304021210781,
+      "cpu2": 27.994227994227995,
+      "cpu3": 48.787712561711466,
+      "cpu4": 5.525787006028131,
+      "cpu5": 3.938053097345133,
+      "cpu6": 15.59803386127799,
+      "cpu7": 19.001522732216664
+    },
+    "min_mem_available_kib": 7190940
+  },
+  {
+    "streams": 4,
+    "scope": "whole stage first-to-last sample, includes warmup",
+    "cpu_busy_percent_excluding_idle_iowait": {
+      "cpu": 33.341721891340214,
+      "cpu0": 44.3900267141585,
+      "cpu1": 40.53159810301092,
+      "cpu2": 49.3236444941308,
+      "cpu3": 57.388969683409776,
+      "cpu4": 17.809759388351697,
+      "cpu5": 8.981900452488688,
+      "cpu6": 23.52084267144778,
+      "cpu7": 24.28379588182632
+    },
+    "min_mem_available_kib": 7138404
+  },
+  {
+    "streams": 6,
+    "scope": "whole stage first-to-last sample, includes warmup",
+    "cpu_busy_percent_excluding_idle_iowait": {
+      "cpu": 46.29637392580172,
+      "cpu0": 67.49888542131075,
+      "cpu1": 67.19354482148779,
+      "cpu2": 68.93376234328193,
+      "cpu3": 69.79108479499497,
+      "cpu4": 23.61437688948606,
+      "cpu5": 15.583238958097395,
+      "cpu6": 28.388689407540394,
+      "cpu7": 28.303581452789942
+    },
+    "min_mem_available_kib": 7080308
+  },
+  {
+    "streams": 8,
+    "scope": "whole stage first-to-last sample, includes warmup",
+    "cpu_busy_percent_excluding_idle_iowait": {
+      "cpu": 49.59271078266711,
+      "cpu0": 73.59506449803702,
+      "cpu1": 72.97267150027886,
+      "cpu2": 74.43054935238946,
+      "cpu3": 75.26175094675874,
+      "cpu4": 20.40453434096466,
+      "cpu5": 14.332765474162407,
+      "cpu6": 31.48168887893381,
+      "cpu7": 33.66281028866674
+    },
+    "min_mem_available_kib": 7024852
+  }
+]

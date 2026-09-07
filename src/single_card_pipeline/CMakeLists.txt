@@ -16,3 +16,6 @@ add_executable(pipeline_worker.pcie main.cpp detector/yolov8_det.cpp)
 # Keep official sample assertions enabled; some versions depend on them.
 target_compile_options(pipeline_worker.pcie PRIVATE -O2 -UNDEBUG)
 target_link_libraries(pipeline_worker.pcie ${FFMPEG_LIBS} ${OpenCV_LIBS} ${the_libbmlib.so} ${the_libbmrt.so} ${the_libbmcv.so} Threads::Threads)
+add_executable(inference_probe.pcie inference_probe.cpp)
+target_compile_options(inference_probe.pcie PRIVATE -O2 -UNDEBUG)
+target_link_libraries(inference_probe.pcie ${the_libbmlib.so} ${the_libbmrt.so} Threads::Threads)

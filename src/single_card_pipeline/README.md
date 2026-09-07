@@ -1,5 +1,7 @@
 # 单卡视频分析压测 Demo
 
+推理性能定位见[计时与隔离测试](../../docs/inference-diagnostics.md)，可分别测模型执行、输出回传及两者组合。
+
 当前默认采用性能摸底，不应用 FPS 或计划落后验收门槛，正常完成状态为 `measured`。低帧率继续后续档位，运行异常/结果不完整则停止。历史验收模式需显式 `--acceptance`。从 1 路开始的逐档测试命令见[操作文档](../../docs/single-card-analysis.md)。新增分阶段统计，analysis 默认使用已完成 32 路对照的 `device-bgr` 图像路径；`bgr` 保留原路径，`yuv` 保留实验路径。
 
 180 秒预热、120 秒采集的 32 路结果为总平均 114.10 FPS、平均每路 3.57 FPS，见[优化结论](../../docs/analysis-optimization-20260907.md)。报告含义见[阅读指南](../../docs/benchmark-report-guide.md)，功能与配置见[演示总览](../../docs/demo-summary-20260907.md)。

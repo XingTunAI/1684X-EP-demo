@@ -1,5 +1,9 @@
 # 单卡解码＋推理压测操作
 
+最新实测见[推理、回传与主控开销对照](analysis-inference-diagnostics-20260907.md)。
+
+推理性能定位见[计时与隔离测试](inference-diagnostics.md)，可分别测模型执行、输出回传及两者组合。
+
 [路数递增测试与 TPU 曲线](analysis-ladder-20260907.md)：从 1 路逐档增加到 32 路，本轮最高总吞吐出现在 8 路（143.22 FPS）。
 
 以下路径均相对于工程根目录。硬件测试命令在设备执行。当前 32 路优化测试已完成，总平均 114.10 FPS、平均每路 3.57 FPS。详见[演示总览](demo-summary-20260907.md)、[优化结论](analysis-optimization-20260907.md)和[报告阅读指南](benchmark-report-guide.md)。

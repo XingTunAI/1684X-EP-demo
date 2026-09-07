@@ -73,6 +73,7 @@ public:
     size_t host_output_allocations = 0, device_output_allocations = 0;
     size_t output_copy_bytes = 0;
     double output_allocation_ms = -1, output_copy_ms = -1;
+    double inference_submit_ms = -1, inference_sync_ms = -1, input_release_ms = -1;
     std::string transfer_lock_path; // Empty disables the per-run transfer gate.
     int batch_size = -1;
     TimeStamp* m_ts = NULL;

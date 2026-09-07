@@ -32,7 +32,7 @@ def verify_outputs(directory, result, a):
             records = 0
             services, lateness = [], []
             stages = {key: [] for key in ('decode_ms', 'analysis_ms', 'image_bridge_ms',
-                      'preprocess_ms', 'inference_ms', 'postprocess_ms', 'output_allocation_ms', 'output_copy_ms', 'transfer_wait_ms', 'output_transfer_ms', 'cpu_postprocess_ms', 'draw_ms', 'encode_submit_ms')}
+                      'preprocess_ms', 'inference_ms', 'inference_submit_ms', 'inference_sync_ms', 'input_release_ms', 'postprocess_ms', 'output_allocation_ms', 'output_copy_ms', 'transfer_wait_ms', 'output_transfer_ms', 'cpu_postprocess_ms', 'draw_ms', 'encode_submit_ms')}
             with (stream / 'detections.jsonl').open(encoding='utf-8') as records_file:
                 for line in records_file:
                     row = json.loads(line)

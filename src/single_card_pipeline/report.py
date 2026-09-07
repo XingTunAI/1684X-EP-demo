@@ -51,6 +51,9 @@ def write_report(directory, state):
                    'image_bridge_mean_ms': timing.get('image_bridge_ms'),
                    'preprocess_mean_ms': timing.get('preprocess_ms'),
                    'inference_mean_ms': timing.get('inference_ms'),
+                   'inference_submit_mean_ms': timing.get('inference_submit_ms'),
+                   'inference_sync_mean_ms': timing.get('inference_sync_ms'),
+                   'input_release_mean_ms': timing.get('input_release_ms'),
                    'postprocess_mean_ms': timing.get('postprocess_ms'),
                    'transfer_wait_mean_ms': timing.get('transfer_wait_ms'),
                    'output_transfer_mean_ms': timing.get('output_transfer_ms'),
@@ -84,7 +87,7 @@ def write_report(directory, state):
     csv_file(directory / 'streams.csv', ['streams', 'stream_id', 'average_fps', 'minimum_window_fps',
              'below_threshold_windows', 'service_p95_ms', 'max_schedule_lateness_ms', 'decode_mean_ms',
              'analysis_mean_ms', 'image_bridge_mean_ms', 'preprocess_mean_ms', 'inference_mean_ms',
-             'postprocess_mean_ms', 'transfer_wait_mean_ms', 'output_transfer_mean_ms', 'output_allocation_mean_ms', 'output_copy_mean_ms', 'cpu_postprocess_mean_ms', 'draw_mean_ms', 'encode_submit_mean_ms', 'output_ok'], rows)
+             'inference_submit_mean_ms', 'inference_sync_mean_ms', 'input_release_mean_ms', 'postprocess_mean_ms', 'transfer_wait_mean_ms', 'output_transfer_mean_ms', 'output_allocation_mean_ms', 'output_copy_mean_ms', 'cpu_postprocess_mean_ms', 'draw_mean_ms', 'encode_submit_mean_ms', 'output_ok'], rows)
     csv_file(directory / 'windows.csv', ['streams', 'window', 'start_seconds', 'seconds', 'total_fps',
              'minimum_stream_fps', 'below_threshold_streams'], windows)
     save(directory / 'run_state.json', json.dumps(state, ensure_ascii=False, indent=2))
