@@ -1,0 +1,10 @@
+{
+  "reference_run": "20260907_170020_120917",
+  "reference": "step_01/stream_00",
+  "total_records": 76514,
+  "matched_records": 76514,
+  "outside_reference": 0,
+  "different_records": 0,
+  "all_steps_measured": true,
+  "all_worker_exit_codes_zero": true
+}

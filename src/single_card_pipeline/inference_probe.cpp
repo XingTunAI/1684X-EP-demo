@@ -2,6 +2,7 @@
 #include "bmruntime_interface.h"
 #include "bmlib_runtime.h"
 #include "json.hpp"
+#include "output_read.hpp"
 #include <chrono>
 #include <thread>
 #include <fstream>
@@ -31,7 +32,9 @@ struct Runtime {
 
 int main(int argc, char** argv) {
     try {
-        check(argc == 8, "Usage: inference_probe device model mode warmup duration gate_file output.json");
+        check(argc == 8 || argc == 9, "Usage: inference_probe device model mode warmup duration gate_file output.json [chunk_bytes]");
+        const long long chunk = argc == 9 ? std::stoll(argv[8]) : 0;
+        check(chunk >= 0 && chunk <= 64*1024*1024, "Invalid chunk size");
         const int device = std::stoi(argv[1]);
         const std::string mode = argv[3], gate = argv[6], out = argv[7];
         const double warmup = std::stod(argv[4]), duration = std::stod(argv[5]);
@@ -64,11 +67,15 @@ int main(int argc, char** argv) {
         };
         auto sync = [&]() { check(bm_thread_sync(r.handle) == BM_SUCCESS, "Sync failed"); };
         auto copy = [&]() {
-            check(bm_memcpy_d2s_partial(r.handle, host.data(), r.output.device_mem, output_bytes) == BM_SUCCESS,
+            check(read_output(r.handle, host.data(), r.output.device_mem, output_bytes, chunk) == BM_SUCCESS,
                   "Output copy failed");
         };
         // Seed output even for copy-only mode; comparison uses the same zero input.
-        launch(); sync(); copy(); reference = host;
+        launch(); sync();
+        check(bm_memcpy_d2s_partial(r.handle, reference.data(), r.output.device_mem, output_bytes) == BM_SUCCESS,
+              "Baseline reference copy failed");
+        copy();
+        check(host == reference, "Selected copy differs from unchunked reference");
         { std::ofstream ready(out + ".ready"); ready << "ready\n"; check(bool(ready), "Cannot write ready file"); }
         const double wait_begin = now();
         double start = 0;
@@ -109,6 +116,7 @@ int main(int argc, char** argv) {
             {"measurement_start_monotonic", measured_start}, {"measurement_end_monotonic", measured_end},
             {"seconds", elapsed}, {"iterations_per_second", iterations / elapsed},
             {"input_bytes", input_bytes}, {"output_bytes", output_bytes},
+            {"copy_chunk_bytes", chunk},
             {"submit_mean_ms", mode == "copy" ? json(nullptr) : json(submit_sum * 1000 / iterations)},
             {"sync_mean_ms", mode == "copy" ? json(nullptr) : json(sync_sum * 1000 / iterations)},
             {"copy_mean_ms", mode == "compute" ? json(nullptr) : json(copy_sum * 1000 / iterations)},

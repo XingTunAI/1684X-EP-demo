@@ -20,7 +20,7 @@
 CSV 对应字段以 `_mean_ms` 结尾。旧结果没有采集的字段留空，不补零。`inference_ms` 保留整个提交、同步和输入释放区间，不能当作芯片内部算子执行时间。
 
 ```bash
-bash scripts/run_single_card_analysis_auto.sh --device 1 --steps 1,2,4,6,8 \
+bash scripts/run_single_card_analysis_auto.sh --device 0 --steps 1,2,4,6,8 \
   --warmup 30 --duration 60 --window 30
 ```
 
@@ -31,7 +31,7 @@ bash scripts/run_single_card_analysis_auto.sh --device 1 --steps 1,2,4,6,8 \
 ```bash
 cmake -S src/single_card_pipeline -B src/single_card_pipeline/build
 cmake --build src/single_card_pipeline/build -j2
-python3 scripts/run_inference_diagnostics.py --device 1 --steps 1,2,4,8
+python3 scripts/run_inference_diagnostics.py --device 0 --steps 1,2,4,8
 ```
 
 默认每组预热 3 秒、测量 10 秒，顺序运行以下三种模式：
@@ -56,3 +56,23 @@ python3 scripts/run_inference_diagnostics.py --device 1 --steps 1,2,4,8
 - `copy` 在去掉逐帧推理后仍然慢：不能把全部读取耗时归因于正在执行的模型；应进一步检查 SDK 回传路径及平台配置。
 - 独立计算和完整视频链路之间的差额，也包含视频处理、输入管理和 CPU 后处理，不应全部算成 PCIe 消耗。
 - 只有完整视频测试及检测结果核对都完成，才能报告某项改动带来的实际分析吞吐收益。
+
+## PCIe 带宽与读取分块
+
+在同卡没有其他工作负载时执行：
+
+```bash
+python3 scripts/run_pcie_bandwidth.py --device 0
+```
+
+该入口调用 SDK 自带 `test_cdma_perf chip <device> <size> 0`，使用新申请的设备内存，重复测量 256 KiB、2,822,400 字节和 16 MiB 的双向传输。每次保留原始输出、数据核对状态、应用调用与 CDMA profile 计时。原工具标为 MB/s 的数值实际按 MiB/s 计算，新报告另提供十进制 MB/s。CDMA profile 带宽不等于 PCIe 理论链路上限，也不能作为完整分析帧率。
+
+输出读取分块诊断（需重编译 probe）：
+
+```bash
+cmake --build src/single_card_pipeline/build --target inference_probe.pcie -j2
+python3 scripts/run_inference_diagnostics.py --device 0 \
+  --modes copy compute-copy --steps 1,4,8 --copy-chunk-bytes 262144
+```
+
+`--copy-chunk-bytes 0` 保持一次完整读取；正值使用带偏移的 SDK 调用完整读取相同字节数，包含不足一块的尾部。探针用不分块的参考输出核对分块结果，首末都检查全部字节。该选项目前只用于隔离诊断，不修改视频 worker 或默认读取方式；不保证分块能提速。

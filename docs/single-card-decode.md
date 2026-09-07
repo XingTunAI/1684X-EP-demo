@@ -19,7 +19,7 @@
 | 卡 1 | `--device 1` | `0001:11:00.0` | PCIe 3.0 ×1 |
 | 卡 2 | `--device 0` | `0004:41:00.0` | PCIe 2.0 ×1 |
 
-历史报告中的卡号是软件编号。本说明的演示命令显式选择 device 1；纯解码一键脚本不带参数时仍默认 device 0，解码＋推理一键脚本默认 device 1。
+上表为此前双卡测试的历史枚举。18:23 的 ×2 配置中，`0001:11:00.0` 已变为 device 0；下面复测命令显式选择 device 0。纯解码脚本默认 device 0，分析脚本默认 device 1，因此分析时应显式覆盖。历史成绩不随设备编号变化而改写。
 
 | 素材 | 时长 | 使用场景 |
 |---|---:|---|
@@ -47,18 +47,18 @@ python3 -m unittest discover -s src/single_card_decode/tests -v
 
 ```bash
 # 一路检查：预热 30 秒，采集 60 秒
-bash scripts/run_single_card_decode_auto.sh --device 1 --steps 1 \
+bash scripts/run_single_card_decode_auto.sh --device 0 --steps 1 \
   --warmup 30 --duration 60 --window 30
 
 # 阶梯摸底：每档约 3 分钟，四档总计约 12 分钟，另计启动和收尾
-bash scripts/run_single_card_decode_auto.sh --device 1 --steps 8,16,24,32
+bash scripts/run_single_card_decode_auto.sh --device 0 --steps 8,16,24,32
 
 # 仅测 32 路：约 3 分钟
-bash scripts/run_single_card_decode_auto.sh --device 1 --steps 32 \
+bash scripts/run_single_card_decode_auto.sh --device 0 --steps 32 \
   --measure-only --warmup 60 --duration 120 --window 60
 
 # 复测 30 路：预热 3 分钟，正式采集 15 分钟
-bash scripts/run_single_card_decode_auto.sh --device 1 --steps 30 \
+bash scripts/run_single_card_decode_auto.sh --device 0 --steps 30 \
   --input datasets/stress/bbb_1080p25_h264_8mbps_20min.mp4 \
   --measure-only --warmup 180 --duration 900 --window 60
 ```
@@ -102,7 +102,7 @@ watch -n 5 cat report.md
 ```bash
 mkdir -p results
 console_log="results/decode_console_$(date +%Y%m%d_%H%M%S).log"
-nohup bash scripts/run_single_card_decode_auto.sh --device 1 --steps 32 \
+nohup bash scripts/run_single_card_decode_auto.sh --device 0 --steps 32 \
   > "$console_log" 2>&1 < /dev/null &
 decode_pid=$!
 printf 'PID=%s log=%s\n' "$decode_pid" "$console_log"

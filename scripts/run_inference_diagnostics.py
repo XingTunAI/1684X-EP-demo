@@ -5,6 +5,7 @@ import csv
 from datetime import datetime
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import signal
@@ -33,6 +34,8 @@ def steps(value):
 
 
 def save(directory, results, state):
+    config_file = directory / 'config.json'
+    config = json.loads(config_file.read_text(encoding='utf-8')) if config_file.exists() else {}
     (directory / 'summary.json').write_text(json.dumps(results, indent=2) + '\n', encoding='utf-8')
     (directory / 'run_state.json').write_text(json.dumps(state, indent=2) + '\n', encoding='utf-8')
     fields = ['mode', 'processes', 'total_iterations_per_second', 'read_MB_per_second',
@@ -50,6 +53,7 @@ def save(directory, results, state):
         writer.writeheader()
         writer.writerows(rows)
     lines = ['# 推理与输出读取隔离测试', '', f'状态：{state["status"]}', '',
+             f'输出读取分块：{config.get("copy_chunk_bytes", 0)} 字节（0 为完整张量）；主机 CPU 亲和性：{config.get("host_cpu_affinity", "未记录")}。', '',
              '输入为驻留显存的全零张量，复用输入、输出缓冲。没有视频解码、预处理、NMS 或逐帧输入上传。',
              '`compute` 仅提交模型并同步；`copy` 仅重复回传输出；`compute-copy` 每次执行模型、同步并回传。',
              '结果是诊断循环次数/秒，不代表视频分析 FPS，也不代表物理 PCIe 带宽上限。', '',
@@ -98,7 +102,8 @@ def run_stage(a, directory, mode, count):
             log = (step / f'worker_{i:02d}.log').open('w')
             logs.append(log)
             processes.append(subprocess.Popen([str(a.app), str(a.device), str(a.bmodel), mode,
-                str(a.warmup), str(a.duration), str(gate), str(step / f'worker_{i:02d}.json')],
+                str(a.warmup), str(a.duration), str(gate), str(step / f'worker_{i:02d}.json')] +
+                ([str(a.copy_chunk_bytes)] if getattr(a, 'copy_chunk_bytes', 0) else []),
                 stdout=log, stderr=subprocess.STDOUT))
         deadline = time.monotonic() + 100
         while len(list(step.glob('*.ready'))) != count:
@@ -124,9 +129,12 @@ def run_stage(a, directory, mode, count):
         workers = [json.loads((step / f'worker_{i:02d}.json').read_text()) for i in range(count)]
         if not all(w['output_matches_reference'] and w['iterations'] > 0 and w['mode'] == mode for w in workers):
             raise RuntimeError('Invalid worker result')
+        if not all(w.get('copy_chunk_bytes', 0) == getattr(a, 'copy_chunk_bytes', 0) for w in workers):
+            raise RuntimeError('Worker copy policy does not match requested policy')
         monitor_stop.set()
         monitor_thread.join()
         return {'mode': mode, 'processes': count, 'workers': workers, 'outputs_ok': True,
+                'copy_chunk_bytes': getattr(a, 'copy_chunk_bytes', 0),
                 'tpu_samples_percent': tpu_samples,
                 'exit_codes': [p.returncode for p in processes],
                 'total_iterations_per_second': sum(w['iterations_per_second'] for w in workers),
@@ -157,15 +165,17 @@ def main():
                         default=['compute', 'copy', 'compute-copy'])
     parser.add_argument('--warmup', type=positive, default=3)
     parser.add_argument('--duration', type=positive, default=10)
+    parser.add_argument('--copy-chunk-bytes', type=int, default=0, help='Experimental output read chunk size; 0 reads the full tensor')
     parser.add_argument('--app', type=Path, default=ROOT / 'src/single_card_pipeline/build/inference_probe.pcie')
     parser.add_argument('--bmodel', type=Path, default=ROOT / 'third_party/sophon-demo/sample/YOLOv8_plus_det/models/BM1684X/yolov8s_int8_1b.bmodel')
     a = parser.parse_args()
-    if a.device < 0 or not a.app.is_file() or not a.bmodel.is_file():
+    if a.device < 0 or not 0 <= a.copy_chunk_bytes <= 64*1024**2 or not a.app.is_file() or not a.bmodel.is_file():
         parser.error('Check device, compiled probe and model')
     a.app, a.bmodel = a.app.resolve(), a.bmodel.resolve()
     directory = ROOT / 'results/inference-diagnostics' / datetime.now().strftime('%Y%m%d_%H%M%S_%f')
     directory.mkdir(parents=True)
     metadata = {k: str(v) if isinstance(v, Path) else v for k, v in vars(a).items()}
+    metadata['host_cpu_affinity'] = sorted(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else None
     for key in ('app', 'bmodel'):
         metadata[key + '_sha256'] = hashlib.sha256(getattr(a, key).read_bytes()).hexdigest()
     (directory / 'config.json').write_text(json.dumps(metadata, indent=2) + '\n', encoding='utf-8')

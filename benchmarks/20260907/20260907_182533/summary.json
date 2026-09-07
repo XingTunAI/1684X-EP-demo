@@ -1,0 +1,430 @@
+{
+  "state": {
+    "status": "completed"
+  },
+  "records": [
+    {
+      "command": [
+        "/opt/sophon/libsophon-0.5.1/bin/test_cdma_perf",
+        "chip",
+        "0",
+        "40000",
+        "0"
+      ],
+      "exit_code": 0,
+      "output": "test chip num = 0x0, transfer_size = 0x40000, dst_addr = 0x0\nS2D sys:Transfer size:0x40000 byte. Cost time:376 us, Write Bandwidth:664.89 MB/s\nS2D real:Transfer size:0x40000 byte. Cost time:268 us, Write Bandwidth:932.84 MB/s\nD2S sys:Transfer size:0x40000 byte. Cost time:814 us, Write Bandwidth:307.13 MB/s\nD2S real:Transfer size:0x40000 byte. Cost time:224 us, Write Bandwidth:1116.07 MB/s\ndev = 0, cdma transfer test Success.\n",
+      "bytes": 262144,
+      "repeat": 1,
+      "metrics": [
+        {
+          "direction": "S2D",
+          "scope": "sys",
+          "bytes": 262144,
+          "mean_microseconds": 376,
+          "reported_MiB_s": 664.89,
+          "MB_s": 697.18769664
+        },
+        {
+          "direction": "S2D",
+          "scope": "real",
+          "bytes": 262144,
+          "mean_microseconds": 268,
+          "reported_MiB_s": 932.84,
+          "MB_s": 978.15363584
+        },
+        {
+          "direction": "D2S",
+          "scope": "sys",
+          "bytes": 262144,
+          "mean_microseconds": 814,
+          "reported_MiB_s": 307.13,
+          "MB_s": 322.04914688
+        },
+        {
+          "direction": "D2S",
+          "scope": "real",
+          "bytes": 262144,
+          "mean_microseconds": 224,
+          "reported_MiB_s": 1116.07,
+          "MB_s": 1170.28421632
+        }
+      ]
+    },
+    {
+      "command": [
+        "/opt/sophon/libsophon-0.5.1/bin/test_cdma_perf",
+        "chip",
+        "0",
+        "40000",
+        "0"
+      ],
+      "exit_code": 0,
+      "output": "test chip num = 0x0, transfer_size = 0x40000, dst_addr = 0x0\nS2D sys:Transfer size:0x40000 byte. Cost time:411 us, Write Bandwidth:608.27 MB/s\nS2D real:Transfer size:0x40000 byte. Cost time:302 us, Write Bandwidth:827.81 MB/s\nD2S sys:Transfer size:0x40000 byte. Cost time:853 us, Write Bandwidth:293.08 MB/s\nD2S real:Transfer size:0x40000 byte. Cost time:267 us, Write Bandwidth:936.33 MB/s\ndev = 0, cdma transfer test Success.\n",
+      "bytes": 262144,
+      "repeat": 2,
+      "metrics": [
+        {
+          "direction": "S2D",
+          "scope": "sys",
+          "bytes": 262144,
+          "mean_microseconds": 411,
+          "reported_MiB_s": 608.27,
+          "MB_s": 637.81732352
+        },
+        {
+          "direction": "S2D",
+          "scope": "real",
+          "bytes": 262144,
+          "mean_microseconds": 302,
+          "reported_MiB_s": 827.81,
+          "MB_s": 868.0216985599999
+        },
+        {
+          "direction": "D2S",
+          "scope": "sys",
+          "bytes": 262144,
+          "mean_microseconds": 853,
+          "reported_MiB_s": 293.08,
+          "MB_s": 307.31665408
+        },
+        {
+          "direction": "D2S",
+          "scope": "real",
+          "bytes": 262144,
+          "mean_microseconds": 267,
+          "reported_MiB_s": 936.33,
+          "MB_s": 981.8131660800001
+        }
+      ]
+    },
+    {
+      "command": [
+        "/opt/sophon/libsophon-0.5.1/bin/test_cdma_perf",
+        "chip",
+        "0",
+        "40000",
+        "0"
+      ],
+      "exit_code": 0,
+      "output": "test chip num = 0x0, transfer_size = 0x40000, dst_addr = 0x0\nS2D sys:Transfer size:0x40000 byte. Cost time:412 us, Write Bandwidth:606.80 MB/s\nS2D real:Transfer size:0x40000 byte. Cost time:303 us, Write Bandwidth:825.08 MB/s\nD2S sys:Transfer size:0x40000 byte. Cost time:818 us, Write Bandwidth:305.62 MB/s\nD2S real:Transfer size:0x40000 byte. Cost time:241 us, Write Bandwidth:1037.34 MB/s\ndev = 0, cdma transfer test Success.\n",
+      "bytes": 262144,
+      "repeat": 3,
+      "metrics": [
+        {
+          "direction": "S2D",
+          "scope": "sys",
+          "bytes": 262144,
+          "mean_microseconds": 412,
+          "reported_MiB_s": 606.8,
+          "MB_s": 636.2759168
+        },
+        {
+          "direction": "S2D",
+          "scope": "real",
+          "bytes": 262144,
+          "mean_microseconds": 303,
+          "reported_MiB_s": 825.08,
+          "MB_s": 865.1590860800001
+        },
+        {
+          "direction": "D2S",
+          "scope": "sys",
+          "bytes": 262144,
+          "mean_microseconds": 818,
+          "reported_MiB_s": 305.62,
+          "MB_s": 320.46579712
+        },
+        {
+          "direction": "D2S",
+          "scope": "real",
+          "bytes": 262144,
+          "mean_microseconds": 241,
+          "reported_MiB_s": 1037.34,
+          "MB_s": 1087.7298278399999
+        }
+      ]
+    },
+    {
+      "command": [
+        "/opt/sophon/libsophon-0.5.1/bin/test_cdma_perf",
+        "chip",
+        "0",
+        "2b1100",
+        "0"
+      ],
+      "exit_code": 0,
+      "output": "test chip num = 0x0, transfer_size = 0x2b1100, dst_addr = 0x0\nS2D sys:Transfer size:0x2b1100 byte. Cost time:3506 us, Write Bandwidth:767.73 MB/s\nS2D real:Transfer size:0x2b1100 byte. Cost time:2067 us, Write Bandwidth:1302.20 MB/s\nD2S sys:Transfer size:0x2b1100 byte. Cost time:8364 us, Write Bandwidth:321.81 MB/s\nD2S real:Transfer size:0x2b1100 byte. Cost time:2065 us, Write Bandwidth:1303.46 MB/s\ndev = 0, cdma transfer test Success.\n",
+      "bytes": 2822400,
+      "repeat": 1,
+      "metrics": [
+        {
+          "direction": "S2D",
+          "scope": "sys",
+          "bytes": 2822400,
+          "mean_microseconds": 3506,
+          "reported_MiB_s": 767.73,
+          "MB_s": 805.02325248
+        },
+        {
+          "direction": "S2D",
+          "scope": "real",
+          "bytes": 2822400,
+          "mean_microseconds": 2067,
+          "reported_MiB_s": 1302.2,
+          "MB_s": 1365.4556672
+        },
+        {
+          "direction": "D2S",
+          "scope": "sys",
+          "bytes": 2822400,
+          "mean_microseconds": 8364,
+          "reported_MiB_s": 321.81,
+          "MB_s": 337.44224256
+        },
+        {
+          "direction": "D2S",
+          "scope": "real",
+          "bytes": 2822400,
+          "mean_microseconds": 2065,
+          "reported_MiB_s": 1303.46,
+          "MB_s": 1366.77687296
+        }
+      ]
+    },
+    {
+      "command": [
+        "/opt/sophon/libsophon-0.5.1/bin/test_cdma_perf",
+        "chip",
+        "0",
+        "2b1100",
+        "0"
+      ],
+      "exit_code": 0,
+      "output": "test chip num = 0x0, transfer_size = 0x2b1100, dst_addr = 0x0\nS2D sys:Transfer size:0x2b1100 byte. Cost time:3180 us, Write Bandwidth:846.43 MB/s\nS2D real:Transfer size:0x2b1100 byte. Cost time:1997 us, Write Bandwidth:1347.85 MB/s\nD2S sys:Transfer size:0x2b1100 byte. Cost time:8445 us, Write Bandwidth:318.73 MB/s\nD2S real:Transfer size:0x2b1100 byte. Cost time:2041 us, Write Bandwidth:1318.79 MB/s\ndev = 0, cdma transfer test Success.\n",
+      "bytes": 2822400,
+      "repeat": 2,
+      "metrics": [
+        {
+          "direction": "S2D",
+          "scope": "sys",
+          "bytes": 2822400,
+          "mean_microseconds": 3180,
+          "reported_MiB_s": 846.43,
+          "MB_s": 887.5461836799999
+        },
+        {
+          "direction": "S2D",
+          "scope": "real",
+          "bytes": 2822400,
+          "mean_microseconds": 1997,
+          "reported_MiB_s": 1347.85,
+          "MB_s": 1413.3231615999998
+        },
+        {
+          "direction": "D2S",
+          "scope": "sys",
+          "bytes": 2822400,
+          "mean_microseconds": 8445,
+          "reported_MiB_s": 318.73,
+          "MB_s": 334.21262848000003
+        },
+        {
+          "direction": "D2S",
+          "scope": "real",
+          "bytes": 2822400,
+          "mean_microseconds": 2041,
+          "reported_MiB_s": 1318.79,
+          "MB_s": 1382.85154304
+        }
+      ]
+    },
+    {
+      "command": [
+        "/opt/sophon/libsophon-0.5.1/bin/test_cdma_perf",
+        "chip",
+        "0",
+        "2b1100",
+        "0"
+      ],
+      "exit_code": 0,
+      "output": "test chip num = 0x0, transfer_size = 0x2b1100, dst_addr = 0x0\nS2D sys:Transfer size:0x2b1100 byte. Cost time:3163 us, Write Bandwidth:850.98 MB/s\nS2D real:Transfer size:0x2b1100 byte. Cost time:2007 us, Write Bandwidth:1341.13 MB/s\nD2S sys:Transfer size:0x2b1100 byte. Cost time:8156 us, Write Bandwidth:330.02 MB/s\nD2S real:Transfer size:0x2b1100 byte. Cost time:2017 us, Write Bandwidth:1334.48 MB/s\ndev = 0, cdma transfer test Success.\n",
+      "bytes": 2822400,
+      "repeat": 3,
+      "metrics": [
+        {
+          "direction": "S2D",
+          "scope": "sys",
+          "bytes": 2822400,
+          "mean_microseconds": 3163,
+          "reported_MiB_s": 850.98,
+          "MB_s": 892.31720448
+        },
+        {
+          "direction": "S2D",
+          "scope": "real",
+          "bytes": 2822400,
+          "mean_microseconds": 2007,
+          "reported_MiB_s": 1341.13,
+          "MB_s": 1406.27673088
+        },
+        {
+          "direction": "D2S",
+          "scope": "sys",
+          "bytes": 2822400,
+          "mean_microseconds": 8156,
+          "reported_MiB_s": 330.02,
+          "MB_s": 346.05105152
+        },
+        {
+          "direction": "D2S",
+          "scope": "real",
+          "bytes": 2822400,
+          "mean_microseconds": 2017,
+          "reported_MiB_s": 1334.48,
+          "MB_s": 1399.30370048
+        }
+      ]
+    },
+    {
+      "command": [
+        "/opt/sophon/libsophon-0.5.1/bin/test_cdma_perf",
+        "chip",
+        "0",
+        "1000000",
+        "0"
+      ],
+      "exit_code": 0,
+      "output": "test chip num = 0x0, transfer_size = 0x1000000, dst_addr = 0x0\nS2D sys:Transfer size:0x1000000 byte. Cost time:22381 us, Write Bandwidth:714.89 MB/s\nS2D real:Transfer size:0x1000000 byte. Cost time:12853 us, Write Bandwidth:1244.85 MB/s\nD2S sys:Transfer size:0x1000000 byte. Cost time:54582 us, Write Bandwidth:293.14 MB/s\nD2S real:Transfer size:0x1000000 byte. Cost time:12818 us, Write Bandwidth:1248.24 MB/s\ndev = 0, cdma transfer test Success.\n",
+      "bytes": 16777216,
+      "repeat": 1,
+      "metrics": [
+        {
+          "direction": "S2D",
+          "scope": "sys",
+          "bytes": 16777216,
+          "mean_microseconds": 22381,
+          "reported_MiB_s": 714.89,
+          "MB_s": 749.61649664
+        },
+        {
+          "direction": "S2D",
+          "scope": "real",
+          "bytes": 16777216,
+          "mean_microseconds": 12853,
+          "reported_MiB_s": 1244.85,
+          "MB_s": 1305.3198335999998
+        },
+        {
+          "direction": "D2S",
+          "scope": "sys",
+          "bytes": 16777216,
+          "mean_microseconds": 54582,
+          "reported_MiB_s": 293.14,
+          "MB_s": 307.37956864
+        },
+        {
+          "direction": "D2S",
+          "scope": "real",
+          "bytes": 16777216,
+          "mean_microseconds": 12818,
+          "reported_MiB_s": 1248.24,
+          "MB_s": 1308.87450624
+        }
+      ]
+    },
+    {
+      "command": [
+        "/opt/sophon/libsophon-0.5.1/bin/test_cdma_perf",
+        "chip",
+        "0",
+        "1000000",
+        "0"
+      ],
+      "exit_code": 0,
+      "output": "test chip num = 0x0, transfer_size = 0x1000000, dst_addr = 0x0\nS2D sys:Transfer size:0x1000000 byte. Cost time:21629 us, Write Bandwidth:739.75 MB/s\nS2D real:Transfer size:0x1000000 byte. Cost time:12714 us, Write Bandwidth:1258.46 MB/s\nD2S sys:Transfer size:0x1000000 byte. Cost time:51857 us, Write Bandwidth:308.54 MB/s\nD2S real:Transfer size:0x1000000 byte. Cost time:12389 us, Write Bandwidth:1291.47 MB/s\ndev = 0, cdma transfer test Success.\n",
+      "bytes": 16777216,
+      "repeat": 2,
+      "metrics": [
+        {
+          "direction": "S2D",
+          "scope": "sys",
+          "bytes": 16777216,
+          "mean_microseconds": 21629,
+          "reported_MiB_s": 739.75,
+          "MB_s": 775.684096
+        },
+        {
+          "direction": "S2D",
+          "scope": "real",
+          "bytes": 16777216,
+          "mean_microseconds": 12714,
+          "reported_MiB_s": 1258.46,
+          "MB_s": 1319.59095296
+        },
+        {
+          "direction": "D2S",
+          "scope": "sys",
+          "bytes": 16777216,
+          "mean_microseconds": 51857,
+          "reported_MiB_s": 308.54,
+          "MB_s": 323.52763904
+        },
+        {
+          "direction": "D2S",
+          "scope": "real",
+          "bytes": 16777216,
+          "mean_microseconds": 12389,
+          "reported_MiB_s": 1291.47,
+          "MB_s": 1354.20444672
+        }
+      ]
+    },
+    {
+      "command": [
+        "/opt/sophon/libsophon-0.5.1/bin/test_cdma_perf",
+        "chip",
+        "0",
+        "1000000",
+        "0"
+      ],
+      "exit_code": 0,
+      "output": "test chip num = 0x0, transfer_size = 0x1000000, dst_addr = 0x0\nS2D sys:Transfer size:0x1000000 byte. Cost time:21902 us, Write Bandwidth:730.53 MB/s\nS2D real:Transfer size:0x1000000 byte. Cost time:12969 us, Write Bandwidth:1233.71 MB/s\nD2S sys:Transfer size:0x1000000 byte. Cost time:53055 us, Write Bandwidth:301.57 MB/s\nD2S real:Transfer size:0x1000000 byte. Cost time:12355 us, Write Bandwidth:1295.02 MB/s\ndev = 0, cdma transfer test Success.\n",
+      "bytes": 16777216,
+      "repeat": 3,
+      "metrics": [
+        {
+          "direction": "S2D",
+          "scope": "sys",
+          "bytes": 16777216,
+          "mean_microseconds": 21902,
+          "reported_MiB_s": 730.53,
+          "MB_s": 766.01622528
+        },
+        {
+          "direction": "S2D",
+          "scope": "real",
+          "bytes": 16777216,
+          "mean_microseconds": 12969,
+          "reported_MiB_s": 1233.71,
+          "MB_s": 1293.63869696
+        },
+        {
+          "direction": "D2S",
+          "scope": "sys",
+          "bytes": 16777216,
+          "mean_microseconds": 53055,
+          "reported_MiB_s": 301.57,
+          "MB_s": 316.21906432
+        },
+        {
+          "direction": "D2S",
+          "scope": "real",
+          "bytes": 16777216,
+          "mean_microseconds": 12355,
+          "reported_MiB_s": 1295.02,
+          "MB_s": 1357.92689152
+        }
+      ]
+    }
+  ]
+}

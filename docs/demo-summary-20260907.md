@@ -1,5 +1,7 @@
 # 单卡视频分析 Demo
 
+最新 ×2 链路与读取方式对照见[专项报告](pcie-x2-output-read-20260907.md)。以下 32 路成绩属于此前 ×1 配置，不与新链路混用。当前 ×2 的同一 BDF 枚举为 device 0；运行前需核对设备编号。
+
 [路数递增测试与 TPU 曲线](analysis-ladder-20260907.md)：从 1 路逐档增加到 32 路，本轮最高总吞吐出现在 8 路（143.22 FPS）。
 
 后处理拆分和 6/32 路并发对照见[输出回传分析与并发对照](analysis-transfer-20260907.md)。6 路实测总平均 135.43 FPS；32 路限回传并发未提高总吞吐，默认配置保持不变。
@@ -53,11 +55,11 @@ YOLOv8s 中的 s 表示 small，属于该系列的小型规格；batch 1 表示�
 
 ## 运行测试
 
-在设备工程根目录执行，同一张卡上的测试依次运行。使用下面命令复现测试。
+在设备工程根目录执行，同一张卡上的测试依次运行。下面命令选择当前 device 0；严格复现历史成绩还需恢复其链路及运行条件。
 
 ```bash
 # 解码＋推理：从 1 路逐档增加，约 14 分钟
-bash scripts/run_single_card_analysis_auto.sh --device 1 \
+bash scripts/run_single_card_analysis_auto.sh --device 0 \
   --steps 1,2,4,6,8,12,16,24,32 --measure-only --image-path device-bgr \
   --warmup 30 --duration 60 --window 30 --stall-timeout 180
 ```
@@ -66,11 +68,11 @@ bash scripts/run_single_card_analysis_auto.sh --device 1 \
 
 ```bash
 # 纯解码对照：应在分析测试结束后执行
-bash scripts/run_single_card_decode_auto.sh --device 1 --steps 32 \
+bash scripts/run_single_card_decode_auto.sh --device 0 --steps 32 \
   --measure-only --warmup 60 --duration 120 --window 60
 
 # 独立模型计算：应在同卡视频测试结束后执行
-python3 scripts/run_single_card_tpu_bench.py --device 1 --calculate-times 5000
+python3 scripts/run_single_card_tpu_bench.py --device 0 --calculate-times 5000
 ```
 
 ## 报告与原始结果入口

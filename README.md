@@ -1,6 +1,6 @@
 # RK3588 + BM1684X EP Demo
 
-最新实测见[推理、回传与主控开销对照](docs/analysis-inference-diagnostics-20260907.md)。
+最新实测见[PCIe ×2 与输出读取对照](docs/pcie-x2-output-read-20260907.md)。此前 ×1 的诊断见[推理、回传与主控开销对照](docs/analysis-inference-diagnostics-20260907.md)。
 
 推理性能定位见[计时与隔离测试](docs/inference-diagnostics.md)，可分别测模型执行、输出回传及两者组合。
 
@@ -23,7 +23,8 @@
 | 单卡 32 路解码＋推理 | **总平均 114.10 FPS，平均每路 3.57 FPS** | YOLOv8s INT8 batch 1，预热 180 秒、正式采集约 120 秒 |
 | 图像路径优化 | 总吞吐约为原 BGR 路径的 **3.49 倍** | 34,006 条检测列表与原路径对应帧一致 |
 | 独立模型计算 | batch 1：354.50 图/秒；batch 4：370.11 图/秒 | 两者 TPU 采样峰值 100%，不含完整视频链路 |
-| 调度与结果检查 | 解码 18 项、流水线 16 项测试通过 | 不代表生产容量或算法精度验收 |
+| PCIe 3.0 ×2，20 路解码＋推理 | 总平均 167.43 FPS，平均每路 8.37 FPS | YOLOv8s，默认主机调度，预热 30 秒、采集 60 秒 |
+| 调度与结果检查 | 解码 18 项、流水线 18 项测试通过 | 不代表生产容量或算法精度验收 |
 
 上述视频使用同一份 BBB 动画素材复制为多路本地输入，不是 32 路摄像头。纯解码、完整分析、独立模型计算是不同测试，不能互相替代。当前分析每帧执行，处理慢时会落后输入计划；未实现抽帧，也不包含实时画框显示或编码。实际承载能力取决于模型、输入规格、分析频率和输出要求。
 
@@ -33,23 +34,23 @@
 
 以下命令在已准备好 SDK、素材与模型的 RK3588 工程根目录运行。新环境先看[环境与官方样例准备](docs/usage.md)、[模型准备](docs/run-yolo.md)和[素材说明](docs/test-media.md)。第三方 SDK、模型、视频和历史结果不随 Git 克隆下载。
 
-物理卡 1 对应软件 `device 1`（PCIe 3.0 ×1）；物理卡 2 对应 `device 0`（PCIe 2.0 ×1）。示例显式指定 device 1。同一张卡上的测试依次执行，避免相互干扰。
+2026-09-07 18:23 的枚举中，`0001:11:00.0` 为 PCIe 3.0 ×2，对应软件 `device 0`，系统只枚举到一张算能卡。此前双卡配置中该 BDF 对应 device 1 / ×1，历史成绩保留原配置。运行前通过 `bm-smi` 核对编号与 BDF，并通过 `lspci` 的 `LnkSta` 核对实际宽度。同一张卡上的测试依次执行。
 
 ```bash
 # 单卡 32 路纯解码，约 3 分钟
-bash scripts/run_single_card_decode_auto.sh --device 1 --steps 32
+bash scripts/run_single_card_decode_auto.sh --device 0 --steps 32
 
 # 编译解码＋推理 worker（新环境或源码更新后）
 cmake -S src/single_card_pipeline -B src/single_card_pipeline/build
 cmake --build src/single_card_pipeline/build -j2
 
 # 单卡解码＋推理：从 1 路逐档增加，约 14 分钟
-bash scripts/run_single_card_analysis_auto.sh --device 1 \
+bash scripts/run_single_card_analysis_auto.sh --device 0 \
   --steps 1,2,4,6,8,12,16,24,32 --measure-only --image-path device-bgr \
   --warmup 30 --duration 60 --window 30 --stall-timeout 180
 
 # 独立模型计算，在同卡视频测试结束后执行
-python3 scripts/run_single_card_tpu_bench.py --device 1
+python3 scripts/run_single_card_tpu_bench.py --device 0
 ```
 
 | 不带覆盖参数的一键入口 | 默认设备与档位 | 默认素材 |

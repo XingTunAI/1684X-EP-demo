@@ -1,0 +1,28 @@
+{
+  "device": 0,
+  "steps": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "modes": [
+    "compute",
+    "copy",
+    "compute-copy"
+  ],
+  "warmup": 3.0,
+  "duration": 10.0,
+  "app": "inference_probe.pcie",
+  "bmodel": "yolov8s_int8_1b.bmodel",
+  "app_sha256": "62c4747936883d11d2248553bc4bfa92a6a4819a1d88789d259d6658bc819ba0",
+  "bmodel_sha256": "b09b7c5bc0a8c18c67f839c33551ba35fa37748d10eafb6a8f9d41ee87f086b4",
+  "bdf": "0001:11:00.0",
+  "link_width": 2,
+  "link_speed": "8.0 GT/s",
+  "host": "RK3588",
+  "card": "BM1684X",
+  "process_affinity": "OS default",
+  "input_kind": "resident_zero_tensor",
+  "copy_chunk_bytes": 0
+}

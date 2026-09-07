@@ -15,7 +15,7 @@
 从单路开始逐档增加，观察吞吐和每路帧率变化：
 
 ```bash
-bash scripts/run_single_card_analysis_auto.sh --device 1 \
+bash scripts/run_single_card_analysis_auto.sh --device 0 \
   --steps 1,2,4,6,8,12,16,24,32 --measure-only --image-path device-bgr \
   --warmup 30 --duration 60 --window 30 --stall-timeout 180
 ```
@@ -30,7 +30,7 @@ analysis 默认采用设备内 BGR 转换路径 `device-bgr`，已完成单路�
 
 ## 1. 准备和编译（设备执行）
 
-确认没有其他压测正在使用同一张卡。当前物理卡 1 对应软件 `device 1`（PCIe 3.0 ×1），物理卡 2 对应 `device 0`（PCIe 2.0 ×1）。
+确认没有其他压测正在使用同一张卡。18:23 的枚举中，`0001:11:00.0` 为 PCIe 3.0 ×2，对应 device 0。此前双卡 / ×1 配置使用 device 1；设备编号不是固定插槽编号，运行前以 `bm-smi` 和 `lspci` 的实际结果为准。
 
 ```bash
 cd /home/linaro/1684X-EP-demo
@@ -59,7 +59,7 @@ bash scripts/run_single_card_analysis_auto.sh --steps 1
 
 ```bash
 bash scripts/run_single_card_analysis_auto.sh \
-  --device 1 --steps 1,2,4,8 \
+  --device 0 --steps 1,2,4,8 \
   --input datasets/stress/bbb_1080p25_h264_8mbps_20min.mp4 \
   --bmodel third_party/sophon-demo/sample/YOLOv8_plus_det/models/BM1684X/yolov8s_int8_1b.bmodel
 ```
@@ -103,7 +103,7 @@ tail -f results/analysis_console.log
 
 ```bash
 bash scripts/prepare_yolov8n_model.sh
-bash scripts/run_single_card_analysis_auto.sh --model-preset yolov8n \
+bash scripts/run_single_card_analysis_auto.sh --device 0 --model-preset yolov8n \
   --steps 1,4,8,12,16,20 --warmup 30 --duration 60 --window 30
 ```
 

@@ -151,7 +151,8 @@ def main(argv=None):
                          'pipeline_arguments': {k: str(v) if isinstance(v, Path) else v for k,v in vars(extra).items()},
                          'model_sha256': hashlib.sha256(extra.bmodel.read_bytes()).hexdigest(),
                          'worker_sha256': hashlib.sha256(extra.app.read_bytes()).hexdigest(),
-                         'kind': kind, 'batch': 1})
+                         'kind': kind, 'batch': 1,
+                         'host_cpu_affinity': sorted(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else None})
         (directory / 'config.json').write_text(json.dumps(metadata, indent=2), encoding='utf-8')
         print('Results: ' + str(directory), flush=True)
         write_report(directory, state)

@@ -1,0 +1,33 @@
+{
+  "device": 0,
+  "steps": [
+    4,
+    8
+  ],
+  "modes": [
+    "copy",
+    "compute-copy"
+  ],
+  "warmup": 2.0,
+  "duration": 5.0,
+  "copy_chunk_bytes": 0,
+  "app": "inference_probe.pcie",
+  "bmodel": "yolov8s_int8_1b.bmodel",
+  "host_cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "app_sha256": "054864442b84963b34be7503e2ff3b245326c7020f9764bf71e2b39336083893",
+  "bmodel_sha256": "b09b7c5bc0a8c18c67f839c33551ba35fa37748d10eafb6a8f9d41ee87f086b4",
+  "bdf": "0001:11:00.0",
+  "link_width": 2,
+  "link_speed": "8.0 GT/s",
+  "purpose": "Short screening, not final video-performance acceptance",
+  "measurement_note": "Historical result-file transfer overlapped part of the short screening; promising configurations require separate full-video confirmation."
+}
