@@ -19,3 +19,6 @@ target_link_libraries(pipeline_worker.pcie ${FFMPEG_LIBS} ${OpenCV_LIBS} ${the_l
 add_executable(inference_probe.pcie inference_probe.cpp)
 target_compile_options(inference_probe.pcie PRIVATE -O2 -UNDEBUG)
 target_link_libraries(inference_probe.pcie ${the_libbmlib.so} ${the_libbmrt.so} Threads::Threads)
+add_executable(detector_check.pcie detector_check.cpp detector/yolov8_det.cpp)
+target_compile_options(detector_check.pcie PRIVATE -O2 -UNDEBUG)
+target_link_libraries(detector_check.pcie ${FFMPEG_LIBS} ${OpenCV_LIBS} ${the_libbmlib.so} ${the_libbmrt.so} ${the_libbmcv.so} Threads::Threads)

@@ -96,3 +96,17 @@ tail -f results/analysis_console.log
 解码耗时是 OpenCV 取帧耗时；分析耗时包含图像转换、预处理、推理、后处理。处理 P95 是一帧从开始取帧到分析完成的耗时（编码模式则到编码提交），不含限速等待和 JSON 写入，不是摄像头到显示器延迟。计划落后是相对于本地源帧率计划的延后，不能当作实测网络队列或真实丢帧。
 
 `analysis` 模式不会生成 `output.mp4`；未运行的画框和编码阶段在 JSON 为 null、CSV 为空。帧率计数在检测结果写入后更新，结束时核对连续帧编号与 worker 汇总，强制终止、记录缺失不能通过。
+
+## 可选轻量模型
+
+默认保持 YOLOv8s INT8 batch 1。YOLOv8n 对照可在设备上用运行程序的同一账号执行：
+
+```bash
+bash scripts/prepare_yolov8n_model.sh
+bash scripts/run_single_card_analysis_auto.sh --model-preset yolov8n \
+  --steps 1,4,8,12,16,20 --warmup 30 --duration 60 --window 30
+```
+
+准备脚本使用原厂下载地址，并核对本轮模型及压缩包的 SHA256；遇到同名不同内容的模型会停止，不覆盖。显式 `--bmodel` 仍可以指定自备模型，并优先于预设。当前分析 worker 仍只支持 batch 1。
+
+模型对照数据见[YOLOv8n 测试](yolov8n-comparison-20260907.md)。换模型后的检测结果不能要求与 YOLOv8s 逐值一致，需分别做同模型输出核对和业务精度验证。

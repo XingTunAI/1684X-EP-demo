@@ -92,3 +92,5 @@ python3 -m unittest discover -s src/single_card_pipeline/tests -v
 ## 输出缓冲区复用
 
 `--output-buffer baseline` 保留默认分配方式；`--output-buffer reuse` 在首次处理时申请主机和卡端输出缓冲并在后续帧复用。限定静态 PCIe batch 1 单个三维 FP32 输出，其他配置会报错。结果和申请次数由验证器检查。[1/8 路对照](../../docs/analysis-buffer-reuse-20260907.md)未观察到吞吐提升，因此未更改默认值。
+
+轻量模型可通过一键脚本的 `--model-preset yolov8n` 选择，准备方法见[操作说明](../../docs/single-card-analysis.md#可选轻量模型)。

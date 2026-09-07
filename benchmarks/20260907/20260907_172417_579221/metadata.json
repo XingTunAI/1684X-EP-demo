@@ -1,0 +1,24 @@
+{
+  "device": 1,
+  "steps": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "modes": [
+    "compute",
+    "compute-copy"
+  ],
+  "warmup": 3,
+  "duration": 10,
+  "app": "inference_probe.pcie",
+  "bmodel": "yolov8n_int8_1b.bmodel",
+  "app_sha256": "62c4747936883d11d2248553bc4bfa92a6a4819a1d88789d259d6658bc819ba0",
+  "bmodel_sha256": "a9d6cec7390072402f6ea5bedef18c9262d9566983a713268b16908a3a63be32",
+  "run_id": "20260907_172417_579221",
+  "host": "RK3588",
+  "card": "BM1684X",
+  "pcie": "Gen3 x1",
+  "tpu_sampling": "whole stage, approximately 1 second"
+}

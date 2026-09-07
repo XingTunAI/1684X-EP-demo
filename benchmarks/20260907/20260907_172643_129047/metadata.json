@@ -1,0 +1,74 @@
+{
+  "run_id": "20260907_172643_129047",
+  "device": 1,
+  "host": "RK3588",
+  "card": "BM1684X",
+  "pcie": "Gen3 x1",
+  "video": "bbb_1080p25_h264_8mbps_20min.mp4",
+  "video_sha256": "3f1eabc8737274def3bf6a36fa5d524bc391f436a529263bb441c97ba686d092",
+  "video_spec": {
+    "width": 1920,
+    "height": 1080,
+    "codec": "h264",
+    "fps": 25
+  },
+  "model": "yolov8n_int8_1b.bmodel",
+  "model_sha256": "a9d6cec7390072402f6ea5bedef18c9262d9566983a713268b16908a3a63be32",
+  "worker_sha256": "dc61e94145883dc2b335bfec53cca344c164f17fb5cfe005419136666db91037",
+  "model_spec": {
+    "input_size": [
+      640,
+      640
+    ],
+    "batch": 1,
+    "confidence": 0.25,
+    "nms": 0.7
+  },
+  "steps": [
+    1,
+    4,
+    8,
+    12,
+    16,
+    20
+  ],
+  "warmup_seconds": 30,
+  "duration_seconds": 60,
+  "window_seconds": 30,
+  "mode": "analysis",
+  "image_path": "device-bgr",
+  "transfer_slots": 0,
+  "frame_skipping": false,
+  "tpu_sampling": "whole stage, including warmup and startup/shutdown; approximately every 5 seconds",
+  "output_buffer": "baseline",
+  "timing_split": [
+    "inference_submit_ms",
+    "inference_sync_ms",
+    "input_release_ms",
+    "output_copy_ms"
+  ],
+  "source_url": "https://github.com/sophgo/sophon-demo/blob/485e8a0dd21e3bba6cfa3c4c0241c8e28f76541b/sample/YOLOv8_plus_det/scripts/download_yolov8_nano.sh",
+  "model_input": {
+    "shape": [
+      1,
+      3,
+      640,
+      640
+    ],
+    "dtype": "FP32"
+  },
+  "model_output": {
+    "shape": [
+      1,
+      8400,
+      84
+    ],
+    "dtype": "FP32",
+    "bytes_per_frame": 2822400
+  },
+  "link_observation": {
+    "device_bdf": "0001:11:00.0",
+    "current_link_speed": "8.0 GT/s PCIe",
+    "current_link_width": 1
+  }
+}
