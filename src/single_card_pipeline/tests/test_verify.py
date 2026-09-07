@@ -35,7 +35,8 @@ class VerificationTests(unittest.TestCase):
                 for frame in frames:
                     out.write(json.dumps({'frame': frame, 'completed_monotonic_s': 11 + frame,
                         'service_ms': 30, 'schedule_lateness_ms': 2, 'decode_ms': 5,
-                        'analysis_ms': 10, 'draw_ms': 5 if mode == 'encode' else None,
+                        'analysis_ms': 10, 'output_transfer_ms': 3, 'cpu_postprocess_ms': 2,
+                        'transfer_wait_ms': 1, 'draw_ms': 5 if mode == 'encode' else None,
                         'encode_submit_ms': 10 if mode == 'encode' else None}) + '\n')
             probe = json.dumps({'streams': [{'codec_name': 'h264', 'width': 1920,
                                'height': 1080, 'nb_read_frames': str(encoded)}]})
@@ -69,6 +70,9 @@ class VerificationTests(unittest.TestCase):
         self.assertIsNone(result['verified_encoded_frames'])
         self.assertIsNone(result['mean_stage_ms']['encode_submit_ms'])
         self.assertEqual(result['mean_stage_ms']['analysis_ms'], 10)
+        self.assertEqual(result['mean_stage_ms']['output_transfer_ms'], 3)
+        self.assertEqual(result['mean_stage_ms']['cpu_postprocess_ms'], 2)
+        self.assertEqual(result['mean_stage_ms']['transfer_wait_ms'], 1)
 
     def test_analysis_missing_record_fails(self):
         self.assertFalse(self.check(mode='analysis', frames=(0,))['ok'])
@@ -97,6 +101,8 @@ class VerificationTests(unittest.TestCase):
             self.assertEqual(float(row['minimum_window_fps']), 20)
             self.assertEqual(row['below_threshold_windows'], '1')
             self.assertEqual(row['encode_submit_mean_ms'], '')
+            self.assertEqual(row['output_transfer_mean_ms'], '')
+            self.assertEqual(row['transfer_wait_mean_ms'], '')
             self.assertIn('未达标', (root / 'report.md').read_text(encoding='utf-8'))
             meta['pipeline_arguments']['measure_only'] = True
             meta['arguments']['sources'] = ['/home/private-location/video.mp4']

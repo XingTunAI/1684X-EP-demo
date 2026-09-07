@@ -32,7 +32,7 @@ def verify_outputs(directory, result, a):
             records = 0
             services, lateness = [], []
             stages = {key: [] for key in ('decode_ms', 'analysis_ms', 'image_bridge_ms',
-                      'preprocess_ms', 'inference_ms', 'postprocess_ms', 'draw_ms', 'encode_submit_ms')}
+                      'preprocess_ms', 'inference_ms', 'postprocess_ms', 'transfer_wait_ms', 'output_transfer_ms', 'cpu_postprocess_ms', 'draw_ms', 'encode_submit_ms')}
             with (stream / 'detections.jsonl').open(encoding='utf-8') as records_file:
                 for line in records_file:
                     row = json.loads(line)
@@ -91,6 +91,7 @@ def main(argv=None):
     parser.add_argument('--bmodel', type=Path, required=True)
     parser.add_argument('--classnames', type=Path, default=ROOT / 'third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/coco.names')
     parser.add_argument('--app', type=Path, default=ROOT / 'src/single_card_pipeline/build/pipeline_worker.pcie')
+    parser.add_argument('--transfer-slots', type=int, default=0, help='Experimental concurrent output transfers; 0 disables gate')
     parser.add_argument('--bitrate', type=int, default=4000, help='H264 output kbps per stream')
     parser.add_argument('--mode', choices=('analysis', 'encode'), default='encode')
     parser.add_argument('--image-path', choices=('bgr', 'yuv', 'device-bgr'), default=None)
@@ -110,6 +111,8 @@ def main(argv=None):
         parser.error('device image paths support analysis mode only')
     if a.throughput or any('://' in x for x in a.sources):
         parser.error('First full-pipeline baseline uses paced local video only')
+    if extra.transfer_slots < 0:
+        parser.error('transfer-slots must be non-negative')
     if extra.bitrate < 1:
         parser.error('bitrate must be positive')
     if a.output == Path('results/decode'):
@@ -118,7 +121,9 @@ def main(argv=None):
         return [str(extra.app.resolve()), f'--input={source}', f'--bmodel={extra.bmodel.resolve()}',
                 f'--classnames={extra.classnames.resolve()}', f'--device={a.device}',
                 f'--output={stream.resolve()}', f'--fps={a.target_fps}', f'--bitrate={extra.bitrate}',
-                f'--mode={a.mode}', f'--image_path={extra.image_path}']
+                f'--mode={a.mode}', f'--image_path={extra.image_path}'] + ([
+                '--transfer_lock=' + str((stream.parent / ('transfer_%02d.lock' % (int(stream.name.rsplit('_', 1)[1]) % extra.transfer_slots))).resolve())
+                ] if extra.transfer_slots else [])
     if a.dry_run:
         print(json.dumps({'steps': a.steps, 'example': make_command(a, a.sources[0], a.output / 'stream_00')}, indent=2))
         return 0

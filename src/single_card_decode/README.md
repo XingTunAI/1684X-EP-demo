@@ -20,7 +20,7 @@ bash scripts/run_single_card_decode_auto.sh --device 1 --steps 32
 - [报告阅读指南](../../docs/benchmark-report-guide.md)：文件清单、窗口统计、状态与资源监控。
 - [实测结论](../../docs/decode-results-20260907.md)：32 路短测与已完成的 30 路 15 分钟测试。
 - [素材说明](../../docs/test-media.md)：两份动画文件、哈希与循环问题。
-- [演示总览](../../docs/demo-summary-20260907.md)：当前进度和对外说明。
+- [演示总览](../../docs/demo-summary-20260907.md)：功能和测试结果。
 
 ## 源码结构与检查
 

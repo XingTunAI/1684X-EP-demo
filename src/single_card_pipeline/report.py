@@ -52,6 +52,9 @@ def write_report(directory, state):
                    'preprocess_mean_ms': timing.get('preprocess_ms'),
                    'inference_mean_ms': timing.get('inference_ms'),
                    'postprocess_mean_ms': timing.get('postprocess_ms'),
+                   'transfer_wait_mean_ms': timing.get('transfer_wait_ms'),
+                   'output_transfer_mean_ms': timing.get('output_transfer_ms'),
+                   'cpu_postprocess_mean_ms': timing.get('cpu_postprocess_ms'),
                    'draw_mean_ms': timing.get('draw_ms'), 'encode_submit_mean_ms': timing.get('encode_submit_ms'),
                    'output_ok': detail.get('ok', False)}
             rows.append(row)
@@ -79,7 +82,7 @@ def write_report(directory, state):
     csv_file(directory / 'streams.csv', ['streams', 'stream_id', 'average_fps', 'minimum_window_fps',
              'below_threshold_windows', 'service_p95_ms', 'max_schedule_lateness_ms', 'decode_mean_ms',
              'analysis_mean_ms', 'image_bridge_mean_ms', 'preprocess_mean_ms', 'inference_mean_ms',
-             'postprocess_mean_ms', 'draw_mean_ms', 'encode_submit_mean_ms', 'output_ok'], rows)
+             'postprocess_mean_ms', 'transfer_wait_mean_ms', 'output_transfer_mean_ms', 'cpu_postprocess_mean_ms', 'draw_mean_ms', 'encode_submit_mean_ms', 'output_ok'], rows)
     csv_file(directory / 'windows.csv', ['streams', 'window', 'start_seconds', 'seconds', 'total_fps',
              'minimum_stream_fps', 'below_threshold_streams'], windows)
     save(directory / 'run_state.json', json.dumps(state, ensure_ascii=False, indent=2))
@@ -90,7 +93,7 @@ def write_report(directory, state):
              f'- 软件设备编号：{a["device"]}；每路独立进程和模型实例；batch 1。',
              f'- 模型：`{Path(extra["bmodel"]).name}`；SHA-256：`{metadata["model_sha256"]}`。',
              f'- 输入：`{Path(a["sources"][0]).name}`；1920×1080、{a["target_fps"]} FPS；本地限速、每帧推理。',
-             f'- 图像路径：{extra.get("image_path", "bgr")}。',
+             f'- 图像路径：{extra.get("image_path", "bgr")}；回传并发槽：{extra.get("transfer_slots", 0)}（0 为不限）。',
              f'- 档位：{a["steps"]}；预热 {a["warmup"]} 秒；采集 {a["duration"]} 秒。',
              ('- 性能摸底：不应用 FPS 或计划落后验收门槛；检查输出完整性和正常收尾。' if measure_only else f'- 门槛：每路每个窗口 ≥{threshold} FPS；计划落后 ≤{extra["max_lateness_ms"]} ms；输出完整、正常收尾。'), '',
              '## 档位汇总', '',
@@ -108,6 +111,16 @@ def write_report(directory, state):
               '|---|---:|---:|---:|---:|---|']
     for r in rows:
         lines.append(f'| {r["streams"]}/{r["stream_id"]:02d} | {num(r["average_fps"])} | {num(r["decode_mean_ms"])} | {num(r["analysis_mean_ms"])} | {num(r["service_p95_ms"])} | {"是" if r["output_ok"] else "否"} |')
+    lines += ['', '### 后处理拆分（各路均值等权平均）', '',
+              '| 路数 | 回传排队 ms | 输出读取 ms | CPU 筛框/NMS ms |',
+              '|---:|---:|---:|---:|']
+    for stage in stages:
+        selected = [r for r in rows if r['streams'] == stage['streams']]
+        def mean(key):
+            values = [r[key] for r in selected if r[key] is not None]
+            return sum(values) / len(values) if len(values) == len(selected) and values else None
+        lines.append(f'| {stage["streams"]} | {num(mean("transfer_wait_mean_ms"))} | {num(mean("output_transfer_mean_ms"))} | {num(mean("cpu_postprocess_mean_ms"))} |')
+    lines += ['', '输出读取包含主机缓冲申请、SDK 取回张量及必要的数据类型转换；CPU 后处理包含筛框、NMS 和坐标还原。它们是后处理的子项，不能再次累加到总处理时间。旧记录没有这些计时则显示未测。']
     lines += ['', '## 结论边界与异常', '',
               '分析耗时包括图像转换、预处理、模型推理和后处理，并非 TPU 纯推理时间。处理耗时不含限速等待和 JSON 写入；FPS 计数在结果写入后更新。',
               '计划落后是相对本地 25 FPS 读取计划的延后，不是实测网络队列长度或摄像头端到端时延。未测的编码阶段填空，不填零。',

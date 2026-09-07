@@ -1,12 +1,14 @@
 # RK3588 + BM1684X EP Demo
 
-新增 YouTube 道路车流素材已单独整理，来源、制作和切换命令见[车流素材说明](docs/youtube-test-media.md)。现有性能结论仍来自 BBB 动画，新素材没有替代历史测试，也未改默认输入。
-
 本仓库演示 RK3588 主机通过 PCIe 调用 BM1684X 进行视频解码与 YOLO 目标检测，包含单卡自动压测、图像路径优化及已有多卡功能验证代码。当前阶段以 **单卡性能摸底与 Demo 演示** 为主，更新至 2026-09-07。
 
-先读[演示总览与当前进度](docs/demo-summary-20260907.md)，运行看[纯解码操作](docs/single-card-decode.md)或[解码＋推理操作](docs/single-card-analysis.md)，查看输出看[报告阅读指南](docs/benchmark-report-guide.md)。
+后处理拆分和 6/32 路并发对照见[输出回传分析与并发对照](docs/analysis-transfer-20260907.md)。6 路实测总平均 135.43 FPS；32 路限回传并发未提高总吞吐，默认配置保持不变。
 
-## 当前已完成
+新增 YouTube 道路车流素材已单独整理，来源、制作和切换命令见[车流素材说明](docs/youtube-test-media.md)。现有性能结论仍来自 BBB 动画，新素材没有替代历史测试，也未改默认输入。
+
+先读[Demo 总览](docs/demo-summary-20260907.md)，运行看[纯解码操作](docs/single-card-decode.md)或[解码＋推理操作](docs/single-card-analysis.md)，查看输出看[报告阅读指南](docs/benchmark-report-guide.md)。
+
+## 实测结果
 
 | 项目 | 实测结果 | 范围 |
 |---|---|---|
@@ -17,9 +19,9 @@
 | 独立模型计算 | batch 1：354.50 图/秒；batch 4：370.11 图/秒 | 两者 TPU 采样峰值 100%，不含完整视频链路 |
 | 调度与结果检查 | 解码 18 项、流水线 10 项测试通过 | 不代表生产容量或算法精度验收 |
 
-上述视频使用同一份 BBB 动画素材复制为多路本地输入，不是 32 路摄像头。纯解码、完整分析、独立模型计算是不同测试，不能互相替代。当前分析每帧执行，处理慢时会落后输入计划；未实现抽帧，也不包含实时画框显示或编码。实际客户容量取决于模型、输入规格、分析频率和输出要求。
+上述视频使用同一份 BBB 动画素材复制为多路本地输入，不是 32 路摄像头。纯解码、完整分析、独立模型计算是不同测试，不能互相替代。当前分析每帧执行，处理慢时会落后输入计划；未实现抽帧，也不包含实时画框显示或编码。实际承载能力取决于模型、输入规格、分析频率和输出要求。
 
-默认只记录性能，完成为 `measured`，不以每路 25 FPS 判通过/失败。运行异常仍会停止测试。旧报告保留原门槛与状态。当前 Demo 阶段已收尾，多卡联合容量、客户业务精度、抽帧和实时显示不在本轮实测范围内。
+默认只记录性能，完成为 `measured`，不以每路 25 FPS 判通过/失败。运行异常仍会停止测试。旧报告保留原门槛与状态。多卡联合容量、客户业务精度、抽帧和实时显示不在本轮实测范围内。
 
 ## 快速运行
 
@@ -51,28 +53,28 @@ python3 scripts/run_single_card_tpu_bench.py --device 1
 
 30 路 15 分钟解码复测要显式选择 20 分钟素材，完整命令见[纯解码操作](docs/single-card-decode.md)。短素材循环附近曾发生错误，不能在长测中忽略该边界。
 
-## 看报告与交付内容
+## 测试输出
+
+[公开测试数据](benchmarks/20260907/README.md)包含参数、逐路帧率和窗口统计，可在 GitHub 直接查看。
 
 控制台打印唯一 Results 目录。`report.md` 在开始、每档结束和收尾时更新；单档未结束时等待最终数据属于正常状态。先读报告，再查逐路 CSV 和原始日志。纯解码当前自动生成器不输出 windows.csv，逐窗口数据保存在 summary.json 中；分析模式会自动生成 windows.csv。
 
-| 内容 | 设备工程内路径 | 本地归档路径 |
-|---|---|---|
-| 解码结果 | results/decode/测试编号/ | results/board-auto/测试编号/ |
-| 分析结果 | results/analysis/测试编号/ | results/board-analysis/测试编号/ |
-| 独立计算 | results/tpu/测试编号/ | results/board-tpu/测试编号/ |
-
-代码、脚本和结论文档提交仓库；`results/`、`datasets/`、模型及第三方依赖按 .gitignore 单独保留和传输。Git 中的结论文档包含实测摘要；仅克隆仓库时不能直接打开未随仓库分发的原始结果链接。
+| 测试类型 | 运行输出目录 |
+|---|---|
+| 解码 | `results/decode/测试编号/` |
+| 解码＋推理 | `results/analysis/测试编号/` |
+| 独立模型计算 | `results/tpu/测试编号/` |
 
 ## 文档索引
 
 | 用途 | 文档 |
 |---|---|
-| 演示说明、结果与进度 | [Demo 总览](docs/demo-summary-20260907.md) |
+| 功能与测试结果 | [Demo 总览](docs/demo-summary-20260907.md) |
 | 纯解码复测 | [操作说明](docs/single-card-decode.md) / [源码入口](src/single_card_decode/README.md) / [实测结论](docs/decode-results-20260907.md) |
 | 解码＋推理复测 | [操作说明](docs/single-card-analysis.md) / [源码与 encode 模式](src/single_card_pipeline/README.md) |
 | 分析优化与计算对照 | [最新优化结论](docs/analysis-optimization-20260907.md) / [优化前单路基线](docs/analysis-results-20260907.md) |
 | 报告、CSV、状态与资源解释 | [报告阅读指南](docs/benchmark-report-guide.md) |
-| 视频与模型校验、同步 | [素材说明](docs/test-media.md) |
+| 视频与模型准备 | [素材说明](docs/test-media.md) |
 | 环境安装、官方样例 | [使用文档](docs/usage.md) / [模型准备](docs/run-yolo.md) / [硬件参考](docs/board-status.md) |
 | 多卡功能验证 | [单进程多卡验证](docs/single-process-multicard.md) / [源码说明](src/README.md) |
 | 历史设计与显示参考 | [设计说明](docs/demo-design.md) / [HDMI 说明](docs/hdmi-display.md) / [验证参考](docs/roadmap.md) |
@@ -83,6 +85,7 @@ python3 scripts/run_single_card_tpu_bench.py --device 1
 ```text
 .
 ├── configs/                      # 现有多卡样例配置
+├── benchmarks/                   # 可直接浏览的测试统计数据
 ├── docs/                         # 操作、结论、演示与历史参考
 ├── scripts/                      # 一键压测、编译和环境辅助入口
 ├── src/

@@ -78,4 +78,6 @@ python3 src/single_card_decode/report.py results/decode/实际测试编号
 
 只读结果、定时重新生成旧版本报告可加 `--watch`，不会启动解码。它也不会产生尚未完成档位的最终数据。重新生成会更新报告显示时间，应保留原始 config/summary/log，不得修改旧门槛或模式再将结果当作原始结论。
 
-分享时保留整轮目录；视频和模型单独按[素材说明](test-media.md)提供。仓库中的结论文档可直接阅读，`results/` 原始数据不随 Git 提交，链接到本地结果的文件在纯 Git 克隆中可能不存在。
+分享时保留整轮目录；视频和模型单独按[素材说明](test-media.md)提供。仓库提供[公开测试数据](../benchmarks/20260907/README.md)，包含条件、逐路与窗口统计；逐帧原始记录由测试程序生成在 `results/` 中。
+
+输出回传细分：`transfer_wait_mean_ms` 为回传槽排队，`output_transfer_mean_ms` 为 SDK 张量取回等操作，`cpu_postprocess_mean_ms` 为 CPU 筛框/NMS/坐标还原。这些均为后处理子项，已计入 `postprocess_mean_ms`，不能重复累加。旧记录缺失时保留空值。

@@ -13,7 +13,7 @@ bash scripts/run_single_card_analysis_auto.sh --device 1 --steps 32 \
   --measure-only --image-path device-bgr --warmup 180 --duration 120 --window 60 --stall-timeout 180
 ```
 
-analysis 默认采用设备内 BGR 转换路径 `device-bgr`，已完成单路及 32 路对照，详见[优化结论](analysis-optimization-20260907.md)。`--image-path bgr` 保留原路径作为对照。直接 YUV 路径通过 `--image-path yuv` 选择，目前处于验证阶段，只支持 analysis 模式，不作为默认优化。逐帧结果新增图像交付、预处理、推理调用及同步、后处理耗时；这些分项也保存在 `streams.csv`。暂不支持 batch 4。
+analysis 默认采用设备内 BGR 转换路径 `device-bgr`，已完成单路及 32 路对照，详见[优化结论](analysis-optimization-20260907.md)。`--image-path bgr` 保留原路径作为对照。直接 YUV 路径通过 `--image-path yuv` 选择，目前处于验证阶段，只支持 analysis 模式，不作为默认优化。逐帧结果包含图像交付、预处理、推理调用及同步、后处理耗时，并细分回传排队、输出读取和 CPU 后处理；这些分项也保存在 `streams.csv`。暂不支持 batch 4。
 
 本阶段测试硬件解码 → 图像转换与预处理 → YOLOv8 推理 → 后处理 → 检测 JSON。每帧分析，不主动抽帧，不画框、不编码。使用现有 YOLOv8s INT8 batch 1 模型作为可复现基线；客户最终模型、输入尺寸和每路分析帧率确定后，需要重新测试。
 
@@ -87,31 +87,3 @@ tail -f results/analysis_console.log
 解码耗时是 OpenCV 取帧耗时；分析耗时包含图像转换、预处理、推理、后处理。处理 P95 是一帧从开始取帧到分析完成的耗时（编码模式则到编码提交），不含限速等待和 JSON 写入，不是摄像头到显示器延迟。计划落后是相对于本地源帧率计划的延后，不能当作实测网络队列或真实丢帧。
 
 `analysis` 模式不会生成 `output.mp4`；未运行的画框和编码阶段在 JSON 为 null、CSV 为空。帧率计数在检测结果写入后更新，结束时核对连续帧编号与 worker 汇总，强制终止、记录缺失不能通过。
-
-## 4. 同步回 Windows
-
-在 PowerShell 执行，将 `<测试编号>` 替换为控制台的目录名：
-
-```powershell
-# 先在 PowerShell 中进入工程根目录
-New-Item -ItemType Directory -Force results/board-analysis | Out-Null
-adb -s bf43cc5e0819e5ad pull /home/linaro/1684X-EP-demo/results/analysis/<测试编号> results/board-analysis/
-```
-
-原始数据需与报告一起保存，避免只留下平均 FPS。`datasets/`、`results/` 在 Git 中忽略，需要单独同步。
-
-## 5. 后续完整业务链路
-
-加入画框与 H.264 编码可使用 `--mode encode`，结果转存到 `results/pipeline/`。该模式会持续写视频并检查磁盘空间，需重新测量，成绩不能与本阶段混用。完整说明见[源码 Demo](../src/single_card_pipeline/README.md)。
-
-本阶段没有验证真实摄像头网络接入、算法精度、多流 batch 或共享模型。当前单卡演示和图像路径优化已完成。本阶段不追加抽帧、实时显示或客户素材测试，后续工作按新的业务要求另行确定。
-
-## 独立模型计算对照
-
-在同卡没有视频任务运行时执行 `python3 scripts/run_single_card_tpu_bench.py --device 1`。自动串行测试 batch 1 与 batch 4，并输出 `results/tpu/日期时间/report.md`。它用于区分模型计算与视频链路开销，不能代表实际视频分析帧率。详见[优化结论](analysis-optimization-20260907.md)。
-
-## sophon-sail 与当前 Demo 的关系
-
-SAIL 是 BMLib、BMDecoder、BMCV、BMRuntime 等底层接口的上层封装，提供 C++ 和 Python 接口，详见[官方仓库](https://github.com/sophgo/sophon-sail)。当前 worker 直接使用 SOPHON OpenCV、BMCV 和 BMRuntime，Python 负责测试调度，构建配置未链接 SAIL；并非缺少 SAIL 就无法调用硬件加速。
-
-SAIL 的多路解码、张量管理等接口可作为后续重构参考，但仅安装或替换库不会自动消除图像传输、后处理或任务等待。应使用相同模型、素材、卡号和统计方法做独立对照，并记录队列/丢帧策略；不能把抽帧后的实时性改善当作每帧分析吞吐提升。若采用 SAIL，需匹配 RK3588 ARM PCIe 部署方式及当前 libsophon、FFmpeg、OpenCV 版本。本轮没有安装或迁移到 SAIL，也没有 SAIL 性能实测结论。

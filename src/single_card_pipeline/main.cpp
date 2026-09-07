@@ -35,6 +35,7 @@ int main(int argc, char** argv) {
         "{device|0|device ID}{output||existing unique output directory}"
         "{mode|encode|analysis or encode}"
         "{image_path|bgr|bgr baseline, yuv, or device-bgr}"
+        "{transfer_lock||optional per-run output transfer gate file}"
         "{fps|25|source/analysis/output target FPS}{bitrate|4000|output kbps}"
         "{conf|0.25|confidence}{nms|0.7|NMS}");
     if (args.has("help")) { args.printMessage(); return 0; }
@@ -62,6 +63,7 @@ int main(int argc, char** argv) {
         if (access((output + "/output.mp4").c_str(), F_OK) == 0)
             throw std::runtime_error("Refusing to overwrite existing video");
         YoloV8_det net(model, names, device, args.get<float>("conf"), args.get<float>("nms"));
+        net.transfer_lock_path = args.get<std::string>("transfer_lock");
         if (net.batch_size != 1) throw std::runtime_error("This baseline requires a 1-batch model");
         cv::VideoCapture cap(input, cv::CAP_FFMPEG, device);
         if (!cap.isOpened()) throw std::runtime_error("Decoder open failed");
@@ -128,6 +130,9 @@ int main(int argc, char** argv) {
             const double pre_ms = stage_ms(net.m_ts, "yolov8 preprocess");
             const double infer_ms = stage_ms(net.m_ts, "yolov8 inference");
             const double post_ms = stage_ms(net.m_ts, "yolov8 postprocess");
+            const double transfer_wait_ms = stage_ms(net.m_ts, "yolov8 transfer wait");
+            const double transfer_ms = stage_ms(net.m_ts, "yolov8 output transfer");
+            const double cpu_post_ms = stage_ms(net.m_ts, "yolov8 cpu postprocess");
             // Consume this frame's timestamps; avoid accumulating/erasing 4000 entries per stage.
             for (auto& item : net.m_ts->records_) item.second->clear();
             for (auto& item : net.m_ts->records_bs) item.second->clear();
@@ -145,6 +150,7 @@ int main(int argc, char** argv) {
                            {"analysis_ms", ms(after_decode, after_detect)},
                            {"image_bridge_ms", ms(after_decode, after_bridge)},
                            {"preprocess_ms", pre_ms}, {"inference_ms", infer_ms}, {"postprocess_ms", post_ms},
+                           {"transfer_wait_ms", transfer_wait_ms}, {"output_transfer_ms", transfer_ms}, {"cpu_postprocess_ms", cpu_post_ms},
                            {"draw_ms", encode ? json(ms(after_detect, after_draw)) : json(nullptr)},
                            {"encode_submit_ms", encode ? json(ms(after_draw, after_write)) : json(nullptr)},
                            {"service_ms", ms(before_decode, after_write)},

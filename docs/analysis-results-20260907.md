@@ -8,7 +8,7 @@
 
 测试编号：`20260907_114934_43559`。RK3588 主机，物理卡 1 / 软件 device 1，当前 PCIe 3.0 ×1。SOPHON SDK 0.5.1、Multimedia 0.14.0。使用 SOPHON OpenCV 取帧与官方 YOLOv8 BMCV 检测代码，每路独立进程、独立模型实例。
 
-输入是连续 20 分钟的 BBB H.264 1920×1080、25 FPS、约 8 Mbps 视频，本地按源帧率计划读取，每帧推理。模型为 `yolov8s_int8_1b.bmodel`，batch 1，SHA-256：`b09b7c5bc0a8c18c67f839c33551ba35fa37748d10eafb6a8f9d41ee87f086b4`。模型和两份测试视频均已同步回本地，详见[素材说明](test-media.md)。此模型为现有 Demo 基线，未替代客户最终算法确认。
+输入是连续 20 分钟的 BBB H.264 1920×1080、25 FPS、约 8 Mbps 视频，本地按源帧率计划读取，每帧推理。模型为 `yolov8s_int8_1b.bmodel`，batch 1，SHA-256：`b09b7c5bc0a8c18c67f839c33551ba35fa37748d10eafb6a8f9d41ee87f086b4`。模型、视频来源和校验值详见[素材说明](test-media.md)。测试使用 YOLOv8s 基线模型；更换模型后需重新测量。
 
 实际执行：
 
