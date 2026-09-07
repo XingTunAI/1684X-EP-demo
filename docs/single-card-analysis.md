@@ -109,3 +109,9 @@ adb -s bf43cc5e0819e5ad pull /home/linaro/1684X-EP-demo/results/analysis/<测试
 ## 独立模型计算对照
 
 在同卡没有视频任务运行时执行 `python3 scripts/run_single_card_tpu_bench.py --device 1`。自动串行测试 batch 1 与 batch 4，并输出 `results/tpu/日期时间/report.md`。它用于区分模型计算与视频链路开销，不能代表实际视频分析帧率。详见[优化结论](analysis-optimization-20260907.md)。
+
+## sophon-sail 与当前 Demo 的关系
+
+SAIL 是 BMLib、BMDecoder、BMCV、BMRuntime 等底层接口的上层封装，提供 C++ 和 Python 接口，详见[官方仓库](https://github.com/sophgo/sophon-sail)。当前 worker 直接使用 SOPHON OpenCV、BMCV 和 BMRuntime，Python 负责测试调度，构建配置未链接 SAIL；并非缺少 SAIL 就无法调用硬件加速。
+
+SAIL 的多路解码、张量管理等接口可作为后续重构参考，但仅安装或替换库不会自动消除图像传输、后处理或任务等待。应使用相同模型、素材、卡号和统计方法做独立对照，并记录队列/丢帧策略；不能把抽帧后的实时性改善当作每帧分析吞吐提升。若采用 SAIL，需匹配 RK3588 ARM PCIe 部署方式及当前 libsophon、FFmpeg、OpenCV 版本。本轮没有安装或迁移到 SAIL，也没有 SAIL 性能实测结论。

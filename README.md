@@ -1,5 +1,7 @@
 # RK3588 + BM1684X EP Demo
 
+新增 YouTube 道路车流素材已单独整理，来源、制作和切换命令见[车流素材说明](docs/youtube-test-media.md)。现有性能结论仍来自 BBB 动画，新素材没有替代历史测试，也未改默认输入。
+
 本仓库演示 RK3588 主机通过 PCIe 调用 BM1684X 进行视频解码与 YOLO 目标检测，包含单卡自动压测、图像路径优化及已有多卡功能验证代码。当前阶段以 **单卡性能摸底与 Demo 演示** 为主，更新至 2026-09-07。
 
 先读[演示总览与当前进度](docs/demo-summary-20260907.md)，运行看[纯解码操作](docs/single-card-decode.md)或[解码＋推理操作](docs/single-card-analysis.md)，查看输出看[报告阅读指南](docs/benchmark-report-guide.md)。

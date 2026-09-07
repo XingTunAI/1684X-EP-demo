@@ -1,5 +1,7 @@
 # 本地压测素材
 
+新增 YouTube 道路车流素材已单独整理，来源、制作和切换命令见[车流素材说明](youtube-test-media.md)。现有性能结论仍来自 BBB 动画，新素材没有替代历史测试，也未改默认输入。
+
 ## 来源与用途
 
 - 原片：Big Buck Bunny，© 2008 Blender Foundation，Creative Commons Attribution 3.0。
