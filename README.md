@@ -1,5 +1,7 @@
 # RK3588 + BM1684X EP Demo
 
+[路数递增测试与 TPU 曲线](docs/analysis-ladder-20260907.md)：从 1 路逐档增加到 32 路，本轮最高总吞吐出现在 8 路（143.22 FPS）。
+
 本仓库演示 RK3588 主机通过 PCIe 调用 BM1684X 进行视频解码与 YOLO 目标检测，包含单卡自动压测、图像路径优化及已有多卡功能验证代码。当前阶段以 **单卡性能摸底与 Demo 演示** 为主，更新至 2026-09-07。
 
 后处理拆分和 6/32 路并发对照见[输出回传分析与并发对照](docs/analysis-transfer-20260907.md)。6 路实测总平均 135.43 FPS；32 路限回传并发未提高总吞吐，默认配置保持不变。
@@ -17,7 +19,7 @@
 | 单卡 32 路解码＋推理 | **总平均 114.10 FPS，平均每路 3.57 FPS** | YOLOv8s INT8 batch 1，预热 180 秒、正式采集约 120 秒 |
 | 图像路径优化 | 总吞吐约为原 BGR 路径的 **3.49 倍** | 34,006 条检测列表与原路径对应帧一致 |
 | 独立模型计算 | batch 1：354.50 图/秒；batch 4：370.11 图/秒 | 两者 TPU 采样峰值 100%，不含完整视频链路 |
-| 调度与结果检查 | 解码 18 项、流水线 10 项测试通过 | 不代表生产容量或算法精度验收 |
+| 调度与结果检查 | 解码 18 项、流水线 12 项测试通过 | 不代表生产容量或算法精度验收 |
 
 上述视频使用同一份 BBB 动画素材复制为多路本地输入，不是 32 路摄像头。纯解码、完整分析、独立模型计算是不同测试，不能互相替代。当前分析每帧执行，处理慢时会落后输入计划；未实现抽帧，也不包含实时画框显示或编码。实际承载能力取决于模型、输入规格、分析频率和输出要求。
 
@@ -37,10 +39,10 @@ bash scripts/run_single_card_decode_auto.sh --device 1 --steps 32
 cmake -S src/single_card_pipeline -B src/single_card_pipeline/build
 cmake --build src/single_card_pipeline/build -j2
 
-# 单卡 32 路解码＋推理，约 5 分钟
-bash scripts/run_single_card_analysis_auto.sh --device 1 --steps 32 \
-  --measure-only --image-path device-bgr \
-  --warmup 180 --duration 120 --window 60 --stall-timeout 180
+# 单卡解码＋推理：从 1 路逐档增加，约 14 分钟
+bash scripts/run_single_card_analysis_auto.sh --device 1 \
+  --steps 1,2,4,6,8,12,16,24,32 --measure-only --image-path device-bgr \
+  --warmup 30 --duration 60 --window 30 --stall-timeout 180
 
 # 独立模型计算，在同卡视频测试结束后执行
 python3 scripts/run_single_card_tpu_bench.py --device 1

@@ -1,5 +1,7 @@
 # 单卡视频分析 Demo
 
+[路数递增测试与 TPU 曲线](analysis-ladder-20260907.md)：从 1 路逐档增加到 32 路，本轮最高总吞吐出现在 8 路（143.22 FPS）。
+
 后处理拆分和 6/32 路并发对照见[输出回传分析与并发对照](analysis-transfer-20260907.md)。6 路实测总平均 135.43 FPS；32 路限回传并发未提高总吞吐，默认配置保持不变。
 
 新增 YouTube 道路车流素材已单独整理，来源、制作和切换命令见[车流素材说明](youtube-test-media.md)。现有性能结论仍来自 BBB 动画，新素材没有替代历史测试，也未改默认输入。
@@ -54,10 +56,10 @@ YOLOv8s 中的 s 表示 small，属于该系列的小型规格；batch 1 表示�
 在设备工程根目录执行，同一张卡上的测试依次运行。使用下面命令复现测试。
 
 ```bash
-# 32 路解码＋推理，约 5 分钟后生成完整报告
-bash scripts/run_single_card_analysis_auto.sh --device 1 --steps 32 \
-  --measure-only --image-path device-bgr \
-  --warmup 180 --duration 120 --window 60 --stall-timeout 180
+# 解码＋推理：从 1 路逐档增加，约 14 分钟
+bash scripts/run_single_card_analysis_auto.sh --device 1 \
+  --steps 1,2,4,6,8,12,16,24,32 --measure-only --image-path device-bgr \
+  --warmup 30 --duration 60 --window 30 --stall-timeout 180
 ```
 
 控制台会打印唯一 Results 目录。在另一终端进入该目录后执行 `watch -n 5 cat report.md`。报告在开始、每档结束和最终收尾时更新，不是逐秒刷新当前档的最终 FPS。查看资源可另开终端运行 `bm-smi`；本演示通过报告和检测记录展示分析过程，不包含实时画框视频。

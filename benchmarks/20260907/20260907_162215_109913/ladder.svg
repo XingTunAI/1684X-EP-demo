@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<rect width="1200" height="800" fill="white"/>
+<style>text{font-family:Arial,sans-serif;fill:#273444} .label{font-size:13px}.title{font-size:18px;font-weight:bold}</style>
+<text x="60" y="32" class="title" >BM1684X / RK3588: decode + YOLOv8s INT8, batch 1</text>
+<text x="60" y="57" class="label" >1080p25 input | 30 s warmup + 60 s measurement per stage | No frame skipping</text>
+<text x="80" y="95" class="title" >Total analysis throughput</text>
+<path d="M 80 345.0 H 550" stroke="#e2e7ed"/>
+<text x="70" y="350.0" class="label" text-anchor="end">0</text>
+<path d="M 80 287.5 H 550" stroke="#e2e7ed"/>
+<text x="70" y="292.5" class="label" text-anchor="end">40</text>
+<path d="M 80 230.0 H 550" stroke="#e2e7ed"/>
+<text x="70" y="235.0" class="label" text-anchor="end">80</text>
+<path d="M 80 172.5 H 550" stroke="#e2e7ed"/>
+<text x="70" y="177.5" class="label" text-anchor="end">120</text>
+<path d="M 80 115.0 H 550" stroke="#e2e7ed"/>
+<text x="70" y="120.0" class="label" text-anchor="end">160</text>
+<text x="94.24242424242425" y="368" class="label" text-anchor="middle">1</text>
+<text x="108.48484848484848" y="368" class="label" text-anchor="middle">2</text>
+<text x="136.96969696969697" y="368" class="label" text-anchor="middle">4</text>
+<text x="165.45454545454544" y="368" class="label" text-anchor="middle">6</text>
+<text x="193.93939393939394" y="368" class="label" text-anchor="middle">8</text>
+<text x="250.9090909090909" y="368" class="label" text-anchor="middle">12</text>
+<text x="307.8787878787879" y="368" class="label" text-anchor="middle">16</text>
+<text x="421.8181818181818" y="368" class="label" text-anchor="middle">24</text>
+<text x="535.7575757575758" y="368" class="label" text-anchor="middle">32</text>
+<path d="M 80 115 V 345 H 550" fill="none" stroke="#6c7b8c"/>
+<text x="315.0" y="392" class="label" text-anchor="middle">Concurrent streams</text>
+<text x="35" y="230.0" class="label" text-anchor="middle" transform="rotate(-90 35 230.0)">Frames / second</text>
+<polyline points="94.24,309.07 108.48,273.14 136.97,201.21 165.45,150.96 193.94,139.13 250.91,161.26 307.88,171.04 421.82,178.13 535.76,181.95" fill="none" stroke="#1769aa" stroke-width="2.5"/>
+<circle cx="94.24242424242425" cy="309.0728582771689" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="108.48484848484848" cy="273.13986196854506" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="136.96969696969697" cy="201.2142074004927" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="165.45454545454544" cy="150.95595387870543" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="193.93939393939394" cy="139.12740045132094" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="250.9090909090909" cy="161.25854915277563" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="307.8787878787879" cy="171.0356211752982" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="421.8181818181818" cy="178.12540683496752" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="535.7575757575758" cy="181.94533491838908" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<path d="M 382 126 h 18" stroke="#1769aa" stroke-width="2.5"/>
+<text x="407" y="130" class="label" >Total FPS</text>
+<text x="690" y="95" class="title" >Per-stream analysis rate</text>
+<path d="M 690 345.0 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="350.0" class="label" text-anchor="end">0</text>
+<path d="M 690 306.6666666666667 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="311.6666666666667" class="label" text-anchor="end">5</text>
+<path d="M 690 268.33333333333337 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="273.33333333333337" class="label" text-anchor="end">10</text>
+<path d="M 690 230.0 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="235.0" class="label" text-anchor="end">15</text>
+<path d="M 690 191.66666666666669 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="196.66666666666669" class="label" text-anchor="end">20</text>
+<path d="M 690 153.33333333333331 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="158.33333333333331" class="label" text-anchor="end">25</text>
+<path d="M 690 115.0 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="120.0" class="label" text-anchor="end">30</text>
+<text x="704.2424242424242" y="368" class="label" text-anchor="middle">1</text>
+<text x="718.4848484848485" y="368" class="label" text-anchor="middle">2</text>
+<text x="746.969696969697" y="368" class="label" text-anchor="middle">4</text>
+<text x="775.4545454545455" y="368" class="label" text-anchor="middle">6</text>
+<text x="803.939393939394" y="368" class="label" text-anchor="middle">8</text>
+<text x="860.9090909090909" y="368" class="label" text-anchor="middle">12</text>
+<text x="917.8787878787879" y="368" class="label" text-anchor="middle">16</text>
+<text x="1031.8181818181818" y="368" class="label" text-anchor="middle">24</text>
+<text x="1145.7575757575758" y="368" class="label" text-anchor="middle">32</text>
+<path d="M 690 115 V 345 H 1160" fill="none" stroke="#6c7b8c"/>
+<text x="925.0" y="392" class="label" text-anchor="middle">Concurrent streams</text>
+<text x="645" y="230.0" class="label" text-anchor="middle" transform="rotate(-90 645 230.0)">Frames / second</text>
+<polygon points="704.24,153.39 718.48,153.44 746.97,153.38 775.45,174.05 803.94,209.24 860.91,265.41 917.88,289.92 1031.82,309.84 1145.76,319.55 1145.76,314.07 1031.82,305.64 917.88,284.69 860.91,260.82 803.94,206.17 775.45,170.60 746.97,153.25 718.48,153.31 704.24,153.39" fill="#1769aa" opacity="0.18"/>
+<polyline points="704.24,153.39 718.48,153.37 746.97,153.29 775.45,172.52 803.94,207.75 860.91,263.34 917.88,287.01 1031.82,307.92 1145.76,317.82" fill="none" stroke="#1769aa" stroke-width="2.5"/>
+<circle cx="704.2424242424242" cy="153.38857747823414" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="718.4848484848485" cy="153.37296524945347" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="746.969696969697" cy="153.28560986732361" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="775.4545454545455" cy="172.51640344773816" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="803.939393939394" cy="207.75160030088063" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="860.9090909090909" cy="263.33713295678916" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="917.8787878787879" cy="287.0118737250994" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="1031.8181818181818" cy="307.9167570744372" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="1145.7575757575758" cy="317.8242224863982" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<path d="M 992 126 h 18" stroke="#1769aa" stroke-width="2.5"/>
+<text x="1017" y="130" class="label" >Mean (band: min-max)</text>
+<text x="80" y="445" class="title" >Mean time per analyzed frame</text>
+<path d="M 80 695.0 H 550" stroke="#e2e7ed"/>
+<text x="70" y="700.0" class="label" text-anchor="end">0</text>
+<path d="M 80 656.6666666666666 H 550" stroke="#e2e7ed"/>
+<text x="70" y="661.6666666666666" class="label" text-anchor="end">50</text>
+<path d="M 80 618.3333333333334 H 550" stroke="#e2e7ed"/>
+<text x="70" y="623.3333333333334" class="label" text-anchor="end">100</text>
+<path d="M 80 580.0 H 550" stroke="#e2e7ed"/>
+<text x="70" y="585.0" class="label" text-anchor="end">150</text>
+<path d="M 80 541.6666666666667 H 550" stroke="#e2e7ed"/>
+<text x="70" y="546.6666666666667" class="label" text-anchor="end">200</text>
+<path d="M 80 503.3333333333333 H 550" stroke="#e2e7ed"/>
+<text x="70" y="508.3333333333333" class="label" text-anchor="end">250</text>
+<path d="M 80 465.0 H 550" stroke="#e2e7ed"/>
+<text x="70" y="470.0" class="label" text-anchor="end">300</text>
+<text x="94.24242424242425" y="718" class="label" text-anchor="middle">1</text>
+<text x="108.48484848484848" y="718" class="label" text-anchor="middle">2</text>
+<text x="136.96969696969697" y="718" class="label" text-anchor="middle">4</text>
+<text x="165.45454545454544" y="718" class="label" text-anchor="middle">6</text>
+<text x="193.93939393939394" y="718" class="label" text-anchor="middle">8</text>
+<text x="250.9090909090909" y="718" class="label" text-anchor="middle">12</text>
+<text x="307.8787878787879" y="718" class="label" text-anchor="middle">16</text>
+<text x="421.8181818181818" y="718" class="label" text-anchor="middle">24</text>
+<text x="535.7575757575758" y="718" class="label" text-anchor="middle">32</text>
+<path d="M 80 465 V 695 H 550" fill="none" stroke="#6c7b8c"/>
+<text x="315.0" y="742" class="label" text-anchor="middle">Concurrent streams</text>
+<text x="35" y="580.0" class="label" text-anchor="middle" transform="rotate(-90 35 580.0)">Milliseconds</text>
+<polyline points="94.24,676.34 108.48,676.57 136.97,676.57 165.45,672.60 193.94,668.29 250.91,645.81 307.88,615.31 421.82,556.98 535.76,499.49" fill="none" stroke="#d05a25" stroke-width="2.5"/>
+<circle cx="94.24242424242425" cy="676.336525448505" r="4" fill="white" stroke="#d05a25" stroke-width="2"/>
+<circle cx="108.48484848484848" cy="676.5697906328344" r="4" fill="white" stroke="#d05a25" stroke-width="2"/>
+<circle cx="136.96969696969697" cy="676.5740967817949" r="4" fill="white" stroke="#d05a25" stroke-width="2"/>
+<circle cx="165.45454545454544" cy="672.6004457517984" r="4" fill="white" stroke="#d05a25" stroke-width="2"/>
+<circle cx="193.93939393939394" cy="668.2874180732774" r="4" fill="white" stroke="#d05a25" stroke-width="2"/>
+<circle cx="250.9090909090909" cy="645.806206068572" r="4" fill="white" stroke="#d05a25" stroke-width="2"/>
+<circle cx="307.8787878787879" cy="615.3051179848459" r="4" fill="white" stroke="#d05a25" stroke-width="2"/>
+<circle cx="421.8181818181818" cy="556.9829267339514" r="4" fill="white" stroke="#d05a25" stroke-width="2"/>
+<circle cx="535.7575757575758" cy="499.4879148997552" r="4" fill="white" stroke="#d05a25" stroke-width="2"/>
+<path d="M 94 476 h 18" stroke="#d05a25" stroke-width="2.5"/>
+<text x="119" y="480" class="label" >Output readback</text>
+<polyline points="94.24,692.75 108.48,692.70 136.97,692.40 165.45,691.96 193.94,691.50 250.91,691.20 307.88,691.29 421.82,691.39 535.76,691.33" fill="none" stroke="#1769aa" stroke-width="2.5"/>
+<circle cx="94.24242424242425" cy="692.748013200443" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="108.48484848484848" cy="692.7021053493379" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="136.96969696969697" cy="692.4016245568201" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="165.45454545454544" cy="691.9635009119676" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="193.93939393939394" cy="691.4967266120326" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="250.9090909090909" cy="691.2023112166224" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="307.8787878787879" cy="691.2940918606287" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="421.8181818181818" cy="691.3928776067339" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<circle cx="535.7575757575758" cy="691.3287350533768" r="4" fill="white" stroke="#1769aa" stroke-width="2"/>
+<path d="M 94 495 h 18" stroke="#1769aa" stroke-width="2.5"/>
+<text x="119" y="499" class="label" >Model call + sync</text>
+<text x="690" y="445" class="title" >TPU samples (includes warmup)</text>
+<path d="M 690 695.0 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="700.0" class="label" text-anchor="end">0</text>
+<path d="M 690 637.5 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="642.5" class="label" text-anchor="end">25</text>
+<path d="M 690 580.0 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="585.0" class="label" text-anchor="end">50</text>
+<path d="M 690 522.5 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="527.5" class="label" text-anchor="end">75</text>
+<path d="M 690 465.0 H 1160" stroke="#e2e7ed"/>
+<text x="680" y="470.0" class="label" text-anchor="end">100</text>
+<text x="704.2424242424242" y="718" class="label" text-anchor="middle">1</text>
+<text x="718.4848484848485" y="718" class="label" text-anchor="middle">2</text>
+<text x="746.969696969697" y="718" class="label" text-anchor="middle">4</text>
+<text x="775.4545454545455" y="718" class="label" text-anchor="middle">6</text>
+<text x="803.939393939394" y="718" class="label" text-anchor="middle">8</text>
+<text x="860.9090909090909" y="718" class="label" text-anchor="middle">12</text>
+<text x="917.8787878787879" y="718" class="label" text-anchor="middle">16</text>
+<text x="1031.8181818181818" y="718" class="label" text-anchor="middle">24</text>
+<text x="1145.7575757575758" y="718" class="label" text-anchor="middle">32</text>
+<path d="M 690 465 V 695 H 1160" fill="none" stroke="#6c7b8c"/>
+<text x="925.0" y="742" class="label" text-anchor="middle">Concurrent streams</text>
+<text x="645" y="580.0" class="label" text-anchor="middle" transform="rotate(-90 645 580.0)">Utilization (%)</text>
+<polyline points="704.24,676.60 718.48,672.00 746.97,630.60 775.45,593.80 803.94,598.40 860.91,603.00 917.88,616.80 1031.82,612.20 1145.76,616.80" fill="none" stroke="#21764a" stroke-width="2.5"/>
+<circle cx="704.2424242424242" cy="676.6" r="4" fill="white" stroke="#21764a" stroke-width="2"/>
+<circle cx="718.4848484848485" cy="672.0" r="4" fill="white" stroke="#21764a" stroke-width="2"/>
+<circle cx="746.969696969697" cy="630.6" r="4" fill="white" stroke="#21764a" stroke-width="2"/>
+<circle cx="775.4545454545455" cy="593.8" r="4" fill="white" stroke="#21764a" stroke-width="2"/>
+<circle cx="803.939393939394" cy="598.4" r="4" fill="white" stroke="#21764a" stroke-width="2"/>
+<circle cx="860.9090909090909" cy="603.0" r="4" fill="white" stroke="#21764a" stroke-width="2"/>
+<circle cx="917.8787878787879" cy="616.8" r="4" fill="white" stroke="#21764a" stroke-width="2"/>
+<circle cx="1031.8181818181818" cy="612.2" r="4" fill="white" stroke="#21764a" stroke-width="2"/>
+<circle cx="1145.7575757575758" cy="616.8" r="4" fill="white" stroke="#21764a" stroke-width="2"/>
+<path d="M 992 476 h 18" stroke="#21764a" stroke-width="2.5"/>
+<text x="1017" y="480" class="label" >Median</text>
+<polyline points="704.24,672.00 718.48,630.60 746.97,593.80 775.45,580.00 803.94,580.00 860.91,580.00 917.88,589.20 1031.82,580.00 1145.76,580.00" fill="none" stroke="#81aa91" stroke-width="2.5"/>
+<circle cx="704.2424242424242" cy="672.0" r="4" fill="white" stroke="#81aa91" stroke-width="2"/>
+<circle cx="718.4848484848485" cy="630.6" r="4" fill="white" stroke="#81aa91" stroke-width="2"/>
+<circle cx="746.969696969697" cy="593.8" r="4" fill="white" stroke="#81aa91" stroke-width="2"/>
+<circle cx="775.4545454545455" cy="580.0" r="4" fill="white" stroke="#81aa91" stroke-width="2"/>
+<circle cx="803.939393939394" cy="580.0" r="4" fill="white" stroke="#81aa91" stroke-width="2"/>
+<circle cx="860.9090909090909" cy="580.0" r="4" fill="white" stroke="#81aa91" stroke-width="2"/>
+<circle cx="917.8787878787879" cy="589.2" r="4" fill="white" stroke="#81aa91" stroke-width="2"/>
+<circle cx="1031.8181818181818" cy="580.0" r="4" fill="white" stroke="#81aa91" stroke-width="2"/>
+<circle cx="1145.7575757575758" cy="580.0" r="4" fill="white" stroke="#81aa91" stroke-width="2"/>
+<path d="M 992 495 h 18" stroke="#81aa91" stroke-width="2.5"/>
+<text x="1017" y="499" class="label" >Sample maximum</text>
+<text x="60" y="782" class="label" >Readback includes SDK waiting and host buffer handling. TPU sampled approximately every 5 seconds.</text>
+</svg>

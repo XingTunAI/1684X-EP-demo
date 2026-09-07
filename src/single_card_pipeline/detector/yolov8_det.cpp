@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <cerrno>
+#include <chrono>
 
 namespace {
 class TransferLock {
@@ -45,8 +46,28 @@ const std::vector<std::vector<int>> colors = {
     {170, 0, 255},   {255, 0, 255},   {255, 0, 170},   {255, 0, 85},  {255, 0, 0},   {255, 0, 255}, {255, 85, 255},
     {255, 170, 255}, {255, 255, 255}, {170, 255, 255}, {85, 255, 255}};
 
+void YoloV8_det::prepare_output_buffers() {
+    if (!reuse_output_buffers || !resident_outputs.empty()) return;
+    if (misc_info.pcie_soc_mode != 0 || netinfo->is_dynamic || netinfo->stage_num != 1 ||
+        netinfo->input_num != 1 || netinfo->output_num != 1 || batch_size != 1 ||
+        netinfo->output_dtypes[0] != BM_FLOAT32 || netinfo->stages[0].output_shapes[0].num_dims != 3)
+        throw std::runtime_error("Output reuse requires static PCIe batch-1 model with one FP32 output");
+    const auto shape = netinfo->stages[0].output_shapes[0];
+    const int count = bmrt_shape_count(&shape);
+    if (count <= 0) throw std::runtime_error("Invalid output buffer size");
+    host_output_cache.resize(count);
+    ++host_output_allocations;
+    resident_outputs.resize(1);
+    if (!bmrt_tensor(&resident_outputs[0], bmrt, BM_FLOAT32, shape)) {
+        resident_outputs.clear();
+        throw std::runtime_error("Cannot allocate persistent output tensor");
+    }
+    ++device_output_allocations;
+}
+
 int YoloV8_det::Detect(const std::vector<bm_image>& input_images, std::vector<YoloV8BoxVec>& boxes) {
     assert(input_images.size() <= batch_size);
+    prepare_output_buffers();
     int ret = 0;
     bm_tensor_t input_tensor;
     std::vector<bm_tensor_t> output_tensors;
@@ -211,8 +232,16 @@ int YoloV8_det::forward(bm_tensor_t& input_tensor, std::vector<bm_tensor_t>& out
     // input_data.read((char*)input, 3*1024*1024*sizeof(float));
     // bm_memcpy_s2d(handle, input_tensor.device_mem, input);
 
-    bool ok = bmrt_launch_tensor(bmrt, netinfo->name, &input_tensor, netinfo->input_num,
-                    output_tensors.data(), netinfo->output_num);
+    bool ok;
+    if (reuse_output_buffers) {
+        output_tensors = resident_outputs;
+        ok = bmrt_launch_tensor_ex(bmrt, netinfo->name, &input_tensor, netinfo->input_num,
+                                  output_tensors.data(), netinfo->output_num, true, false);
+    } else {
+        ok = bmrt_launch_tensor(bmrt, netinfo->name, &input_tensor, netinfo->input_num,
+                               output_tensors.data(), netinfo->output_num);
+        if (ok) device_output_allocations += netinfo->output_num;
+    }
     assert(ok == true);
     auto ret = bm_thread_sync(handle);
     if (ret != BM_SUCCESS) {
@@ -234,6 +263,7 @@ float* YoloV8_det::get_cpu_data(bm_tensor_t* tensor, float scale){
     int ret = 0;
     float *pFP32 = NULL;
     int count = bmrt_shape_count(&tensor->shape);
+    output_allocation_ms = output_copy_ms = -1;
     if(misc_info.pcie_soc_mode == 1){ //soc
         if (tensor->dtype == BM_FLOAT32) {
             unsigned long long addr;
@@ -295,10 +325,25 @@ float* YoloV8_det::get_cpu_data(bm_tensor_t* tensor, float scale){
         }
     } else { //pcie
         if (tensor->dtype == BM_FLOAT32) {
-            pFP32 = new float[count];
-            assert(pFP32 != nullptr);
+            const auto begin = std::chrono::steady_clock::now();
+            if (reuse_output_buffers) {
+                if (count != static_cast<int>(host_output_cache.size()))
+                    throw std::runtime_error("Output shape changed; refusing undersized buffer");
+                pFP32 = host_output_cache.data();
+            } else {
+                pFP32 = new float[count];
+                ++host_output_allocations;
+            }
+            const auto allocated = std::chrono::steady_clock::now();
             ret = bm_memcpy_d2s_partial(handle, pFP32, tensor->device_mem, count * sizeof(float));
-            assert(BM_SUCCESS ==ret);
+            const auto copied = std::chrono::steady_clock::now();
+            output_allocation_ms = std::chrono::duration<double, std::milli>(allocated - begin).count();
+            output_copy_ms = std::chrono::duration<double, std::milli>(copied - allocated).count();
+            if (ret != BM_SUCCESS) {
+                if (!reuse_output_buffers) delete[] pFP32;
+                throw std::runtime_error("Output device-to-host copy failed");
+            }
+            output_copy_bytes += count * sizeof(float);
         } else if (BM_INT8 == tensor->dtype) {
             int8_t * pI8 = nullptr;
             int tensor_size = bmrt_tensor_bytesize(tensor);
@@ -478,10 +523,10 @@ int YoloV8_det::post_process(const std::vector<bm_image>& input_images,
         throw std::runtime_error("BMRuntime 操作失败");
     }
             }
-        } else {
+        } else if (!reuse_output_buffers) {
             delete [] tensor_data;
         }
-        bm_free_device(handle, output_tensors[i].device_mem);
+        if (!reuse_output_buffers) bm_free_device(handle, output_tensors[i].device_mem);
     }
     return 0;
 }

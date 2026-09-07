@@ -47,6 +47,9 @@ class YoloV8_det {
     bmcv_convert_to_attr converto_attr;
     TimeStamp tmp_ts;
     bool is_output_transposed = true;
+    std::vector<bm_tensor_t> resident_outputs;
+    std::vector<float> host_output_cache;
+    void prepare_output_buffers();
 
 private:
     int pre_process(const std::vector<bm_image>& images,
@@ -66,6 +69,10 @@ private:
     void NMS(YoloV8BoxVec& dets, float nmsConfidence);
     void clip_boxes(YoloV8BoxVec& yolobox_vec, int src_w, int src_h);
 public:
+    bool reuse_output_buffers = false;
+    size_t host_output_allocations = 0, device_output_allocations = 0;
+    size_t output_copy_bytes = 0;
+    double output_allocation_ms = -1, output_copy_ms = -1;
     std::string transfer_lock_path; // Empty disables the per-run transfer gate.
     int batch_size = -1;
     TimeStamp* m_ts = NULL;
@@ -145,6 +152,7 @@ public:
         m_ts = &tmp_ts;
     }
     ~YoloV8_det(){
+        for (auto& tensor : resident_outputs) bm_free_device(handle, tensor.device_mem);
         if (bmrt!=NULL) {
             bmrt_destroy(bmrt);
             bmrt = NULL;

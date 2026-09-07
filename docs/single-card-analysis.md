@@ -1,17 +1,22 @@
 # 单卡解码＋推理压测操作
 
+[路数递增测试与 TPU 曲线](analysis-ladder-20260907.md)：从 1 路逐档增加到 32 路，本轮最高总吞吐出现在 8 路（143.22 FPS）。
+
 以下路径均相对于工程根目录。硬件测试命令在设备执行。当前 32 路优化测试已完成，总平均 114.10 FPS、平均每路 3.57 FPS。详见[演示总览](demo-summary-20260907.md)、[优化结论](analysis-optimization-20260907.md)和[报告阅读指南](benchmark-report-guide.md)。
 
 ## 当前默认：只测性能
 
 默认不以 25 FPS 判定通过/失败。25 FPS 是输入视频的源帧率，报告记录每路实际帧率、最低统计窗口、处理耗时和运行异常。正常完成显示 `measured`（测量完成），不等于验收通过。只有显式加 `--acceptance`，才应用历史 FPS 和计划落后门槛。
 
-本次 32 路摸底命令：
+从单路开始逐档增加，观察吞吐和每路帧率变化：
 
 ```bash
-bash scripts/run_single_card_analysis_auto.sh --device 1 --steps 32 \
-  --measure-only --image-path device-bgr --warmup 180 --duration 120 --window 60 --stall-timeout 180
+bash scripts/run_single_card_analysis_auto.sh --device 1 \
+  --steps 1,2,4,6,8,12,16,24,32 --measure-only --image-path device-bgr \
+  --warmup 30 --duration 60 --window 30 --stall-timeout 180
 ```
+
+每档测试结束并收尾全部进程后再启动下一档，预计共约 14 分钟。先用短测寻找吞吐变化区间，再对选定档位延长采集时间。
 
 analysis 默认采用设备内 BGR 转换路径 `device-bgr`，已完成单路及 32 路对照，详见[优化结论](analysis-optimization-20260907.md)。`--image-path bgr` 保留原路径作为对照。直接 YUV 路径通过 `--image-path yuv` 选择，目前处于验证阶段，只支持 analysis 模式，不作为默认优化。逐帧结果包含图像交付、预处理、推理调用及同步、后处理耗时，并细分回传排队、输出读取和 CPU 后处理；这些分项也保存在 `streams.csv`。暂不支持 batch 4。
 

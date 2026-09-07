@@ -36,6 +36,7 @@ int main(int argc, char** argv) {
         "{mode|encode|analysis or encode}"
         "{image_path|bgr|bgr baseline, yuv, or device-bgr}"
         "{transfer_lock||optional per-run output transfer gate file}"
+        "{output_buffer|baseline|baseline or reuse}"
         "{fps|25|source/analysis/output target FPS}{bitrate|4000|output kbps}"
         "{conf|0.25|confidence}{nms|0.7|NMS}");
     if (args.has("help")) { args.printMessage(); return 0; }
@@ -63,6 +64,9 @@ int main(int argc, char** argv) {
         if (access((output + "/output.mp4").c_str(), F_OK) == 0)
             throw std::runtime_error("Refusing to overwrite existing video");
         YoloV8_det net(model, names, device, args.get<float>("conf"), args.get<float>("nms"));
+        const auto output_buffer = args.get<std::string>("output_buffer");
+        if (output_buffer != "baseline" && output_buffer != "reuse") throw std::runtime_error("Invalid output_buffer");
+        net.reuse_output_buffers = output_buffer == "reuse";
         net.transfer_lock_path = args.get<std::string>("transfer_lock");
         if (net.batch_size != 1) throw std::runtime_error("This baseline requires a 1-batch model");
         cv::VideoCapture cap(input, cv::CAP_FFMPEG, device);
@@ -150,6 +154,8 @@ int main(int argc, char** argv) {
                            {"analysis_ms", ms(after_decode, after_detect)},
                            {"image_bridge_ms", ms(after_decode, after_bridge)},
                            {"preprocess_ms", pre_ms}, {"inference_ms", infer_ms}, {"postprocess_ms", post_ms},
+                           {"output_allocation_ms", net.output_allocation_ms < 0 ? json(nullptr) : json(net.output_allocation_ms)},
+                           {"output_copy_ms", net.output_copy_ms < 0 ? json(nullptr) : json(net.output_copy_ms)},
                            {"transfer_wait_ms", transfer_wait_ms}, {"output_transfer_ms", transfer_ms}, {"cpu_postprocess_ms", cpu_post_ms},
                            {"draw_ms", encode ? json(ms(after_detect, after_draw)) : json(nullptr)},
                            {"encode_submit_ms", encode ? json(ms(after_draw, after_write)) : json(nullptr)},
@@ -167,7 +173,10 @@ int main(int argc, char** argv) {
         std::ofstream summary(output + "/worker_summary.json");
         summary << json({{"frames_analyzed", frame}, {"frames_submitted", encode ? frame : 0},
                          {"mode", mode},
-                         {"image_path", image_path},
+                         {"image_path", image_path}, {"output_buffer", output_buffer},
+                         {"host_output_allocations", net.host_output_allocations},
+                         {"device_output_allocations", net.device_output_allocations},
+                         {"output_copy_bytes", net.output_copy_bytes},
                          {"device", device}, {"bitrate_kbps", bitrate},
                          {"target_fps", fps}, {"shutdown", "signal"}}).dump(2);
         if (!summary) throw std::runtime_error("Cannot save worker summary");

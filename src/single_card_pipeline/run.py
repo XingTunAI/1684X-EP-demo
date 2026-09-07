@@ -32,7 +32,7 @@ def verify_outputs(directory, result, a):
             records = 0
             services, lateness = [], []
             stages = {key: [] for key in ('decode_ms', 'analysis_ms', 'image_bridge_ms',
-                      'preprocess_ms', 'inference_ms', 'postprocess_ms', 'transfer_wait_ms', 'output_transfer_ms', 'cpu_postprocess_ms', 'draw_ms', 'encode_submit_ms')}
+                      'preprocess_ms', 'inference_ms', 'postprocess_ms', 'output_allocation_ms', 'output_copy_ms', 'transfer_wait_ms', 'output_transfer_ms', 'cpu_postprocess_ms', 'draw_ms', 'encode_submit_ms')}
             with (stream / 'detections.jsonl').open(encoding='utf-8') as records_file:
                 for line in records_file:
                     row = json.loads(line)
@@ -58,7 +58,12 @@ def verify_outputs(directory, result, a):
                           'service_p95_ms': services[max(0, math.ceil(len(services)*0.95)-1)] if services else None,
                           'max_schedule_lateness_ms': max(lateness) if lateness else None,
                           'mean_stage_ms': {key: sum(values)/len(values) if values else None for key, values in stages.items()}})
+            entry['buffer_management'] = {k: worker.get(k) for k in ('output_buffer', 'host_output_allocations', 'device_output_allocations', 'output_copy_bytes')}
             entry['ok'] = records == worker['frames_analyzed'] and records > 0
+            if hasattr(a, 'output_buffer'):
+                entry['ok'] = entry['ok'] and worker.get('output_buffer') == a.output_buffer
+                if a.output_buffer == 'reuse':
+                    entry['ok'] = entry['ok'] and worker.get('host_output_allocations') == 1 and worker.get('device_output_allocations') == 1
             if encode:
                 entry['ok'] = (entry['ok'] and records == worker['frames_submitted'] == encoded and
                                meta['codec_name'] == 'h264' and (meta['width'], meta['height']) == (1920, 1080))
@@ -91,6 +96,7 @@ def main(argv=None):
     parser.add_argument('--bmodel', type=Path, required=True)
     parser.add_argument('--classnames', type=Path, default=ROOT / 'third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/coco.names')
     parser.add_argument('--app', type=Path, default=ROOT / 'src/single_card_pipeline/build/pipeline_worker.pcie')
+    parser.add_argument('--output-buffer', choices=('baseline', 'reuse'), default='baseline', help='Reuse host and device output buffers (experimental)')
     parser.add_argument('--transfer-slots', type=int, default=0, help='Experimental concurrent output transfers; 0 disables gate')
     parser.add_argument('--bitrate', type=int, default=4000, help='H264 output kbps per stream')
     parser.add_argument('--mode', choices=('analysis', 'encode'), default='encode')
@@ -107,6 +113,7 @@ def main(argv=None):
     # The runner applies its own output integrity and optional FPS/schedule policy.
     a.measure_only = False
     a.mode = extra.mode
+    a.output_buffer = extra.output_buffer
     if extra.image_path != 'bgr' and a.mode != 'analysis':
         parser.error('device image paths support analysis mode only')
     if a.throughput or any('://' in x for x in a.sources):
@@ -121,7 +128,7 @@ def main(argv=None):
         return [str(extra.app.resolve()), f'--input={source}', f'--bmodel={extra.bmodel.resolve()}',
                 f'--classnames={extra.classnames.resolve()}', f'--device={a.device}',
                 f'--output={stream.resolve()}', f'--fps={a.target_fps}', f'--bitrate={extra.bitrate}',
-                f'--mode={a.mode}', f'--image_path={extra.image_path}'] + ([
+                f'--mode={a.mode}', f'--image_path={extra.image_path}', f'--output_buffer={extra.output_buffer}'] + ([
                 '--transfer_lock=' + str((stream.parent / ('transfer_%02d.lock' % (int(stream.name.rsplit('_', 1)[1]) % extra.transfer_slots))).resolve())
                 ] if extra.transfer_slots else [])
     if a.dry_run:

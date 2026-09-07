@@ -54,6 +54,8 @@ def write_report(directory, state):
                    'postprocess_mean_ms': timing.get('postprocess_ms'),
                    'transfer_wait_mean_ms': timing.get('transfer_wait_ms'),
                    'output_transfer_mean_ms': timing.get('output_transfer_ms'),
+                   'output_allocation_mean_ms': timing.get('output_allocation_ms'),
+                   'output_copy_mean_ms': timing.get('output_copy_ms'),
                    'cpu_postprocess_mean_ms': timing.get('cpu_postprocess_ms'),
                    'draw_mean_ms': timing.get('draw_ms'), 'encode_submit_mean_ms': timing.get('encode_submit_ms'),
                    'output_ok': detail.get('ok', False)}
@@ -82,7 +84,7 @@ def write_report(directory, state):
     csv_file(directory / 'streams.csv', ['streams', 'stream_id', 'average_fps', 'minimum_window_fps',
              'below_threshold_windows', 'service_p95_ms', 'max_schedule_lateness_ms', 'decode_mean_ms',
              'analysis_mean_ms', 'image_bridge_mean_ms', 'preprocess_mean_ms', 'inference_mean_ms',
-             'postprocess_mean_ms', 'transfer_wait_mean_ms', 'output_transfer_mean_ms', 'cpu_postprocess_mean_ms', 'draw_mean_ms', 'encode_submit_mean_ms', 'output_ok'], rows)
+             'postprocess_mean_ms', 'transfer_wait_mean_ms', 'output_transfer_mean_ms', 'output_allocation_mean_ms', 'output_copy_mean_ms', 'cpu_postprocess_mean_ms', 'draw_mean_ms', 'encode_submit_mean_ms', 'output_ok'], rows)
     csv_file(directory / 'windows.csv', ['streams', 'window', 'start_seconds', 'seconds', 'total_fps',
              'minimum_stream_fps', 'below_threshold_streams'], windows)
     save(directory / 'run_state.json', json.dumps(state, ensure_ascii=False, indent=2))
@@ -93,6 +95,7 @@ def write_report(directory, state):
              f'- 软件设备编号：{a["device"]}；每路独立进程和模型实例；batch 1。',
              f'- 模型：`{Path(extra["bmodel"]).name}`；SHA-256：`{metadata["model_sha256"]}`。',
              f'- 输入：`{Path(a["sources"][0]).name}`；1920×1080、{a["target_fps"]} FPS；本地限速、每帧推理。',
+             f'- 输出缓冲：{extra.get("output_buffer", "baseline")}。',
              f'- 图像路径：{extra.get("image_path", "bgr")}；回传并发槽：{extra.get("transfer_slots", 0)}（0 为不限）。',
              f'- 档位：{a["steps"]}；预热 {a["warmup"]} 秒；采集 {a["duration"]} 秒。',
              ('- 性能摸底：不应用 FPS 或计划落后验收门槛；检查输出完整性和正常收尾。' if measure_only else f'- 门槛：每路每个窗口 ≥{threshold} FPS；计划落后 ≤{extra["max_lateness_ms"]} ms；输出完整、正常收尾。'), '',

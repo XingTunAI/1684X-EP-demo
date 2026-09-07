@@ -24,13 +24,15 @@ class VerificationTests(unittest.TestCase):
         pipeline.evaluate_result(result, [{'ok': True, 'max_schedule_lateness_ms': 60000}], 1, False, 1000)
         self.assertEqual(result['status'], 'fail')
 
-    def check(self, encoded=2, frames=(0, 1), summary=True, mode='encode'):
+    def check(self, encoded=2, frames=(0, 1), summary=True, mode='encode', buffer_mode=None, allocations=1):
         with tempfile.TemporaryDirectory() as tmp:
             stream = Path(tmp) / 'stream_00'
             stream.mkdir()
             if summary:
                 (stream / 'worker_summary.json').write_text(json.dumps({'frames_analyzed': 2,
-                    'frames_submitted': 2 if mode == 'encode' else 0, 'mode': mode}))
+                    'frames_submitted': 2 if mode == 'encode' else 0, 'mode': mode,
+                    'output_buffer': buffer_mode, 'host_output_allocations': allocations,
+                    'device_output_allocations': allocations}))
             with (stream / 'detections.jsonl').open('w') as out:
                 for frame in frames:
                     out.write(json.dumps({'frame': frame, 'completed_monotonic_s': 11 + frame,
@@ -42,10 +44,19 @@ class VerificationTests(unittest.TestCase):
                                'height': 1080, 'nb_read_frames': str(encoded)}]})
             with patch.object(pipeline.bench, 'capture', return_value=probe) as capture:
                 result = pipeline.verify_outputs(Path(tmp), {'measure_start_monotonic': 10,
-                    'measure_end_monotonic': 20}, SimpleNamespace(ffprobe='ffprobe', duration=10, warmup=5, mode=mode))[0]
+                    'measure_end_monotonic': 20}, SimpleNamespace(ffprobe='ffprobe', duration=10, warmup=5, mode=mode,
+                        **({'output_buffer': buffer_mode} if buffer_mode else {})))[0]
                 if mode == 'analysis':
                     capture.assert_not_called()
                 return result
+
+    def test_reuse_output_buffers_checked(self):
+        result = self.check(mode='analysis', buffer_mode='reuse')
+        self.assertTrue(result['ok'])
+        self.assertEqual(result['buffer_management']['host_output_allocations'], 1)
+
+    def test_reuse_rejects_repeated_allocations(self):
+        self.assertFalse(self.check(mode='analysis', buffer_mode='reuse', allocations=2)['ok'])
 
     def test_matching_outputs(self):
         result = self.check()

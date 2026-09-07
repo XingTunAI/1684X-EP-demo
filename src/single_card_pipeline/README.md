@@ -1,6 +1,6 @@
 # 单卡视频分析压测 Demo
 
-当前默认采用性能摸底，不应用 FPS 或计划落后验收门槛，正常完成状态为 `measured`。低帧率继续后续档位，运行异常/结果不完整则停止。历史验收模式需显式 `--acceptance`。32 路命令见[操作文档](../../docs/single-card-analysis.md)。新增分阶段统计，analysis 默认使用已完成 32 路对照的 `device-bgr` 图像路径；`bgr` 保留原路径，`yuv` 保留实验路径。
+当前默认采用性能摸底，不应用 FPS 或计划落后验收门槛，正常完成状态为 `measured`。低帧率继续后续档位，运行异常/结果不完整则停止。历史验收模式需显式 `--acceptance`。从 1 路开始的逐档测试命令见[操作文档](../../docs/single-card-analysis.md)。新增分阶段统计，analysis 默认使用已完成 32 路对照的 `device-bgr` 图像路径；`bgr` 保留原路径，`yuv` 保留实验路径。
 
 180 秒预热、120 秒采集的 32 路结果为总平均 114.10 FPS、平均每路 3.57 FPS，见[优化结论](../../docs/analysis-optimization-20260907.md)。报告含义见[阅读指南](../../docs/benchmark-report-guide.md)，功能与配置见[演示总览](../../docs/demo-summary-20260907.md)。
 
@@ -86,3 +86,7 @@ python3 -m unittest discover -s src/single_card_pipeline/tests -v
 ## 输出回传诊断
 
 `--transfer-slots 0`（默认）不限回传并发；正数按流编号分配回传槽。32 路短测中 4/8 槽未提高总吞吐，因此保留为实验参数。报告新增回传排队、输出读取和 CPU 后处理子项，详见[并发对照](../../docs/analysis-transfer-20260907.md)。检测器适配代码及版权信息位于 [detector](detector/README.md)。
+
+## 输出缓冲区复用
+
+`--output-buffer baseline` 保留默认分配方式；`--output-buffer reuse` 在首次处理时申请主机和卡端输出缓冲并在后续帧复用。限定静态 PCIe batch 1 单个三维 FP32 输出，其他配置会报错。结果和申请次数由验证器检查。[1/8 路对照](../../docs/analysis-buffer-reuse-20260907.md)未观察到吞吐提升，因此未更改默认值。

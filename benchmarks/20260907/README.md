@@ -12,3 +12,7 @@
 - [20260907_160325_104361](20260907_160325_104361/stages.csv)：解码＋推理；[32] 路。
 
 文件：stages.csv 为档位汇总；streams.csv 为逐路数据；windows.csv（如有）与 measurements.json 为窗口统计。原始逐帧 JSON 和 SDK 日志由运行脚本写入 results/，不包含在此精简数据集中。
+
+- [1～32 路阶梯与 TPU 曲线](../../docs/analysis-ladder-20260907.md)：[统计 CSV](20260907_162215_109913/ladder.csv)、[曲线](20260907_162215_109913/ladder.svg)。
+
+- [输出缓冲复用对照](../../docs/analysis-buffer-reuse-20260907.md)：[逐路计时](20260907_164350_116438/streams.csv)。
