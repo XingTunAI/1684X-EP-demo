@@ -1,5 +1,9 @@
 # 使用文档
 
+## 当前单卡 Demo 入口（2026-09-07）
+
+已准备好板端环境时，直接使用[纯解码操作](single-card-decode.md)或[解码＋推理操作](single-card-analysis.md)。两者均默认只测性能，分别默认 device 0 和 device 1；复测建议显式写设备号。结果和演示进度见[总览](demo-summary-20260907.md)，输出解释见[报告指南](benchmark-report-guide.md)。下面保留新环境准备及官方样例使用方法，不代表单卡压测包含实时显示或 RTSP 输出。
+
 ## 1. 准备官方 demo
 
 如果环境中还没有 `third_party/sophon-demo`，在仓库根目录执行：

@@ -1,6 +1,6 @@
 # 单卡解码＋推理压测操作
 
-以下路径均相对于工程根目录。硬件测试命令在设备执行。
+以下路径均相对于工程根目录。硬件测试命令在设备执行。当前 32 路优化测试已完成，总平均 114.10 FPS、平均每路 3.57 FPS。详见[演示总览](demo-summary-20260907.md)、[优化结论](analysis-optimization-20260907.md)和[报告阅读指南](benchmark-report-guide.md)。
 
 ## 当前默认：只测性能
 
@@ -75,11 +75,11 @@ tail -f results/analysis_console.log
 | 文件 | 主要用途 |
 |---|---|
 | `report.md` | 中文汇总、逐路 FPS、分阶段耗时、失败项 |
-| `stages.csv` | 每档总 FPS、最差窗口、未达标路数 |
+| `stages.csv` | 每档总 FPS、最差窗口；门槛字段默认不判定 |
 | `streams.csv` | 每路加权平均 FPS、最低窗口、处理 P95、最大计划落后 |
-| `windows.csv` | 各窗口总 FPS、最低逐路 FPS、未达标路数 |
+| `windows.csv` | 各窗口总 FPS、最低逐路 FPS；门槛字段默认不判定 |
 | `config.json` | 参数、视频元数据、FFmpeg 版本、模型路径和 SHA-256 |
-| `summary.json` | 完整验收判断及输出核对 |
+| `summary.json` | 最终测量状态、可选验收判断及输出核对 |
 | `step_XX/stream_XX/detections.jsonl` | 每帧检测框、分阶段耗时、计划落后 |
 | `step_XX/stream_XX/worker_summary.json` | 正常收尾后的完成帧数、模式 |
 | `step_XX/monitor.jsonl`、逐路 `stderr.log` | 资源采样和 SDK 日志 |
@@ -94,6 +94,7 @@ tail -f results/analysis_console.log
 
 ```powershell
 # 先在 PowerShell 中进入工程根目录
+New-Item -ItemType Directory -Force results/board-analysis | Out-Null
 adb -s bf43cc5e0819e5ad pull /home/linaro/1684X-EP-demo/results/analysis/<测试编号> results/board-analysis/
 ```
 
@@ -103,7 +104,7 @@ adb -s bf43cc5e0819e5ad pull /home/linaro/1684X-EP-demo/results/analysis/<测试
 
 加入画框与 H.264 编码可使用 `--mode encode`，结果转存到 `results/pipeline/`。该模式会持续写视频并检查磁盘空间，需重新测量，成绩不能与本阶段混用。完整说明见[源码 Demo](../src/single_card_pipeline/README.md)。
 
-本阶段没有验证真实摄像头网络接入、算法精度、多流 batch 或共享模型。先报告当前实现的实测性能，再决定图像搬运、推理实现、并发方式及多卡分配的优化工作。
+本阶段没有验证真实摄像头网络接入、算法精度、多流 batch 或共享模型。当前单卡演示和图像路径优化已完成。本阶段不追加抽帧、实时显示或客户素材测试，后续工作按新的业务要求另行确定。
 
 ## 独立模型计算对照
 

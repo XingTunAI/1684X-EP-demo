@@ -1,127 +1,99 @@
-# 3588 + BM1684X EP Demo
+# RK3588 + BM1684X EP Demo
 
-本仓库提供面向 `RK3588 主机 + 多张 BM1684X PCIe 从卡` 场景的 YOLO 视频分析演示工程，用于验证多卡设备识别、任务分配、模型推理、视频结果输出和 HDMI 展示能力。
+本仓库演示 RK3588 主机通过 PCIe 调用 BM1684X 进行视频解码与 YOLO 目标检测，包含单卡自动压测、图像路径优化及已有多卡功能验证代码。当前阶段以 **单卡性能摸底与 Demo 演示** 为主，更新至 2026-09-07。
 
-## 参考资源
+先读[演示总览与当前进度](docs/demo-summary-20260907.md)，运行看[纯解码操作](docs/single-card-decode.md)或[解码＋推理操作](docs/single-card-analysis.md)，查看输出看[报告阅读指南](docs/benchmark-report-guide.md)。
 
-- 官方资料入口：https://developer.sophgo.com/site/index/material/all/all.html
-- 官方 GitHub：https://github.com/sophgo
-- 官方 demo 仓库：`third_party/sophon-demo`
+## 当前已完成
 
-## 文档
+| 项目 | 实测结果 | 范围 |
+|---|---|---|
+| 单卡 32 路纯解码 | 总平均 815.21 FPS，最低逐路窗口 23.26 FPS | device 1，1080p25 H.264，短测 |
+| 单卡 30 路纯解码，正式采集 15 分钟 | 总平均 749.96 FPS，最低逐路窗口 22.59 FPS | 有一个统计窗口波动，历史帧率验收未通过 |
+| 单卡 32 路解码＋推理 | **总平均 114.10 FPS，平均每路 3.57 FPS** | YOLOv8s INT8 batch 1，预热 180 秒、正式采集约 120 秒 |
+| 图像路径优化 | 总吞吐约为原 BGR 路径的 **3.49 倍** | 34,006 条检测列表与原路径对应帧一致 |
+| 独立模型计算 | batch 1：354.50 图/秒；batch 4：370.11 图/秒 | 两者 TPU 采样峰值 100%，不含完整视频链路 |
+| 调度与结果检查 | 解码 18 项、流水线 10 项测试通过 | 不代表生产容量或算法精度验收 |
 
-- [当前 Demo 演示说明、实测结果与进度](docs/demo-summary-20260907.md)
-- [Demo 设计说明](docs/demo-design.md)
-- [使用文档](docs/usage.md)
-- [操作记录](docs/operation-log.md)
-- [验证参考](docs/roadmap.md)
-- [单进程多卡并发验证](docs/single-process-multicard.md)
-- [板端状态记录](docs/board-status.md)
-- [YOLOv8 跑通准备文档](docs/run-yolo.md)
-- [HDMI/XFCE 显示说明](docs/hdmi-display.md)
-- [单卡 1080P/25 FPS 解码压测](docs/single-card-decode.md)
-- [单卡解码测试结论（2026-09-07）](docs/decode-results-20260907.md)
-- [单卡解码＋推理压测操作](docs/single-card-analysis.md)
-- [单卡解码＋推理实测结论（2026-09-07）](docs/analysis-results-20260907.md)
-- [32 路分析与图像路径优化对照](docs/analysis-optimization-20260907.md)
-- [单卡完整链路压测：解码、推理、编码与检测结果](src/single_card_pipeline/README.md)
-- [本地压测视频与来源](docs/test-media.md)
+上述视频使用同一份 BBB 动画素材复制为多路本地输入，不是 32 路摄像头。纯解码、完整分析、独立模型计算是不同测试，不能互相替代。当前分析每帧执行，处理慢时会落后输入计划；未实现抽帧，也不包含实时画框显示或编码。实际客户容量取决于模型、输入规格、分析频率和输出要求。
 
-## 仓库结构
+默认只记录性能，完成为 `measured`，不以每路 25 FPS 判通过/失败。运行异常仍会停止测试。旧报告保留原门槛与状态。当前 Demo 阶段已收尾，多卡联合容量、客户业务精度、抽帧和实时显示不在本轮实测范围内。
+
+## 快速运行
+
+以下命令在已准备好 SDK、素材与模型的 RK3588 工程根目录运行。新环境先看[环境与官方样例准备](docs/usage.md)、[模型准备](docs/run-yolo.md)和[素材说明](docs/test-media.md)。第三方 SDK、模型、视频和历史结果不随 Git 克隆下载。
+
+物理卡 1 对应软件 `device 1`（PCIe 3.0 ×1）；物理卡 2 对应 `device 0`（PCIe 2.0 ×1）。示例显式指定 device 1。同一张卡上的测试依次执行，避免相互干扰。
+
+```bash
+# 单卡 32 路纯解码，约 3 分钟
+bash scripts/run_single_card_decode_auto.sh --device 1 --steps 32
+
+# 编译解码＋推理 worker（新环境或源码更新后）
+cmake -S src/single_card_pipeline -B src/single_card_pipeline/build
+cmake --build src/single_card_pipeline/build -j2
+
+# 单卡 32 路解码＋推理，约 5 分钟
+bash scripts/run_single_card_analysis_auto.sh --device 1 --steps 32 \
+  --measure-only --image-path device-bgr \
+  --warmup 180 --duration 120 --window 60 --stall-timeout 180
+
+# 独立模型计算，在同卡视频测试结束后执行
+python3 scripts/run_single_card_tpu_bench.py --device 1
+```
+
+| 不带覆盖参数的一键入口 | 默认设备与档位 | 默认素材 |
+|---|---|---|
+| run_single_card_decode_auto.sh | device 0；8/16/24/32 路 | 596.44 秒短视频 |
+| run_single_card_analysis_auto.sh | device 1；1/2/4/8 路 | 连续 20 分钟视频 |
+
+30 路 15 分钟解码复测要显式选择 20 分钟素材，完整命令见[纯解码操作](docs/single-card-decode.md)。短素材循环附近曾发生错误，不能在长测中忽略该边界。
+
+## 看报告与交付内容
+
+控制台打印唯一 Results 目录。`report.md` 在开始、每档结束和收尾时更新；单档未结束时等待最终数据属于正常状态。先读报告，再查逐路 CSV 和原始日志。纯解码当前自动生成器不输出 windows.csv，逐窗口数据保存在 summary.json 中；分析模式会自动生成 windows.csv。
+
+| 内容 | 设备工程内路径 | 本地归档路径 |
+|---|---|---|
+| 解码结果 | results/decode/测试编号/ | results/board-auto/测试编号/ |
+| 分析结果 | results/analysis/测试编号/ | results/board-analysis/测试编号/ |
+| 独立计算 | results/tpu/测试编号/ | results/board-tpu/测试编号/ |
+
+代码、脚本和结论文档提交仓库；`results/`、`datasets/`、模型及第三方依赖按 .gitignore 单独保留和传输。Git 中的结论文档包含实测摘要；仅克隆仓库时不能直接打开未随仓库分发的原始结果链接。
+
+## 文档索引
+
+| 用途 | 文档 |
+|---|---|
+| 演示说明、结果与进度 | [Demo 总览](docs/demo-summary-20260907.md) |
+| 纯解码复测 | [操作说明](docs/single-card-decode.md) / [源码入口](src/single_card_decode/README.md) / [实测结论](docs/decode-results-20260907.md) |
+| 解码＋推理复测 | [操作说明](docs/single-card-analysis.md) / [源码与 encode 模式](src/single_card_pipeline/README.md) |
+| 分析优化与计算对照 | [最新优化结论](docs/analysis-optimization-20260907.md) / [优化前单路基线](docs/analysis-results-20260907.md) |
+| 报告、CSV、状态与资源解释 | [报告阅读指南](docs/benchmark-report-guide.md) |
+| 视频与模型校验、同步 | [素材说明](docs/test-media.md) |
+| 环境安装、官方样例 | [使用文档](docs/usage.md) / [模型准备](docs/run-yolo.md) / [硬件参考](docs/board-status.md) |
+| 多卡功能验证 | [单进程多卡验证](docs/single-process-multicard.md) / [源码说明](src/README.md) |
+| 历史设计与显示参考 | [设计说明](docs/demo-design.md) / [HDMI 说明](docs/hdmi-display.md) / [验证参考](docs/roadmap.md) |
+| 操作历史 | [操作记录](docs/operation-log.md) |
+
+## 工程结构
 
 ```text
 .
-├── configs/                  # demo 配置文件
-├── docs/                     # 设计、使用、操作记录、验证参考
-├── scripts/                  # 板端安装和辅助脚本
-├── src/                      # 自研 C++/Web demo 代码
-├── third_party/              # 外部官方参考仓库，本地保留但不提交
-├── tools/                    # 工具脚本
-├── .gitignore
-└── README.md
+├── configs/                      # 现有多卡样例配置
+├── docs/                         # 操作、结论、演示与历史参考
+├── scripts/                      # 一键压测、编译和环境辅助入口
+├── src/
+│   ├── single_card_decode/       # 纯解码调度与报告
+│   ├── single_card_pipeline/     # 分析 worker、可选编码模式与报告
+│   ├── yolov8_bmcv/              # 官方样例的设备绑定修复
+│   └── yolov8_multicard/         # 已有单进程多卡功能验证
+├── tools/                        # 辅助脚本与兼容入口
+├── third_party/sophon-demo/      # 官方依赖，单独准备
+├── datasets/                     # 素材，不提交 Git
+└── results/                      # 原始运行结果，不提交 Git
 ```
 
-`third_party/sophon-demo/` 是外部官方参考仓库，已在 `.gitignore` 中排除。
+已有官方样例修复及多卡验证保持可用，相关指令见各自文档；其设备数量和测试条件按对应历史记录解释，不视为本轮 32 路单卡测试已验证多卡容量。实时显示相关文件为独立样例参考，不包含在当前压测吞吐数字中。
 
-## 演示方案
-
-推荐采用多路视频 AI 分析方案：
-
-1. RK3588 作为主机，系统里安装 BM1684X PCIe 驱动和 SOPHON SDK 运行库。
-2. 每张 BM1684X 从卡负责一路或多路视频。
-3. 视频在 1684X 上解码，BMCV 做预处理，BMRuntime/SAIL 跑 YOLOv8/YOLOv5，最后把检测框画回视频并编码输出。
-4. 使用 `bm-smi` 展示多张 BM1684X 的 TPU 利用率、内存、温度和功耗；视频编解码链路通过程序日志和输出文件验证。
-
-## 官方样例选择
-
-- `third_party/sophon-demo/sample/YOLOv8_plus_det`
-  - 推荐作为模型推理基础样例。
-  - 支持 BM1684X。
-  - 当前只使用 C++ 版作为验证主线；官方 Python 版仅作参考，暂不作为执行路径。
-  - C++ 参数里已有 `--dev_id`，适合单卡和多卡手动验证。
-- `third_party/sophon-demo/tutorial/yolov8_ffmpeg_encode`
-  - 推荐作为端到端视频链路基础样例。
-  - 流程是 `ffmpeg decode + bmcv preprocess + bmrt yolov8 inference + cpu postprocess + bmcv rectangle + ffmpeg encode`。
-- `third_party/sophon-demo/application/YOLOv8_multi_QT`
-  - 可作为多路视频显示或展台 UI 参考。
-  - 配置里已有 `dev_id`。
-
-## 快速验证
-
-单卡纯解码自动压测在 RK3588 上执行 `bash scripts/run_single_card_decode_auto.sh`：默认按 8/16/24/32 路加压，输出 Markdown 报告、逐路 CSV 和原始 JSON。说明见[单卡解码压测](src/single_card_decode/README.md)。
-
-可先运行 C++ 版样例，确认 RK3588 能够调用 BM1684X，并避开 Python `sophon.sail` 依赖：
-
-```bash
-cd third_party/sophon-demo/sample/YOLOv8_plus_det
-chmod -R +x scripts/
-./scripts/download.sh --BM1684X
-cd cpp/yolov8_bmcv
-mkdir -p build && cd build
-cmake ..
-make -j$(nproc)
-cd ..
-./yolov8_bmcv.pcie \
-  --input=../../datasets/test_car_person_1080P.mp4 \
-  --bmodel=../../models/BM1684X/yolov8s_fp32_1b.bmodel \
-  --dev_id=0 \
-  --conf_thresh=0.25 \
-  --nms_thresh=0.7 \
-  --classnames=../../datasets/coco.names
-```
-
-多卡验证可以使用本仓库提供的启动器：
-
-```bash
-python3 tools/run_multicard_yolov8.py \
-  --demo-dir "third_party/sophon-demo/sample/YOLOv8_plus_det" \
-  --devices '1|2|primary|0001:11:00.0|Gen3_x1,0|1|secondary|0004:41:00.0|Gen2_x1' \
-  --input datasets/test_car_person_1080P.mp4,datasets/test_car_person_1080P.mp4 \
-  --bmodel models/BM1684X/yolov8s_fp32_1b.bmodel
-```
-
-注意：这里的 `tools/run_multicard_yolov8.py` 只是启动多个 C++ 可执行文件的调度脚本，不调用官方 Python 推理 demo，也不依赖 `sophon.sail`。
-
-参考硬件拓扑中两张设备链路能力不同：`dev_id 1` 为 Gen3 主卡，`dev_id 0` 为 Gen2 副卡。多路任务应通过 `--devices` 的权重和任务顺序指定，例如主路优先分配给 `dev_id 1`。
-
-## 展示内容
-
-演示时建议包含以下内容：
-
-- 多路视频窗口：展示每路视频检测框和 FPS。
-- 设备监控窗口：`bm-smi` 展示每张 1684X 的 TPU 利用率、内存、温度和功耗。
-- 输出流或文件：展示推理后视频可以重新编码输出，如 RTSP 或 `output.mp4`。
-
-在 XFCE/Xorg 桌面环境中，官方 YOLOv8 C++ 样例可先生成带框视频文件，再播放到 HDMI：
-
-```bash
-bash scripts/play_yolov8_hdmi.sh \
-  "$SOPHON_DEMO_DIR/sample/YOLOv8_plus_det/cpp/yolov8_bmcv/results/output.mp4"
-```
-
-## 当前状态
-
-- 已在真实 RK3588 + BM1684X EP 环境上安装 SOPHON SDK，并跑通单卡 YOLOv8 C++ 推理。
-- 已确认 `bm-smi` 能枚举两张 BM1684X PCIe 从卡。
-- 已完成双卡并发验证，`dev_id=1` 主卡和 `dev_id=0` 副卡均可运行 `yolov8_bmcv.pcie`。
-- 已修复卡 1 视频写出阶段的 BMCV handle 不一致问题，仓库内置修复后的 `src/yolov8_bmcv/main.cpp`。
+官方参考：[资料入口](https://developer.sophgo.com/site/index/material/all/all.html)、[SOPHGO GitHub](https://github.com/sophgo)。

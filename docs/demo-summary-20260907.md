@@ -80,6 +80,8 @@ python3 scripts/run_single_card_tpu_bench.py --device 1 --calculate-times 5000
 
 ## 报告与原始结果入口
 
+文件含义、统计方法、状态和资源解读统一见[报告阅读指南](benchmark-report-guide.md)。
+
 | 内容 | 操作文档或结论 | 本地原始结果目录（工程内） |
 |---|---|---|
 | 解码 | [操作](single-card-decode.md) / [测试结论](decode-results-20260907.md) | `results/board-auto/` |

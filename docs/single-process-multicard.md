@@ -1,5 +1,7 @@
 # 单进程多卡并发验证
 
+本页保留已有单进程多卡功能验证，设备数量、路径和条件按本页证据解释；它不是当前单卡 32 路压测，也不证明多卡联合承载容量。当前单卡结果及默认参数见[演示总览](demo-summary-20260907.md)和[报告指南](benchmark-report-guide.md)。
+
 `yolov8_multicard.pcie` 是一个进程，每个设备各用一个 C++ 工作线程。每个线程独立持有 YOLO 模型、BMRuntime、设备 handle、VideoCapture 和计时数据。所有线程初始化成功后统一开始处理，同一段视频分别在各卡处理，不拆分视频帧。
 
 原有 `run_yolov8_cpp_dynamic.sh` 是多进程验证，不能用来验证一个 PID 同时调用多张卡。

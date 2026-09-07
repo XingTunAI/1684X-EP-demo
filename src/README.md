@@ -2,15 +2,19 @@
 
 这里保存本仓库用于复现和验证的 demo 源码。
 
-## 单卡完整链路压测：single_card_pipeline
+## 单卡分析与可选编码：single_card_pipeline
 
-当前新增“解码＋推理”模式：`bash scripts/run_single_card_analysis_auto.sh`，每帧检测，不画框、不编码，自动保存报告及逐路/逐窗口统计。操作见[单卡解码＋推理](../docs/single-card-analysis.md)。
+[single_card_pipeline](single_card_pipeline/README.md) 提供 `analysis` 和 `encode` 两种模式。当前一键入口 `bash scripts/run_single_card_analysis_auto.sh` 默认 analysis、device 1、device-bgr 图像路径；每帧检测，输出 JSON 和报告，不画框、不编码。最新 32 路总吞吐 114.10 FPS、平均每路 3.57 FPS，详见[优化结论](../docs/analysis-optimization-20260907.md)。
 
-[single_card_pipeline/](single_card_pipeline/README.md) 同时运行解码、YOLOv8 检测、画框和 H.264 编码，输出逐帧检测 JSON 与视频文件。对每路统计窗口 FPS，结束后核对视频实际帧数。客户同时需要分析结果和视频输出时使用此 demo；纯解码 demo 作为对照。
+encode 模式额外画框并输出 H.264 文件，属于单独的历史链路验证，不能套用上述分析帧率。当前视频 worker 仅支持 batch 1，batch 4 只在独立计算脚本中对照。操作见[分析压测](../docs/single-card-analysis.md)，状态和文件解释见[报告指南](../docs/benchmark-report-guide.md)。
 
 ## 单卡解码压测：single_card_decode
 
-[single_card_decode/](single_card_decode/README.md) 是独立的单卡压测 demo，包含 Python 调度脚本和配套测试，调用 SOPHON FFmpeg 硬件解码，支持 1/8/16/24/32 路阶梯负载、逐路窗口 FPS、设备监控及结果记录。当前测解码，不包含算法推理。素材和结果分别保存在工程根目录的 `datasets/`、`results/`。
+[single_card_decode](single_card_decode/README.md) 使用标准库 Python 调度 SOPHON FFmpeg，每路独立进程，硬解输出到 null。入口为 `scripts/run_single_card_decode_auto.sh`，默认 device 0、8/16/24/32 路。显式指定 `--device 1` 可复测当前主卡。
+
+当前默认只测性能，低帧率继续后续档位；运行异常或中断时停止。32 路短测与 30 路 15 分钟长测已经完成，后者平均每路约 25 FPS 但存在窗口波动，不能称为稳定通过。完整命令和证据见[操作说明](../docs/single-card-decode.md)及[解码结论](../docs/decode-results-20260907.md)。
+
+两个压测 Demo 均把素材和结果保存在工程根目录的 `datasets/`、`results/`，不放进源码目录。当前解码测试 18 项、流水线测试 10 项已通过。整体状态见[演示总览](../docs/demo-summary-20260907.md)。
 
 ## 官方样例修复版：yolov8_bmcv
 

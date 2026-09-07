@@ -1,5 +1,7 @@
 # YOLOv8 跑通准备文档
 
+本页用于准备官方样例。当前单卡分析 Demo 另有独立 worker，需要按[分析操作](single-card-analysis.md)编译；纯解码入口见[解码操作](single-card-decode.md)。当前模型是 YOLOv8s INT8 batch 1，最新结果与范围见[演示总览](demo-summary-20260907.md)。
+
 本文说明如何在 RK3588 + 双 BM1684X PCIe 从卡环境中编译和运行官方 YOLOv8 C++ demo。
 
 文档中的 `<repo-dir>` 表示本仓库目录。官方 `sophon-demo` 默认放在 `<repo-dir>/third_party/sophon-demo`；如需使用其它位置，可手动设置 `$SOPHON_DEMO_DIR`。

@@ -1,122 +1,143 @@
 # 单卡解码压测操作
 
-## 当前默认：记录性能，不做帧率验收
+更新日期：2026-09-07。本文描述当前脚本；历史结果见[解码测试结论](decode-results-20260907.md)，指标和状态解释见[报告阅读指南](benchmark-report-guide.md)，演示进度见[Demo 总览](demo-summary-20260907.md)。
 
-新测试默认只测性能，完整运行显示 `measured`，不因低于 25 FPS 判失败。25 FPS 仅代表输入视频帧率；每路平均/最低窗口和总吞吐按实际值报告。进程退出、停帧与用户中断仍单独记录。历史报告的 fps_pass/fps_fail 保留，不回改原始数据；需要复现旧门槛时显式加 `--acceptance`。
+## 1. 测试范围与当前状态
 
-第一阶段只测硬件解码：单张卡持续解码 32 路 1920×1080、25 FPS 视频。算法推理、检测结果、编码输出及端到端延迟不在本阶段内。
+本 Demo 使用 SOPHON FFmpeg 硬件解码器测试一张 BM1684X 的多路解码性能。一路对应一个独立 FFmpeg 进程，32 路即 32 个解码进程；Python 负责启动、采样、监控、收尾和生成报告。每路使用指定卡上的独立解码实例，输出到 null，不画框、不编码、不显示、不做算法推理。
 
-客户同时要求分析结果和带框视频输出时，使用[单卡完整链路压测 demo](../src/single_card_pipeline/README.md)。本工具只作为解码对照，不能代替完整链路验收。
+当前默认 `--measure-only`：记录实际性能，不因低于 25 FPS 判失败。25 FPS 是默认输入规格；运行异常、停帧和用户中断仍会记录。只有显式 `--acceptance` 才启用逐路窗口门槛，默认门槛 24.5 FPS。历史报告保留原来的 `fps_pass/fps_fail`，不回改。
 
-自动测试入口：在板端工程根目录运行 `bash scripts/run_single_card_decode_auto.sh`，也可使用 `python3 scripts/run_single_card_decode_auto.py`。默认卡 0，8/16/24/32 路，每档预热 60 秒、采集 120 秒；失败停止。结果目录自动生成 `report.md`、`stages.csv`、`streams.csv`，同时保留原始 JSON 和日志。详细参数见[demo 说明](../src/single_card_decode/README.md)。
+已完成阶梯测试、32 路短测和 30 路正式采集 15 分钟：device 1 的 32 路总平均为 815.21 FPS、最差逐路窗口 23.26 FPS；30 路长测总平均为 749.96 FPS，中间一个窗口波动、最差逐路窗口 22.59 FPS。上述数据不是全程稳定容量承诺，也不能外推为算法容量。[解码＋推理](single-card-analysis.md)使用另一条图像处理链路，需单独查看结果。
 
-测试视频位于工程内 `datasets/stress/bbb_1080p25_h264_8mbps.mp4`。下文硬件压测命令在 RK3588 上执行，不是在 Windows CMD 中执行。
+## 2. 环境、设备与素材
 
-`src/single_card_decode/stress_decode.py` 使用 Python 3.9+ 标准库，调用 RK3588 上安装的 SOPHON FFmpeg/ffprobe。普通 Windows FFmpeg 只用于素材准备，不能用于验证算力卡性能。
+硬件测试命令在 RK3588 的工程根目录执行。要求 Python 3.9+、SOPHON FFmpeg/ffprobe、驱动及可用设备；Python 调度器只依赖标准库。Windows 上的普通 FFmpeg 可以准备素材，不能验证板端硬解能力。
 
-## 准备素材
+| 用户物理命名 | 软件参数 | PCI 地址 | 已核对的协商链路 |
+|---|---|---|---|
+| 卡 1 | `--device 1` | `0001:11:00.0` | PCIe 3.0 ×1 |
+| 卡 2 | `--device 0` | `0004:41:00.0` | PCIe 2.0 ×1 |
 
-本地下载和准备过程见[测试素材说明](test-media.md)。把 `datasets/stress/bbb_1080p25_h264_8mbps.mp4` 与本项目脚本复制到 RK3588，保持路径一致。媒体文件和运行结果已忽略，不会随 Git 同步。
+历史报告中的卡号是软件编号。本说明的演示命令显式选择 device 1；纯解码一键脚本不带参数时仍默认 device 0，解码＋推理一键脚本默认 device 1。
 
-本地文件默认循环播放，并使用 `-re` 按源帧率读取。每个进程建立独立硬件解码实例，但读取的是同一份素材，结果属于本地文件解码基线，不代表 32 路摄像头网络接入、输入内容多样性或算法分析已验收。
+| 素材 | 时长 | 使用场景 |
+|---|---:|---|
+| `datasets/stress/bbb_1080p25_h264_8mbps.mp4` | 596.44 秒 | 默认短测；每档重新启动输入 |
+| `datasets/stress/bbb_1080p25_h264_8mbps_20min.mp4` | 1200.08 秒 | 3 分钟预热＋15 分钟正式采集 |
 
-## 1. 先检查环境和一路
+两份均为 BBB 动画派生的 1080p25 H.264 素材，32 路重复读取同一文件，不等于 32 路真实摄像头。视频、模型、原始结果不随 Git 同步，需单独准备；来源、大小、哈希与传输方式见[素材说明](test-media.md)。
 
-在 RK3588 的项目根目录执行：
+本地默认使用 `-stream_loop -1` 循环、`-re` 按源时间节奏读取。短素材在文件结尾附近曾出现解码送包错误，根因未修复。长测应选连续 20 分钟版本；总运行时间超过该素材时长的测试仍可能触及循环，不能仅增加 duration 就认为已避开该问题。
+
+先检查环境：
 
 ```bash
 bm-smi
 which ffmpeg ffprobe
 ffmpeg -decoders | grep -E 'h264_bm|hevc_bm'
-
-python3 src/single_card_decode/stress_decode.py \
-  --device 0 \
-  --input datasets/stress/bbb_1080p25_h264_8mbps.mp4 \
-  --steps 1 --warmup 30 --duration 120 --window 60
+python3 -m unittest discover -s src/single_card_decode/tests -v
 ```
 
-脚本先核对硬件解码器、输入编码、分辨率和声明帧率，再创建结果目录。输入不符合 1080P/25 FPS 时拒绝运行，避免把其他视频规格的成绩混入结果。输入码率等探测信息保存在配置快照中。
+配套 18 项测试已在板端通过，用于验证调度和统计逻辑，不代表硬件性能测试通过。预检会检查解码器、输入文件、1920×1080、编码类型及与 `--target-fps` 一致的声明帧率，不匹配会拒绝运行。若使用 HEVC 素材需显式 `--codec hevc`。`--target-fps` 不会把输入视频转成该帧率。
 
-若系统默认 FFmpeg 不是 SOPHON 版本，用 `--ffmpeg /实际路径/ffmpeg --ffprobe /实际路径/ffprobe` 指定。SDK 版本不兼容、设备不匹配等错误会写入日志，不会自动改用软件解码。
+## 3. 一键执行与复测命令
 
-## 2. 再逐步增加到 32 路
-
-```bash
-python3 src/single_card_decode/stress_decode.py \
-  --device 0 \
-  --input datasets/stress/bbb_1080p25_h264_8mbps.mp4 \
-  --steps 8,16,24,32 \
-  --warmup 180 --duration 900 --window 60 \
-  --target-fps 25 --min-fps 24.5
-```
-
-每档启动完成后统一预热，再按共同时间窗口统计各路实际完成帧数。任一路提前退出、超过默认 15 秒无新帧、统计错误时停止继续加压；低帧率只记录，不停止。Ctrl+C 会保存未完成状态，只停止本轮创建的子进程。
-
-显式验收模式的 `24.5 FPS` 是历史参考门槛，为 FFmpeg 进度上报和窗口边界留出容差，不是客户已认可的验收门槛。正式验收前应约定并固定。启动较慢时可调整 `--stall-timeout`，不能用它掩盖持续停帧。
-
-每个进程使用输入端 `h264_bm/hevc_bm` 解码器和 `sophon_idx` 选择卡，输出到 null，不编码、不写视频、不设置输出 FPS。硬件参数参考[算能视频编解码性能测试](https://doc.sophgo.com/sdk-docs/v23.07.01/docs_latest_release/docs/SophonSDK_doc/zh/html/performance_test/2_video_codec.html)，仍需在实际 SDK 版本上验证。
-
-## 3. 查看结果
-
-默认输出：`results/decode/日期时间_进程号/`。
-
-| 文件 | 内容 |
-|---|---|
-| `config.json` | 本次参数、各输入视频元数据、FFmpeg 版本 |
-| `summary.json` | 各档状态和逐窗口 FPS |
-| `step_XX/summary.json` | 当前档实际采集时间、各路 FPS、最差窗口 FPS及失败原因 |
-| `step_XX/samples.csv` | 共同采样时刻、逐路累计帧数和距最近新帧的时间 |
-| `step_XX/stream_XX/progress.log` | FFmpeg 原始进度 |
-| `step_XX/stream_XX/stderr.log` | 该路解码警告和错误 |
-| `step_XX/monitor.jsonl` | 约每 5 秒采集一次 bm-smi 和 Linux CPU/内存/网络原始计数 |
-
-状态说明：默认 `measured` 表示测量完成；显式验收模式中，`fps_pass` 仅表示逐路窗口 FPS 达到配置门槛；`fps_fail` 表示存在未达标窗口；`error` 表示进程退出、停帧等异常；`incomplete` 表示用户中断。按计划终止 FFmpeg 后的非零退出码记录在 `exit_codes_after_cleanup`，不要与测试中提前退出混淆。
-
-监控缺失记为 null，不等于零占用。CPU/网络计数是原始数据，后续分析需按时间差计算。逐帧端到端时延、解码器内部队列和真实丢帧尚未测量，不能由 `fps_pass` 推断整条业务链路稳定达标；FFmpeg 的部分警告仍需检查原始日志。
-
-当前一条流对应一个 FFmpeg 进程。它测的是这一配置的实际能力，不是硬件架构极限。窗口 FPS 使用进度管道的完成帧计数，有上报粒度误差；用较长窗口减少影响。
-
-## 4. RTSP 与离线吞吐对照
-
-RTSP 测试在本地基线通过后进行。创建一个文件，每行一个独立 RTSP 地址，至少提供与最大档位相同数量的不同地址，再运行：
+同一张卡的测试依次运行。以下命令均在设备工程根目录执行，正式测试期间避免其他同卡任务及大文件传输。
 
 ```bash
-python3 src/single_card_decode/stress_decode.py \
-  --device 0 --inputs-file /实际路径/streams.txt \
-  --steps 1,8,16,24,32 --warmup 180 --duration 900
-```
+# 一路检查：预热 30 秒，采集 60 秒
+bash scripts/run_single_card_decode_auto.sh --device 1 --steps 1 \
+  --warmup 30 --duration 60 --window 30
 
-RTSP 使用 TCP 传输，脚本不额外限速。结果目录会包含输入地址和 FFmpeg 日志，分享前去除账号密码。
+# 阶梯摸底：每档约 3 分钟，四档总计约 12 分钟，另计启动和收尾
+bash scripts/run_single_card_decode_auto.sh --device 1 --steps 8,16,24,32
 
-本地视频添加 `--throughput` 可取消读取限速，结果会标记为 `offline_throughput`。这个模式测离线解码速度，不能作为实时接入或算法容量结论。
+# 仅测 32 路：约 3 分钟
+bash scripts/run_single_card_decode_auto.sh --device 1 --steps 32 \
+  --measure-only --warmup 60 --duration 120 --window 60
 
-使用 `--dry-run` 仅打印各路参数数组，检查绑定卡及输入，不启动任何解码进程。
-
-## 下一步
-
-实机解码测试已完成，详见[解码结论记录](decode-results-20260907.md)。30 路、15 分钟长测平均约 25 FPS/路，但有一个正式窗口出现波动，判定 fps_fail；不能标记为全程稳定通过。现在进入[单卡解码＋推理压测](single-card-analysis.md)。
-
-## 5. 复现 30 路长测及同步
-
-物理卡 1（PCIe 3.0 ×1）对应 `--device 1`；物理卡 2（PCIe 2.0 ×1）对应 `--device 0`。历史报告的卡编号均为软件编号。
-
-长测用连续 20 分钟素材，避免本次 18 分钟总运行期间触及文件结尾。原 596.44 秒文件的循环附近曾发生送包异常，问题尚未修复，不应直接用原文件重复长测后归因于卡性能。
-
-```bash
-cd /home/linaro/1684X-EP-demo
-bash scripts/run_single_card_decode_auto.sh \
-  --device 1 --steps 30 \
+# 复测 30 路：预热 3 分钟，正式采集 15 分钟
+bash scripts/run_single_card_decode_auto.sh --device 1 --steps 30 \
   --input datasets/stress/bbb_1080p25_h264_8mbps_20min.mp4 \
-  --warmup 180 --duration 900 --window 60
+  --measure-only --warmup 180 --duration 900 --window 60
 ```
 
-每档结束和整轮收尾自动写入 `report.md`，单档长测期间它可能保持“等待当前档完成”；以控制台打印的 Results 目录为准。先看报告结论，再看 `streams.csv` 的逐路最差窗口；运行异常查对应流的 `stderr.log`。正常计划终止的 FFmpeg 退出码不直接算异常。
+这些是分别运行的示例，不需要全部重复执行。每档启动后统一预热，预热帧不计入正式 FPS。每档结果正常写入后释放本档进程，再启动下一档；低帧率在测量模式下继续加压。运行异常、中断或显式验收不通过时停止后续档位。
 
-在 Windows PowerShell 同步某一轮结果（把测试编号换成控制台显示值）：
+复现历史帧率判定时，把 `--measure-only` 换成 `--acceptance --min-fps 24.5`。24.5 是本次历史参考值，不是客户确认的业务验收条件。
+
+一键 Python 入口为 `python3 scripts/run_single_card_decode_auto.py`，与 Shell 入口等效。它自动切换到工程目录，相对输入和输出路径以工程根目录为准。直接运行 `python3 src/single_card_decode/stress_decode.py` 时，相对路径以当前工作目录为准；旧的 `tools/stress_decode.py` 与 `src/single_card_decode/run_auto.py` 仅保留兼容。
+
+### 主要参数
+
+| 参数 | 一键脚本默认 | 含义 |
+|---|---|---|
+| `--device` | 0 | 软件设备编号 |
+| `--steps` | 8,16,24,32 | 正整数，去重且严格递增 |
+| `--input` | 596.44 秒短素材 | 同一文件显式复制为多路输入 |
+| `--warmup` | 60 | 每档预热秒数 |
+| `--duration` | 120 | 每档正式采集秒数，不含预热 |
+| `--window` | 60 | 窗口目标秒数，duration 必须不小于 window |
+| `--target-fps` | 25 | 输入声明帧率校验值 |
+| `--min-fps` | 24.5 | 仅显式验收时用于判定；解析仍要求不大于 target-fps |
+| `--stall-timeout` | 15 | 距最后新帧的超时秒数，包含启动/预热检查 |
+| `--output` | results/decode | 自动在其下创建唯一结果目录 |
+| `--dry-run` | 关闭 | 仅打印命令，不启动硬件预检或压测 |
+
+直接运行核心脚本时，默认档位为 1、采集 300 秒，且必须指定输入；与一键入口不同。完整参数可执行 `python3 scripts/run_single_card_decode_auto.py --help` 查看。需要指定 SDK 工具时使用 `--ffmpeg /实际路径/ffmpeg --ffprobe /实际路径/ffprobe`。
+
+## 4. 运行期间怎么看、怎么停
+
+控制台预检通过后打印唯一的 `Results:` 目录。新终端进入这轮目录执行：
+
+```bash
+watch -n 5 cat report.md
+```
+
+报告在开始、每档结束和最终收尾时自动更新。单档运行期间可能一直显示等待该档完成，这是正常行为；watch 每 5 秒读取文件，不代表报告每 5 秒产生最终统计。原始进度持续写入 `step_XX/stream_XX/progress.log`，原始资源采样在 `step_XX/monitor.jsonl`。
+
+需要后台运行时，使用唯一控制台日志名，保存该次启动 PID：
+
+```bash
+mkdir -p results
+console_log="results/decode_console_$(date +%Y%m%d_%H%M%S).log"
+nohup bash scripts/run_single_card_decode_auto.sh --device 1 --steps 32 \
+  > "$console_log" 2>&1 < /dev/null &
+decode_pid=$!
+printf 'PID=%s log=%s\n' "$decode_pid" "$console_log"
+tail -f "$console_log"
+```
+
+前台压测用 Ctrl+C；后台压测可对确认仍属于本轮的 PID 执行 `kill -INT 实际PID`，由脚本收尾自己的子进程。`tail -f` 中 Ctrl+C 只结束查看日志，不结束后台测试。不要重复启动同一压测或通过批量终止全部 FFmpeg 来停止某一轮。
+
+## 5. 结果、异常和归档
+
+先看 `report.md`，确认设备、素材、档位、模式和运行状态，再看总吞吐、各路平均及最低窗口。完整文件清单、计算方式、状态和常见问题见[报告阅读指南](benchmark-report-guide.md)。
+
+| 情况 | 排查方法 |
+|---|---|
+| 没有 Results 目录 | 先读终端预检报错，检查素材与 SOPHON 解码器；不是性能不达标 |
+| measured 但 FPS 低 | 测量已完成，默认不应用性能门槛；记录数值与资源趋势 |
+| 旧报告 fps_fail | 逐路窗口低于旧门槛，不等于进程崩溃 |
+| error / 长时间无新帧 | 查看档位 summary 的 reason、对应 stderr 和 progress；不要只放大超时掩盖停帧 |
+| 文件结尾附近 ret=-13 | 对照素材时长和最后进度，使用 20 分钟文件复测；本轮未证明根因 |
+| 总 FPS 接近或高于 800 | 核对窗口和各路，不据此推断每路持续 25 FPS；可能存在节奏追赶 |
+| bm-smi TPU 利用率低 | 纯解码未运行模型，TPU 利用率不能代表解码单元负载 |
+
+Windows PowerShell 在本地工程根目录拉回一轮结果（替换测试编号）：
 
 ```powershell
-# 先在 PowerShell 中进入工程根目录
+New-Item -ItemType Directory -Force results/board-auto | Out-Null
 adb -s bf43cc5e0819e5ad pull /home/linaro/1684X-EP-demo/results/decode/20260907_111959_35624 results/board-auto/
 ```
 
-素材同步与校验命令见[素材说明](test-media.md)。传输应安排在压测前后，避免额外 I/O 干扰。本地 `datasets/` 与 `results/` 不随 Git 提交，但交付时应保留对应素材、报告和原始日志。
+保留整轮目录，包括 config、run_state、summary、报告、CSV、逐路日志和资源记录，勿只交付截图。结果目录与素材均不提交 Git，仓库保存代码、操作文档和测试结论。报告重新生成命令见阅读指南；不要修改旧配置后覆盖历史结论。
+
+## 6. 可选能力与本轮未测项目
+
+`--throughput` 取消本地读取限速，标记为 `offline_throughput`；它与当前限速基线不同，本轮没有给出离线解码极限结论。
+
+`--inputs-file` 可提供每行一个独立本地文件或 RTSP 地址，数量至少覆盖最大档位且地址不能重复。文件内相对路径以清单所在目录为准，空行和以 # 开头的注释跳过。RTSP 使用 TCP，脚本不额外加 -re；本轮结果均来自本地文件，不是 RTSP 性能验证。若后续分享含 RTSP 的原始配置和日志，应检查其中是否保存了连接凭据。
+
+当前阶段演示已完成，未追加 28 路长测、抽帧或实时显示开发。生产长稳、真实丢帧、端到端时延和多卡联合容量均未由本轮单卡测试证明。
