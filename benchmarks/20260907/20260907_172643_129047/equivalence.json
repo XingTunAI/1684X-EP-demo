@@ -1,8 +1,0 @@
-{
-  "total_records": 56254,
-  "matched_records": 56254,
-  "outside_reference": 0,
-  "reference": "same-run step_01/stream_00",
-  "all_steps_measured": true,
-  "all_worker_exit_codes_zero": true
-}

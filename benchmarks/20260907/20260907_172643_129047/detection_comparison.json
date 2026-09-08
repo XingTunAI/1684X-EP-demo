@@ -1,9 +1,0 @@
-{
-  "reference_s_run": "20260907_170020_120917",
-  "candidate_n_run": "20260907_172643_129047",
-  "overlapping_frames": 2256,
-  "s_detections": 2635,
-  "n_detections": 33302,
-  "frames_with_different_detection_count": 2244,
-  "ground_truth_available": false
-}

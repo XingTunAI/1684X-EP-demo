@@ -30,8 +30,47 @@ build/
 datasets/
 models/
 
+# Local input media, models, generated output, and SDK packages.
+/data/inputs/
+/data/models/
+/data/results/
+/data/sdk/
+
 # OS/editor
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+
+# Local media preparation utilities
+.tools/
+
+# Local experiments, measurements, and private working notes.
+/experiments/
+/benchmarks/
+/local/
+/docs/hardware/
+/docs/*-20[0-9][0-9][0-9][0-9][0-9][0-9].md
+/docs/operation-log.md
+/docs/board-status.md
+/docs/stress-test-record.csv
+
+# Machine-specific configuration and credentials.
+.env
+.env.*
+!.env.example
+*.local.yaml
+*.local.yml
+*.local.json
+*.local.toml
+*.log
+*.pem
+*.key
+
+# Generated native artifacts.
+*.o
+*.a
+*.so
+*.so.*
+*.pcie
+*.soc

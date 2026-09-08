@@ -1,9 +1,0 @@
-{
-  "device": 0,
-  "sizes": [
-    2822400
-  ],
-  "repeats": 3,
-  "app": "test_cdma_perf",
-  "app_sha256": "6216e2333757ed9356cefbed77b3a362ce979bfd1a29705ab47633139ba3f46d"
-}

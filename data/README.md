@@ -1,0 +1,119 @@
+# 本地数据目录
+
+`data/` 集中存放自行准备的数据和程序输出。除本说明外，其中视频、模型、SDK 包、日志和设备配置均保留在本地，不随源码发布。
+
+```text
+data/
+  inputs/          自有视频、图像和实时输入清单
+  models/          自有 bmodel、类别名称及辅助模型
+  results/         各 demo 与诊断工具的运行输出
+  sdk/             与主机匹配的本地 SDK 安装包
+  README.md
+```
+
+## inputs
+
+视频示例路径为 `data/inputs/input.mp4`，图像可使用 `data/inputs/image.jpg`。文件格式、分辨率和帧率要求由对应 demo 决定，先用 ffprobe 检查再运行。
+
+支持输入清单的入口使用文本文件，每行一个路径或 RTSP URL；相对路径通常基于清单所在目录。实时地址及认证信息应留在本地清单中。
+
+## models
+
+自有模型示例为 `data/models/model.bmodel`，类别名称为 `data/models/classes.names`，每行一个名称。需确认目标芯片、SDK、batch、输入输出布局及类别顺序与程序匹配。
+
+HDMI 可选 score gate 的约定位置是 `data/models/score_gate/score_gate_reducemax_f32.bmodel`。没有兼容的辅助模型时保持此功能关闭。
+
+## 官方资源
+
+官方提供视频、图片、类别文件和预编译模型，获取入口为 [YOLOv8 官方说明](https://github.com/sophgo/sophon-demo/tree/release/sample/YOLOv8_plus_det) 与 [YOLO26 官方说明](https://github.com/sophgo/sophon-demo/tree/release/sample/YOLO26)。实际下载由各样例的 [YOLOv8 download.sh](https://github.com/sophgo/sophon-demo/blob/release/sample/YOLOv8_plus_det/scripts/download.sh)、[YOLO26 download.sh](https://github.com/sophgo/sophon-demo/blob/release/sample/YOLO26/scripts/download.sh) 通过 `dfss` 完成。
+
+先按[环境准备](../docs/setup.md)准备官方仓库，再从本仓库根目录选择需要的样例。只用一种 YOLO 时选择对应命令；同时使用两种时分别准备各自的默认资源：
+
+```bash
+# YOLOv8 视频、图片、类别和 BM1684X 模型
+bash third_party/sophon-demo/sample/YOLOv8_plus_det/scripts/download.sh --BM1684X
+
+# YOLO26 视频、图片、类别和 BM1684X 模型
+bash third_party/sophon-demo/sample/YOLO26/scripts/download.sh --BM1684X
+```
+
+省略 `--BM1684X` 时只下载数据集，不下载模型。`scripts/prepare.sh` 是 YOLOv8 的完整准备辅助入口。官方资源保持原样例目录，不自动复制到 `data/`；下表中的 `<sample>` 为 `YOLOv8_plus_det` 或 `YOLO26`：
+
+```text
+third_party/sophon-demo/sample/<sample>/
+  models/BM1684X/
+  datasets/
+```
+
+| 资源 | 下载后位置（相对各样例目录） | 用途与适用入口 |
+|---|---|---|
+| `test_car_person_1080P.mp4` | `datasets/test_car_person_1080P.mp4` | 官方人物、车辆测试视频；两个 YOLO 主入口各用本家副本，解码和 HDMI 默认使用 YOLOv8 副本 |
+| `test.tar.gz` | 解压到 `datasets/test/` | 测试图片；可选单张图片用于[诊断工具](../tools/diagnostics/README.md)的 `detector_check` |
+| `coco.names` | `datasets/coco.names` | COCO 类别名称，须与所选模型匹配 |
+| `coco128.tar.gz` | 解压到 `datasets/coco128/` | 量化校准图片及图像测试素材；普通视频运行不需要读取它 |
+| `coco_val2017_1000.tar.gz` | `datasets/coco/val2017_1000/` 与 `datasets/coco/instances_val2017_1000.json` | 官方提供的 COCO 验证子集和标注；本仓库不自动计算 AP |
+| BM1684X 模型包 | `models/BM1684X/` | YOLOv8 默认 `yolov8s_int8_1b.bmodel`；YOLO26 默认 `yolo26s_fp32_1b.bmodel` |
+
+图片供单张检测检查或模型开发使用；两个 YOLO 主 `run.sh` 接收视频，不直接接收图片目录。自有素材使用 `data/inputs/`，自有模型使用 `data/models/`，通过对应命令行参数指定。视频是否满足分辨率、编码和帧率条件，以各 demo README 为准。
+
+## 下载中断与完整性检查
+
+官方脚本按 `datasets/`、`models/BM1684X/` 是否存在决定跳过，因此“目录存在”或再次运行脚本成功，不保证内容完整。先检查所需视频、类别、模型均存在且非空，再检查视频元数据、图像能否打开、模型能否被对应 SDK 加载。若发布方提供校验值，应比对校验值。
+
+目录尚未创建时，可以重新运行对应官方下载命令；目录已存在但文件缺失或损坏时，按下面的方法修复。
+
+缺少或损坏单个资源时，优先单独补齐。以下例子在 YOLO26 的 `datasets/` 内建立临时目录下载视频，检查后保留旧文件再替换；YOLOv8 改用 `YOLOv8_plus_det`。需已安装官方脚本使用的 `dfss` 和可用的 FFmpeg/ffprobe：
+
+```bash
+(
+  set -e
+  cd third_party/sophon-demo/sample/YOLO26/datasets
+  repair_dir=$(mktemp -d .repair.XXXXXX)
+  (
+    cd "$repair_dir"
+    python3 -m dfss --url=open@sophgo.com:sophon-demo/common/test_car_person_1080P.mp4
+  )
+  video=test_car_person_1080P.mp4
+  test -s "$repair_dir/$video"
+  ffprobe -v error -select_streams v:0 \
+    -show_entries stream=codec_name,width,height,avg_frame_rate -of json "$repair_dir/$video"
+  # 完整读取检查，避免仅元数据可读但视频尾部损坏
+  ffmpeg -v error -xerror -i "$repair_dir/$video" -f null -
+  if [ -e "$video" ]; then
+    mv -- "$video" "$video.incomplete.$(date +%Y%m%dT%H%M%S).$$"
+  fi
+  mv -- "$repair_dir/$video" "$video"
+)
+```
+
+其他数据使用同一公开前缀 `open@sophgo.com:sophon-demo/common/`，将文件名换成上表中的 `coco.names`、`test.tar.gz`、`coco128.tar.gz` 或 `coco_val2017_1000.tar.gz`。归档先用 `tar -tzf` 检查，再解压到临时目录，确认图片可读后补回缺失内容；保留已有自有素材。
+
+模型包地址分别为 `open@sophgo.com:sophon-demo/YOLOv8_plus_det/BM1684X.tar.gz` 和 `open@sophgo.com:sophon-demo/YOLO26_det/BM1684X.tar.gz`。同样先下载并解压到独立临时目录，核对所需模型后再补回对应 `models/BM1684X/`，不要删除整个现有模型目录。单纯 `test -s`、压缩包可解压或视频元数据可读都不是完整性保证。
+
+## HDMI 截图所用的可选素材
+
+仓库 HDMI 效果截图使用过 Freestocks 发布的 [Cars On Highway - Free Stock Creative Commons Video](https://www.youtube.com/watch?v=-vLTFQv2_Vo)。这是可选外部素材，获取方式及使用授权以原作者页面为准，与官方默认测试视频分开。
+
+截图所用本地版本经过 H.264、1920×1080、25 FPS、约 8 Mbps 转换，并循环组成约 20 分钟文件；原始资源不保证具备这些参数。自行取得后放在 `data/inputs/`，先检查格式再按 [HDMI README](../demos/hdmi_wall/README.md)指定输入；仓库不附带该视频文件。
+
+## results
+
+一般输出位置：
+
+| 程序 | 位置 |
+|---|---|
+| 解码 | `data/results/decode/<run-id>/` |
+| YOLOv8 主入口 | `data/results/yolov8/<run-id>/`，每卡结果在 `device_<id>/<backend-run-id>/` |
+| YOLO26 主入口 | `data/results/yolo26/<run-id>/`，每卡结果在 `device_<id>/` |
+| HDMI 视频墙 | `data/results/hdmi-wall/<run-id>/` |
+| 诊断 | `data/results/inference-diagnostics/`、`bandwidth/`、`tpu/` |
+
+两个 YOLO 主入口的 `--output` 指定父目录，每次自动创建唯一运行目录；根级 `run.json`、`summary.json` 记录进程状态，`device_<id>.log` 保存后端日志，各卡目录保存检测统计和逐帧 JSONL。具体字段见 [YOLOv8](../demos/yolov8/README.md) 和 [YOLO26](../demos/yolo26/README.md)。
+
+底层工具的输出约定可能不同，直接调用前查看对应说明。不要让不同运行复用同一结果目录。输出可能包含输入路径、设备信息、逐帧结果和截图，应保持本地存储。
+
+## sdk
+
+放置与主机、内核和 SDK 版本匹配的安装包。`scripts/install_sdk.sh data/sdk` 只适用于脚本列出的包名组合，运行前按[环境说明](../docs/setup.md)检查。
+
+文件迁移或备份时可以记录 SHA256，确认模型和输入未改变；哈希清单也保存在本地数据目录。

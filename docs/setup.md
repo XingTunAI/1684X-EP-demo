@@ -1,0 +1,181 @@
+# 环境与依赖准备
+
+以下操作面向 Linux ARM64 的 RK3588 主机与 BM1684X PCIe 设备。SDK 安装、构建和实际运行命令都在 Linux 主机的仓库根目录执行。Windows 可用于编辑文件，以及使用 Python 运行两个 YOLO 入口的 `--dry-run` 查看命令计划；它不会启动硬件任务。
+
+## 取得仓库
+
+已在 Linux 主机上放好仓库时，进入其根目录即可。首次使用且已安装 Git 时执行：
+
+```bash
+git clone https://github.com/XingTunAI/1684X-EP-demo.git
+cd 1684X-EP-demo
+```
+
+后续命令均在这个目录执行，无需复制到固定的主机路径。
+
+## SDK 和构建工具
+
+按硬件和官方 SDK 版本准备驱动、libsophon、SOPHON FFmpeg/OpenCV 及相应开发文件。C++ 程序需要 `bmruntime_interface.h`、`bmcv_api_ext.h`、`bmlib_runtime.h` 等头文件。
+
+需要 CMake 3.13+、C++11 编译器、Make、pkg-config、Git 和 Python 3.9+。视频墙另需 Linux 图形桌面与系统 ffplay。
+
+SDK 安装包不包含在本仓库中，需通过所用模组或 SDK 对应的算能技术支持渠道取得，并确认适用于当前主机、内核及硬件。已安装匹配 SDK 的系统可直接进入下方检查。
+
+本仓库的 [install_sdk.sh](../scripts/install_sdk.sh) 仅适用于以下固定包名组合，不是空白系统的通用一键安装程序：
+
+```text
+sophon-driver_0.5.1-LTS-rk3588fix2_arm64.deb
+sophon-libsophon_0.5.1-LTS_arm64.deb
+sophon-mw-sophon-ffmpeg_0.14.0_arm64.deb
+sophon-mw-sophon-ffmpeg-dev_0.14.0_arm64.deb
+sophon-mw-sophon-opencv_0.14.0_arm64.deb
+sophon-mw-sophon-opencv-dev_0.14.0_arm64.deb
+```
+
+确认这组版本和硬件补丁与系统相符后，将文件放在 `data/sdk/` 中执行：
+
+```bash
+bash scripts/install_sdk.sh data/sdk
+```
+
+其他版本按对应 SDK 的官方安装流程操作。安装完成后按驱动要求重启，再进行检查。
+
+## 开始前检查
+
+在 Linux 主机终端执行以下只读命令。尚未安装公共工具时，先完成[公共工具与依赖源码](#公共工具与依赖源码)中的工具安装，再回到本节检查：
+
+```bash
+bm-smi --noloop
+command -v ffmpeg ffprobe cmake python3
+cmake --version
+python3 --version
+ffmpeg -hide_banner -decoders
+ls -ld /opt/sophon/sophon-ffmpeg-latest/lib/cmake \
+  /opt/sophon/sophon-opencv-latest/lib/cmake/opencv4
+```
+
+| 检查项 | 通过标准 |
+|---|---|
+| 设备 | `bm-smi` 正常列出本次要使用的设备；单卡至少有一个，双卡需能看到两个。按实际编号选择 `--devices` 或 `--device` |
+| 命令与版本 | `command -v` 列出的四个命令均有路径；CMake 至少 3.13，Python 至少 3.9 |
+| 硬件解码 | FFmpeg 解码器列表包含与输入匹配的 `h264_bm` 或 `hevc_bm`；默认 H.264 样例需要 `h264_bm` |
+| SDK 开发文件 | 上述两个默认 CMake 目录存在，构建配置能找到 FFMPEG、OpenCV 和 libsophon；安装在其他位置时按 SDK 路径配置 |
+
+构建脚本默认查找以上 SOPHON FFmpeg/OpenCV 路径，libsophon 通过 CMake 的 `find_package(libsophon)` 查找。若 SDK 安装位置不同，构建时传入相应的 `FFMPEG_DIR`、`OpenCV_DIR`、`libsophon_DIR`；这些值应指向实际 SDK 的 CMake 配置目录。
+
+HDMI 还要求 Linux 主机已登录图形桌面、显示器可用，并安装系统播放器。请在该桌面的终端检查：
+
+```bash
+test -x /usr/bin/ffplay && echo 'ffplay: OK'
+printf 'DISPLAY=%s\n' "$DISPLAY"
+```
+
+应能看到 `ffplay: OK` 和有效的 `DISPLAY`。仅有 SSH 终端或只设置一个 `DISPLAY` 字符串，不代表播放器已获得桌面访问权限；具体启动和排查见 [HDMI 文档](../demos/hdmi_wall/README.md)。
+
+## 官方依赖与模型
+
+资源来自 [SOPHGO 官方 SOPHON-DEMO](https://github.com/sophgo/sophon-demo)。可以按需准备某个样例，也可以使用下方的 YOLOv8 一键流程。
+
+### 公共工具与依赖源码
+
+仅需要 YOLO26 时，执行本节后选择 YOLO26 下载命令即可，无需先下载 YOLOv8 模型。以下命令面向使用 apt 的 Linux 主机；已有工具可跳过安装部分：
+
+```bash
+sudo apt update
+sudo apt install -y git cmake make g++ pkg-config python3 python3-pip
+
+mkdir -p third_party
+if [ ! -d third_party/sophon-demo ]; then
+  git -c core.autocrlf=false clone --depth 1 -b release \
+    https://github.com/sophgo/sophon-demo.git third_party/sophon-demo
+fi
+test -d third_party/sophon-demo/sample
+```
+
+已有 `third_party/sophon-demo/` 时复用当前源码，不自动执行 `git pull`。若目录内没有 `sample/` 或下方选定的样例，先核对本地 checkout 是否完整、是否包含该样例。
+
+### 选择资源下载
+
+按需要执行其中一组；同时使用两种 YOLO 时可分别执行。
+
+```bash
+# YOLOv8：官方 BM1684X 模型、类别、视频与图像数据
+test -d third_party/sophon-demo/sample/YOLOv8_plus_det && \
+  bash third_party/sophon-demo/sample/YOLOv8_plus_det/scripts/download.sh --BM1684X
+```
+
+```bash
+# YOLO26：官方 BM1684X 模型、类别、视频与图像数据
+test -d third_party/sophon-demo/sample/YOLO26 && \
+  bash third_party/sophon-demo/sample/YOLO26/scripts/download.sh --BM1684X
+```
+
+对应渠道为 [YOLOv8 官方下载脚本](https://github.com/sophgo/sophon-demo/blob/release/sample/YOLOv8_plus_det/scripts/download.sh)和 [YOLO26 官方下载脚本](https://github.com/sophgo/sophon-demo/blob/release/sample/YOLO26/scripts/download.sh)。官方脚本会调用 `pip3` 安装或更新 `dfss`，通过 SOPHGO 公开资源服务获取文件；需网络和当前 Python 环境的安装权限。
+
+### YOLOv8 一键流程
+
+需要一次完成公共工具、源码、YOLOv8 模型和数据准备时，可用以下命令代替上述手动步骤：
+
+```bash
+bash scripts/prepare.sh
+```
+
+该脚本会安装基础构建工具，首次克隆官方 release 分支，并下载 YOLOv8 模型、类别文件和公开示例数据。它需要网络及系统包安装权限，不替代驱动和 SDK 安装。
+
+官方下载内容保持原样例目录：
+
+```text
+third_party/sophon-demo/
+  sample/YOLOv8_plus_det/
+    models/BM1684X/
+    datasets/
+  sample/YOLO26/
+    models/BM1684X/
+    datasets/
+```
+
+示例视频、测试图片、COCO128 和 COCO 验证子集都保存在对应样例的 `datasets/`，不会自动复制到 `data/inputs/`。具体文件、用途、资源渠道和下载中断恢复步骤见[本地数据与官方资源清单](../data/README.md)。
+
+需要可选 YOLOv8n 模型时：
+
+```bash
+bash scripts/prepare_yolov8n.sh
+```
+
+此脚本下载并核验官方模型；输入与模型文件均保留在本地。
+
+## 文件准备
+
+自有视频放到 `data/inputs/`，自有 bmodel 和类别名称放到 `data/models/`，参见[data 分类](../data/README.md)。先检查视频：
+
+```bash
+ffprobe -v error -select_streams v:0 \
+  -show_entries stream=codec_name,width,height,avg_frame_rate,bit_rate,pix_fmt,color_space,color_range \
+  -show_entries format=duration -of json data/inputs/input.mp4
+```
+
+每个 demo 的输入约束不同，运行前以其 README 为准。模型必须面向 BM1684X，且 batch、输入布局、输出格式、类别顺序与程序相符。
+
+Windows 编辑的 Shell 脚本应使用 LF 换行后再在 Linux 执行。默认在各 demo 的 `build/` 生成程序；源码更新后重新构建对应 demo。
+
+## 选择入口
+
+- [解码](../demos/decode/README.md)：Python 入口，无需 C++ 构建。
+- [YOLOv8](../demos/yolov8/README.md)：检测记录与可选编码。
+- [HDMI 视频墙](../demos/hdmi_wall/README.md)：实时拼屏与同帧检测框。
+- [YOLO26](../demos/yolo26/README.md)：紧凑检测结果。
+- [诊断工具](../tools/diagnostics/README.md)：单独检查模型、结果和传输。
+
+YOLOv8 和 YOLO26 使用各自的 `run.sh --devices 0` 或 `--devices 0,1` 选择设备，使用 `--duration` 设置后端测量窗口，无需切换到另一个多卡 demo。
+
+各目录的 README 同时说明输入、命令和输出；不另维护平行的逐 demo 文档。
+
+## 常见问题
+
+| 症状 | 先检查什么 |
+|---|---|
+| `bm-smi` 找不到设备，或所选编号不存在 | 确认驱动版本、安装后重启情况及设备枚举；回到“开始前检查” |
+| 找不到 `h264_bm`，或提示解码器不可用 | 用 `command -v ffmpeg` 确认正在使用 SOPHON FFmpeg，检查其解码器列表 |
+| CMake 提示找不到 FFMPEG、OpenCV 或 libsophon | 检查 SDK 开发包及实际 CMake 配置目录；不要用普通桌面 OpenCV 代替 SOPHON 版本 |
+| 提示模型、类别或视频文件缺失 | 对照所选 Demo 的默认路径，按[资源说明](../data/README.md)补齐；目录存在不代表下载完整 |
+| HDMI 没有窗口或不能连接显示 | 检查图形桌面、`/usr/bin/ffplay` 和显示权限，按 [HDMI 文档](../demos/hdmi_wall/README.md)排查 |
