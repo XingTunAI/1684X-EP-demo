@@ -26,6 +26,7 @@ SDK 安装包不包含在本仓库中，需通过所用模组或 SDK 对应的�
 ```text
 sophon-driver_0.5.1-LTS-rk3588fix2_arm64.deb
 sophon-libsophon_0.5.1-LTS_arm64.deb
+sophon-libsophon-dev_0.5.1-LTS_arm64.deb
 sophon-mw-sophon-ffmpeg_0.14.0_arm64.deb
 sophon-mw-sophon-ffmpeg-dev_0.14.0_arm64.deb
 sophon-mw-sophon-opencv_0.14.0_arm64.deb
@@ -38,7 +39,7 @@ sophon-mw-sophon-opencv-dev_0.14.0_arm64.deb
 bash scripts/install_sdk.sh data/sdk
 ```
 
-其他版本按对应 SDK 的官方安装流程操作。安装完成后按驱动要求重启，再进行检查。
+`sophon-libsophon-dev` 提供构建所需的头文件和 `libsophon-config.cmake`，仅安装运行库不能在干净 rootfs 上编译 Demo。其他版本按对应 SDK 的官方安装流程操作。安装完成后按驱动要求重启，再进行检查。
 
 ## 开始前检查
 
@@ -63,7 +64,14 @@ ls -ld /opt/sophon/sophon-ffmpeg-latest/lib/cmake \
 
 构建脚本默认查找以上 SOPHON FFmpeg/OpenCV 路径，libsophon 通过 CMake 的 `find_package(libsophon)` 查找。若 SDK 安装位置不同，构建时传入相应的 `FFMPEG_DIR`、`OpenCV_DIR`、`libsophon_DIR`；这些值应指向实际 SDK 的 CMake 配置目录。
 
-HDMI 还要求 Linux 主机已登录图形桌面、显示器可用，并安装系统播放器。请在该桌面的终端检查：
+HDMI 还要求 Linux 主机已登录图形桌面、显示器可用，并安装系统播放器。`prepare.sh` 不安装播放器；使用 apt 的系统缺少 `/usr/bin/ffplay` 时执行：
+
+```bash
+sudo apt update
+sudo apt install -y ffmpeg
+```
+
+此处系统 FFmpeg 包用于提供 `/usr/bin/ffplay`，硬件解码和 C++ 构建仍使用 SOPHON SDK。安装后按上表重新核对 SOPHON FFmpeg 的命令路径和解码器。在已登录桌面的终端检查：
 
 ```bash
 test -x /usr/bin/ffplay && echo 'ffplay: OK'

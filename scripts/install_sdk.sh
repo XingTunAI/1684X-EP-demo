@@ -18,7 +18,8 @@ cat /etc/os-release || true
 echo "[2/5] Installing SOPHON driver and runtime"
 sudo apt install -y \
   "${DEB_DIR}/sophon-driver_0.5.1-LTS-rk3588fix2_arm64.deb" \
-  "${DEB_DIR}/sophon-libsophon_0.5.1-LTS_arm64.deb"
+  "${DEB_DIR}/sophon-libsophon_0.5.1-LTS_arm64.deb" \
+  "${DEB_DIR}/sophon-libsophon-dev_0.5.1-LTS_arm64.deb"
 
 echo "[3/5] Installing SOPHON multimedia packages"
 sudo apt install -y \
