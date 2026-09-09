@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 
@@ -172,6 +173,7 @@ class ShowcaseTests(unittest.TestCase):
         args = self.parse("--devices", "auto", "--stop", "--profile", "/missing/profile.json")
         with patch.object(runner, "discover_devices", side_effect=AssertionError("sysfs")), \
                 patch.object(runner, "device_link", side_effect=AssertionError("sysfs")), \
+                patch.object(runner, "check_existing_run", side_effect=AssertionError("busy check")), \
                 patch.object(runner.multi_run, "read_device_configuration", side_effect=AssertionError("profile")), \
                 patch.object(runner.subprocess, "run") as prepare, patch.object(runner.os, "execv") as execute:
             plan = runner.build_plan(args)
@@ -211,6 +213,7 @@ class ShowcaseTests(unittest.TestCase):
     def test_dry_run_on_windows_does_not_write_or_start_processes_or_guess_links(self):
         with patch.object(runner.sys, "platform", "win32"), \
                 patch.object(runner, "device_link", side_effect=AssertionError("sysfs")), \
+                patch.object(runner, "check_existing_run", side_effect=AssertionError("busy check")), \
                 patch.object(runner.subprocess, "run", side_effect=AssertionError("subprocess")), \
                 patch.object(runner.os, "execv", side_effect=AssertionError("exec")), \
                 patch.object(Path, "mkdir", side_effect=AssertionError("mkdir")), \
@@ -233,6 +236,100 @@ class ShowcaseTests(unittest.TestCase):
             profile.write_text('{"devices":{"0":{"streams":33}}}', encoding="utf-8")
             with self.assertRaises(ValueError):
                 self.off_board_plan(self.parse("--profile", str(profile)))
+
+
+class EarlyBusyTests(unittest.TestCase):
+    def metadata(self, root, directory="hdmi-wall-multi", *, launcher=None, worker=None, kind=None):
+        parent = root / "data/results" / directory
+        output = parent / "existing-run"
+        output.mkdir(parents=True)
+        (parent / "latest.json").write_text(json.dumps({"output": str(output)}), encoding="utf-8")
+        kind = kind or (runner.multi_run.LAUNCHER_KIND if directory == "hdmi-wall-multi" else "bm1684x-hdmi-wall-v1")
+        value = {"launcher_kind": kind, "launcher": launcher}
+        if directory == "hdmi-wall-multi":
+            value["workers"] = [{"identity": worker}]
+        else:
+            value["worker"] = worker
+        (output / "run.json").write_text(json.dumps(value), encoding="utf-8")
+        return output
+
+    def test_live_multi_launcher_or_owned_worker_blocks_before_prepare_and_config_writes(self):
+        for live_pid in (71, 72):
+            with self.subTest(live_pid=live_pid), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                output = self.metadata(root, launcher={"pid": 71}, worker={"pid": 72})
+                args = types.SimpleNamespace(root=str(root))
+                plan = {"stop": False, "prepare_command": ["prepare"],
+                        "device_config_path": str(root / "new-run/device-config.json")}
+                with patch.object(runner.multi_run.single, "is_same_process", side_effect=lambda item: item is not None and item["pid"] == live_pid), \
+                        patch.object(runner.subprocess, "run") as prepare, patch.object(runner.os, "execv") as execute:
+                    with self.assertRaises(RuntimeError) as raised:
+                        runner.execute(args, plan)
+                prepare.assert_not_called()
+                execute.assert_not_called()
+                self.assertFalse((root / "new-run").exists())
+                self.assertIn(str(output), str(raised.exception))
+                self.assertIn("showcase.sh", str(raised.exception))
+                self.assertIn("--stop", str(raised.exception))
+                self.assertIn(f"verified PID {live_pid}", str(raised.exception))
+
+    def test_live_single_run_reports_its_correct_stop_entry_and_quotes_paths(self):
+        with tempfile.TemporaryDirectory(prefix="hdmi space ") as directory:
+            root = Path(directory)
+            output = self.metadata(root, "hdmi-wall", launcher={"pid": 81})
+            with patch.object(runner.multi_run.single, "is_same_process", side_effect=lambda item: item == {"pid": 81}):
+                with self.assertRaises(RuntimeError) as raised:
+                    runner.check_existing_run(root)
+            self.assertIn(str(output), str(raised.exception))
+            command = str(raised.exception).splitlines()[-1].strip()
+            self.assertEqual(runner.shlex.split(command), ["sudo", "bash", str(root / "demos/hdmi_wall/run.sh"),
+                                                          "--root", str(root), "--stop"])
+
+    def test_stale_or_unrecognized_metadata_does_not_block_or_write_files(self):
+        for kind in (runner.multi_run.LAUNCHER_KIND, "unrecognized-launcher"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self.metadata(root, launcher={"pid": 71}, kind=kind)
+                existing = {path.relative_to(root) for path in root.rglob("*")}
+                with patch.object(runner.multi_run.single, "is_same_process", return_value=False), \
+                        patch.object(runner, "shared_lock_owner", return_value=None) as lock:
+                    runner.check_existing_run(root)
+                    lock.assert_called_once_with(root / "data/results/hdmi-wall/launcher.lock")
+                self.assertEqual({path.relative_to(root) for path in root.rglob("*")}, existing)
+
+    def test_shared_flock_is_inspected_without_creating_or_acquiring_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            lock = root / "launcher.lock"
+            locks = root / "proc-locks"
+            lock.write_text("unchanged", encoding="ascii")
+            inode = lock.stat().st_ino
+            locks.write_text(f"10: -> FLOCK ADVISORY WRITE 70 08:01:{inode} 0 EOF\n"
+                             f"11: POSIX ADVISORY WRITE 71 08:01:{inode} 0 EOF\n"
+                             f"12: FLOCK ADVISORY WRITE 72 08:02:{inode} 0 EOF\n"
+                             f"13: FLOCK ADVISORY WRITE 73 08:01:{inode} 0 EOF\n", encoding="ascii")
+            original_open = Path.open
+            def read_only(path, mode="r", *args, **kwargs):
+                self.assertEqual(mode, "r")
+                return original_open(path, mode, *args, **kwargs)
+            with patch.object(runner.os, "major", return_value=8, create=True), \
+                    patch.object(runner.os, "minor", return_value=1, create=True), \
+                    patch.object(Path, "open", new=read_only):
+                self.assertEqual(runner.shared_lock_owner(lock, locks), 73)
+                self.assertIsNone(runner.shared_lock_owner(root / "missing.lock", locks))
+            self.assertEqual(lock.read_text(encoding="ascii"), "unchanged")
+            self.assertFalse((root / "missing.lock").exists())
+
+    def test_held_lock_blocks_the_prepublication_window_without_claiming_a_run_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with patch.object(runner, "shared_lock_owner", return_value=91):
+                with self.assertRaises(RuntimeError) as raised:
+                    runner.check_existing_run(root)
+            self.assertIn("held by PID 91", str(raised.exception))
+            self.assertIn("directory is not yet available", str(raised.exception))
+            self.assertIn("--stop", str(raised.exception))
+            self.assertEqual(list(root.iterdir()), [])
 
 
 if __name__ == "__main__":

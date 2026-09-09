@@ -1,5 +1,6 @@
 import argparse
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -7,7 +8,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 script = Path(__file__).resolve().parents[3] / "scripts/prepare_hdmi_loop.py"
 spec = importlib.util.spec_from_file_location("loop_material", script)
@@ -16,6 +17,16 @@ spec.loader.exec_module(module)
 
 INFO = {"codec_name": "h264", "width": 1920, "height": 1080, "pix_fmt": "yuv420p",
         "r_frame_rate": "25/1", "duration_seconds": 24.67, "color_space": "bt709", "color_range": "tv"}
+
+
+class FlushedOutput(io.StringIO):
+    def __init__(self):
+        super().__init__()
+        self.flush_count = 0
+
+    def flush(self):
+        self.flush_count += 1
+        super().flush()
 
 
 class MaterialTests(unittest.TestCase):
@@ -163,6 +174,98 @@ class MaterialTests(unittest.TestCase):
         for changed in ({"r_frame_rate": "30/1"}, {"duration_seconds": 590}, {"color_space": "bt470bg"}):
             with self.subTest(changed=changed), self.assertRaises(ValueError):
                 module.verify_output(INFO, dict(INFO, **changed), 600)
+
+    def test_sha_progress_hashes_every_byte_with_throttled_flushed_stderr(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "long.mp4"
+            payload = bytes(range(256)) * (5 * 4096)  # Five 1 MiB reads.
+            path.write_bytes(payload)
+            error = FlushedOutput()
+            output = io.StringIO()
+            # Reading chunks before the 2-second threshold must not spam logs;
+            # the final completion line may follow the last update immediately.
+            with patch.object(module.time, "monotonic", side_effect=[0, .5, 1.9, 2, 2.1, 4.1, 4.2]), \
+                    patch.object(module.sys, "stderr", error), contextlib.redirect_stdout(output):
+                result = module.sha256(path)
+            self.assertEqual(result, hashlib.sha256(payload).hexdigest())
+            self.assertEqual(output.getvalue(), "")
+            lines = error.getvalue().splitlines()
+            self.assertEqual(len(lines), 4)
+            self.assertIn("Checking SHA-256", lines[0])
+            updates = [line for line in lines if "SHA-256 progress" in line]
+            self.assertEqual(len(updates), 2)
+            self.assertIn("3,145,728 / 5,242,880 bytes (60.0%), 2.0s elapsed", updates[0])
+            self.assertIn("5,242,880 / 5,242,880 bytes (100.0%), 4.1s elapsed", updates[1])
+            self.assertIn("SHA-256 complete", lines[-1])
+            self.assertEqual(error.flush_count, len(lines))
+
+    def test_fast_and_empty_hashes_have_one_immediate_stage_line(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "small.mp4"
+            for payload in (b"small complete content", b""):
+                path.write_bytes(payload)
+                error = FlushedOutput()
+                with patch.object(module.time, "monotonic", side_effect=[10, 10.01, 10.02]), patch.object(module.sys, "stderr", error):
+                    self.assertEqual(module.sha256(path), hashlib.sha256(payload).hexdigest())
+                self.assertEqual(len(error.getvalue().splitlines()), 1)
+                self.assertIn(f"({len(payload):,} bytes; full file verification)", error.getvalue())
+                self.assertEqual(error.flush_count, 1)
+
+    def test_copy_heartbeat_waits_between_reports_and_stops_without_extra_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "video.mp4"
+            path.write_bytes(b"packets")
+            stop = Mock()
+            stop.wait.side_effect = [False, False, True]
+            error = FlushedOutput()
+            with patch.object(module.time, "monotonic", side_effect=[12, 14.1]), patch.object(module.sys, "stderr", error):
+                module.copy_progress(stop, path, 10)
+            self.assertEqual(stop.wait.call_args_list, [call(2.0), call(2.0), call(2.0)])
+            lines = error.getvalue().splitlines()
+            self.assertEqual(len(lines), 2)
+            self.assertIn("Generating local clip / finalizing MP4: 2.0s elapsed", lines[0])
+            self.assertIn("7 bytes in the temporary file", lines[1])
+            self.assertEqual(error.flush_count, 2)
+
+    def test_copy_failure_stops_heartbeat_and_preserves_subprocess_error(self):
+        for failure in (subprocess.CalledProcessError(3, ["ffmpeg"]), KeyboardInterrupt()):
+            with self.subTest(error=type(failure).__name__):
+                stop, thread = Mock(), Mock()
+                with patch.object(module.threading, "Event", return_value=stop), \
+                        patch.object(module.threading, "Thread", return_value=thread), \
+                        patch.object(module.subprocess, "run", side_effect=failure), \
+                        self.assertRaises(type(failure)) as caught:
+                    module.run_copy(["ffmpeg"], {}, Path("unused.mp4"))
+                self.assertIs(caught.exception, failure)
+                thread.start.assert_called_once_with()
+                stop.set.assert_called_once_with()
+                thread.join.assert_called_once_with()
+
+    def test_interrupted_copy_keeps_temporary_file_cleanup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            plan = self.fixture(directory)
+            def interrupted(command, **kwargs):
+                Path(command[-1]).write_bytes(b"partial output")
+                raise KeyboardInterrupt
+            with self.dependencies(plan), patch.object(module.subprocess, "run", side_effect=interrupted), self.assertRaises(KeyboardInterrupt):
+                module.prepare(plan)
+            self.assertFalse(Path(plan["output"]).exists())
+            self.assertFalse(Path(plan["manifest"]).exists())
+            self.assertFalse(Path(plan["temporary_output"]).parent.exists())
+
+    def test_successful_cli_stdout_remains_only_the_absolute_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            plan = self.fixture(directory)
+            output = io.StringIO()
+            with self.dependencies(plan), patch.object(module, "arguments", return_value=argparse.Namespace(dry_run=False)), \
+                    patch.object(module, "build_plan", return_value=plan), patch.object(module.sys, "platform", "linux"), \
+                    patch.object(module.signal, "signal"), contextlib.redirect_stdout(output):
+                self.assertEqual(module.main([]), 0)
+                progress = module.sys.stderr.getvalue()
+            self.assertEqual(output.getvalue(), str(Path(plan["output"]).absolute()) + "\n")
+            self.assertIn("Inspecting source video", progress)
+            self.assertIn("Generating approximately 600s", progress)
+            self.assertIn("Publishing verified material", progress)
 
 
 if __name__ == "__main__":

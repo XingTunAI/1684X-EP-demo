@@ -16,6 +16,7 @@ import math
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shlex
 import subprocess
 import sys
 import uuid
@@ -167,8 +168,72 @@ def build_plan(args) -> dict:
                             *FIXED_OPTIONS]}
 
 
+def shared_lock_owner(lock_path: Path, proc_locks: Path = Path("/proc/locks")) -> int | None:
+    """Inspect an existing Linux flock without opening, creating or taking it."""
+    try:
+        info = lock_path.stat()
+    except FileNotFoundError:
+        return None
+    wanted = (os.major(info.st_dev), os.minor(info.st_dev), info.st_ino)
+    for line in proc_locks.read_text(encoding="ascii").splitlines():
+        fields = line.split()
+        # Waiting lock requests contain '->' and do not own the file lock.
+        if len(fields) < 8 or fields[1] != "FLOCK" or fields[3] not in ("READ", "WRITE"):
+            continue
+        try:
+            major, minor, inode = fields[5].split(":")
+            key = (int(major, 16), int(minor, 16), int(inode))
+            pid = int(fields[4])
+        except ValueError:
+            continue
+        if key == wanted and pid > 0:
+            return pid
+    return None
+
+
+def check_existing_run(root: Path) -> None:
+    """Fail before large-video hashing when a verified HDMI run already exists.
+
+    This is a read-only early hint, not a lock acquisition. The multi-device
+    supervisor still owns the final atomic lock and accelerator-load checks.
+    """
+    layouts = (("hdmi-wall-multi", multi_run.LAUNCHER_KIND, "showcase.sh"),
+               ("hdmi-wall", "bm1684x-hdmi-wall-v1", "run.sh"))
+    for directory, kind, stop_script in layouts:
+        parent = root / "data/results" / directory
+        try:
+            latest = json.loads((parent / "latest.json").read_text(encoding="utf-8"))
+            output = Path(latest["output"]).resolve()
+            if output.parent != parent.resolve():
+                continue
+            metadata = json.loads((output / "run.json").read_text(encoding="utf-8"))
+            if not isinstance(metadata, dict) or metadata.get("launcher_kind") != kind:
+                continue
+            identities = [metadata.get("launcher"), metadata.get("worker"), metadata.get("player"), metadata.get("viewer")]
+            if isinstance(metadata.get("workers"), list):
+                identities.extend(item.get("identity") for item in metadata["workers"] if isinstance(item, dict))
+        except (OSError, ValueError, KeyError, TypeError):
+            continue  # Stale/partial metadata is not evidence of a live process.
+        for identity in identities:
+            if multi_run.single.is_same_process(identity):
+                stop = ["sudo", "bash", str(root / "demos/hdmi_wall" / stop_script), "--root", str(root), "--stop"]
+                raise RuntimeError(f"HDMI wall is already running: {output} (verified PID {identity['pid']}).\n"
+                                   f"Video preparation has not started. Stop the existing run first with:\n  {shlex.join(stop)}")
+    lock_path = root / "data/results/hdmi-wall/launcher.lock"
+    try:
+        owner = shared_lock_owner(lock_path)
+    except OSError as exc:
+        raise RuntimeError(f"Cannot check the existing HDMI lock before video preparation: {lock_path}: {exc}") from exc
+    if owner is not None:
+        stop = ["sudo", "bash", str(root / "demos/hdmi_wall/showcase.sh"), "--root", str(root), "--stop"]
+        raise RuntimeError(f"HDMI launcher lock is already held by PID {owner}: {lock_path}.\n"
+                           "The active run directory is not yet available in verified latest metadata; video preparation has not started.\n"
+                           f"Once its run metadata is published, stop the multi-device run with:\n  {shlex.join(stop)}")
+
+
 def execute(args, plan):
     if not plan["stop"]:
+        check_existing_run(Path(args.root))
         prepared = subprocess.run(plan["prepare_command"], cwd=args.root, check=False)
         if prepared.returncode:
             return multi_run.single.exit_status(prepared.returncode)

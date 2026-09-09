@@ -18,6 +18,8 @@ import shutil
 import signal
 import subprocess
 import sys
+import threading
+import time
 import uuid
 
 
@@ -25,6 +27,11 @@ KIND = "bm1684x-hdmi-loop-material-v1"
 SOURCE = "third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/test_car_person_1080P.mp4"
 SYSTEM_LIBS = "/usr/lib/aarch64-linux-gnu"
 SPACE_RESERVE_BYTES = 1024 ** 3
+PROGRESS_INTERVAL_SECONDS = 2.0
+
+
+def notice(message):
+    print("[HDMI material] " + message, file=sys.stderr, flush=True)
 
 
 def positive(value):
@@ -88,10 +95,58 @@ def build_plan(args):
 
 def sha256(path):
     digest = hashlib.sha256()
+    total = path.stat().st_size
+    started = last_report = time.monotonic()
+    read_bytes = 0
+    reported_progress = False
+    notice(f"Checking SHA-256: {path} ({total:,} bytes; full file verification)")
+
+    def report(now, completed=False):
+        seconds = max(0.0, now - started)
+        percent = read_bytes * 100 / total if total else (100 if completed else 0)
+        rate = read_bytes / seconds / 1024 ** 2 if seconds else 0
+        notice(f"SHA-256 {'complete' if completed else 'progress'}: {path.name}: "
+               f"{read_bytes:,} / {total:,} bytes ({percent:.1f}%), "
+               f"{seconds:.1f}s elapsed, {rate:.1f} MiB/s")
+
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
+            read_bytes += len(chunk)
+            now = time.monotonic()
+            if now - last_report >= PROGRESS_INTERVAL_SECONDS:
+                report(now)
+                last_report = now
+                reported_progress = True
+    finished = time.monotonic()
+    # Fast/small files get one immediate stage line, rather than a line per
+    # chunk. Long checks also get a final exact byte count after EOF was read.
+    if reported_progress or finished - started >= PROGRESS_INTERVAL_SECONDS:
+        report(finished, completed=True)
     return digest.hexdigest()
+
+
+def copy_progress(stop, output, started):
+    while not stop.wait(PROGRESS_INTERVAL_SECONDS):
+        try:
+            size = f"{output.stat().st_size:,} bytes in the temporary file"
+        except OSError:
+            size = "waiting for the temporary output file"
+        notice(f"Generating local clip / finalizing MP4: {time.monotonic() - started:.1f}s elapsed; {size}")
+
+
+def run_copy(command, env, output):
+    # Keep subprocess.run's failure/interrupt behavior. A small heartbeat also
+    # covers ffmpeg's faststart second pass, when packet statistics can pause.
+    stop = threading.Event()
+    progress = threading.Thread(target=copy_progress, args=(stop, output, time.monotonic()),
+                                name="hdmi-material-progress", daemon=True)
+    progress.start()
+    try:
+        subprocess.run(command, env=env, check=True, stdout=sys.stderr)
+    finally:
+        stop.set()
+        progress.join()
 
 
 def probe(path, env):
@@ -145,7 +200,7 @@ def check_output_space(source, output, source_info, seconds):
     details = (f"estimated output {estimated:,} bytes ({estimated / 1024 ** 3:.2f} GiB), "
                f"required {required:,} bytes including 5% + 1 GiB reserve, "
                f"available {available:,} bytes on {filesystem_path}")
-    print("Stream-copy space estimate from source size and duration: " + details, file=sys.stderr)
+    notice("Stream-copy space estimate from source size and duration: " + details)
     if available < required:
         raise ValueError("Insufficient free space: " + details)
 
@@ -160,18 +215,20 @@ def prepare(plan):
         if not Path(executable).is_file() or not os.access(executable, os.X_OK):
             raise ValueError(f"Required system tool is missing or not executable: {executable}")
     env = system_environment()
+    notice("Inspecting source video: " + str(source))
     source_info = probe(source, env)
     source_hash = sha256(source)
     if output.is_symlink() or manifest.is_symlink():
         raise ValueError("Refusing to replace or reuse an output/manifest symlink")
     if output.exists() or manifest.exists():
+        notice("Checking cached material and its manifest: " + str(output))
         if not output.is_file() or not manifest.is_file():
             raise ValueError(f"Output or manifest already exists without its matching pair; refusing overwrite: {output}")
         saved = json.loads(manifest.read_text(encoding="utf-8"))
         if (not isinstance(saved, dict) or saved.get("kind") != KIND or saved.get("source_sha256") != source_hash
                 or saved.get("seconds") != plan["seconds"] or saved.get("output_sha256") != sha256(output)):
             raise ValueError(f"Existing file is not a matching verified generated asset; refusing overwrite: {output}")
-        print("Reusing verified repeated local clip: " + str(output), file=sys.stderr)
+        notice("Reusing verified repeated local clip: " + str(output))
         return output
     # A verified cache needs no new video allocation, so check only after that
     # reuse path. Reject before creating a temporary directory or running ffmpeg.
@@ -185,13 +242,16 @@ def prepare(plan):
     temporary_dir.mkdir(mode=0o700, exist_ok=False)
     temporary_manifest = temporary_dir / "manifest.json"
     try:
-        print(f"Repeating local clip to approximately {plan['seconds']}s using video stream copy (no encoding).", file=sys.stderr)
-        subprocess.run(plan["copy_command"], env=env, check=True, stdout=sys.stderr)
+        notice(f"Generating approximately {plan['seconds']}s of local video using stream copy (no encoding): {output}")
+        run_copy(plan["copy_command"], env, temporary_output)
+        notice("Inspecting generated video and verifying its format/duration.")
         output_info = probe(temporary_output, env)
         verify_output(source_info, output_info, plan["seconds"])
+        notice("Rechecking the source before publishing generated material.")
         if sha256(source) != source_hash:
             raise ValueError("Source changed while preparing the loop; generated output was not published")
         output_hash = sha256(temporary_output)
+        notice("Publishing verified material and its manifest.")
         metadata = {"kind": KIND, "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                     "source": str(source.resolve()), "source_sha256": source_hash, "source_video": source_info,
                     "seconds": plan["seconds"], "output": str(output.absolute()), "output_sha256": output_hash,
@@ -205,7 +265,7 @@ def prepare(plan):
             os.fsync(handle.fileno())
         os.link(temporary_manifest, manifest)
         os.link(temporary_output, output)
-        print("Prepared repeated local footage; this avoids short-file EOF reopen, not a real live-camera acceptance test.", file=sys.stderr)
+        notice("Prepared repeated local footage; this avoids short-file EOF reopen, not a real live-camera acceptance test.")
         return output
     finally:
         # Handle interruption between publishing the two links as well as an
