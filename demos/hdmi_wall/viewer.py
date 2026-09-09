@@ -9,6 +9,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import signal
 import stat
 import sys
@@ -61,8 +62,10 @@ class FrameBuffer:
 
 
 class DevicePage:
-    def __init__(self, device: int, fifo: Path, output: Path, frame_bytes: int):
+    def __init__(self, device: int, fifo: Path, output: Path, frame_bytes: int,
+                 streams: int | None = None, pcie_link_label: str | None = None):
         self.device, self.fifo, self.output = device, fifo, output
+        self.streams, self.pcie_link_label = streams, pcie_link_label
         self.buffer = FrameBuffer(frame_bytes)
         self.fd = None
         self.writer_seen = False
@@ -72,6 +75,11 @@ class DevicePage:
         self.summary = None
         self.launcher_status = "starting"
         self.returncode = None
+
+    def hardware_label(self) -> str:
+        if self.pcie_link_label is None:
+            return ""  # Older or ordinary manifests keep the existing two lines.
+        return self.pcie_link_label + (f" | {self.streams} CH" if self.streams is not None else "")
 
     def open_fifo(self, now: float):
         if self.fd is not None or self.error or now < self.next_open:
@@ -147,7 +155,7 @@ class DevicePage:
             return "error"
         if self.summary:
             return "error" if self.summary.get("error") or self.summary["status"] in (
-                "failed", "incomplete_records", "incomplete_duration") else "ended"
+                "failed", "incomplete_records", "incomplete_accounting", "incomplete_duration") else "ended"
         if self.launcher_status in ("completed", "stopped"):
             return "ended"
         if self.disconnected:
@@ -208,7 +216,8 @@ class ViewerState:
             "supervised_close": self.supervised_close, "close_requested": self.close_requested,
             "failure": self.failure,
             "devices": [{
-                "device": page.device, "frames_received": page.buffer.frames,
+                "device": page.device, "streams": page.streams, "pcie_link_label": page.pcie_link_label,
+                "frames_received": page.buffer.frames,
                 "latest_received_unix_ms": page.buffer.latest_unix_ms,
                 "view_age_ms": None if page.buffer.age(now) is None else round(page.buffer.age(now) * 1000, 3),
                 "partial_bytes": page.buffer.used, "state": page.state(now),
@@ -255,7 +264,13 @@ def read_manifest(path: Path):
             raise ValueError("Preview paths must be absolute and FIFOs must be unique")
         ids.add(device)
         fifos.add(str(fifo))
-        pages.append(DevicePage(device, fifo, output, width * height * 3))
+        streams, label = item.get("streams"), item.get("pcie_link_label")
+        if type(streams) is not int or not 1 <= streams <= 32:
+            streams = None
+        if (not isinstance(label, str) or len(label) > 30
+                or not re.fullmatch(r"PCIe [0-9]+(?:\.[0-9]+)?(?: GT/s)? x[1-9][0-9]*", label)):
+            label = None
+        pages.append(DevicePage(device, fifo, output, width * height * 3, streams, label))
     return ViewerState(pages, supervised_close=manifest.get("supervised_close") is True), width, height, float(fps)
 
 
@@ -453,10 +468,16 @@ class SDLViewer:
         self.text("DEVICE PAGES", 24, 57, 2, (129, 151, 178))
         for index, (page, box) in enumerate(zip(state.pages, button_rects(len(state.pages)))):
             self.fill(box, (29, 83, 125) if index == state.active_index else (34, 45, 60))
-            self.text("DEVICE " + str(page.device), box[0] + 18, 24, 3)
+            hardware = page.hardware_label()
+            self.text("DEVICE " + str(page.device), box[0] + 18, 19 if hardware else 24, 3)
+            if hardware:
+                # Fit all four buttons without clipping long but valid observed
+                # link labels; the status row remains visible during failures.
+                size = min(2, (box[2] - 36) / (6 * len(hardware)))
+                self.text(hardware, box[0] + 18, 45, size, (190, 210, 231))
             page_state = page.state(now)
             state_label = "VIEW LIVE" if page_state == "live" else page_state
-            self.text(str(index + 1) + " | " + state_label, box[0] + 18, 57, 2,
+            self.text(str(index + 1) + " | " + state_label, box[0] + 18, 66 if hardware else 57, 2,
                       (121, 225, 178) if page_state == "live" else (249, 189, 104))
         page = state.active
         if page.buffer.frames:

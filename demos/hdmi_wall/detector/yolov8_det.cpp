@@ -21,6 +21,21 @@
 #include <chrono>
 
 namespace {
+void destroy_image(bm_image& image) noexcept {
+#if BMCV_VERSION_MAJOR > 1
+    bm_image_destroy(&image);
+#else
+    bm_image_destroy(image);
+#endif
+    image = bm_image{};
+}
+
+struct ScopedImage {
+    bm_image image{};
+    bool created = false;
+    ~ScopedImage() { if (created) destroy_image(image); }
+};
+
 class TransferLock {
     int fd_ = -1;
 public:
@@ -47,6 +62,87 @@ const std::vector<std::vector<int>> colors = {
     {0, 255, 85},    {0, 255, 170},   {0, 255, 255},   {0, 170, 255}, {0, 85, 255},  {0, 0, 255},   {85, 0, 255},
     {170, 0, 255},   {255, 0, 255},   {255, 0, 170},   {255, 0, 85},  {255, 0, 0},   {255, 0, 255}, {255, 85, 255},
     {255, 170, 255}, {255, 255, 255}, {170, 255, 255}, {85, 255, 255}};
+
+void YoloV8_det::release_preprocess_buffers() noexcept {
+    // Converted images borrow resident_input_owned; detach/destroy their image
+    // descriptors before releasing that allocation exactly once. The descriptor
+    // passed to BMRuntime is a copy and is never used to decide what to free.
+    if (converted_memory_attached) {
+#if BMCV_VERSION_MAJOR > 1
+        bm_image_detach_contiguous_mem(converted_images_created, converted_images.data());
+#else
+        bm_image_dettach_contiguous_mem(converted_images_created, converted_images.data());
+#endif
+        converted_memory_attached = false;
+    }
+    for (int i = 0; i < converted_images_created; ++i) destroy_image(converted_images[i]);
+    converted_images_created = 0;
+    converted_images.clear();
+    if (input_memory_allocated) {
+        bm_free_device(handle, resident_input_owned);
+        input_memory_allocated = false;
+    }
+    resident_input = bm_tensor_t{};
+    resident_input_owned = bm_device_mem_t{};
+    if (resized_memory_allocated) {
+        bm_image_free_contiguous_mem(resized_images_created, resized_images.data());
+        resized_memory_allocated = false;
+    }
+    for (int i = 0; i < resized_images_created; ++i) destroy_image(resized_images[i]);
+    resized_images_created = 0;
+    resized_images.clear();
+    preprocess_buffers_ready = false;
+}
+
+void YoloV8_det::prepare_preprocess_buffers() {
+    if (preprocess_buffers_ready) return;
+    const auto& shape = netinfo->stages[0].input_shapes[0];
+    if (netinfo->input_num != 1 || shape.num_dims != 4 || shape.dims[0] != batch_size ||
+        shape.dims[1] != 3 || shape.dims[2] != m_net_h || shape.dims[3] != m_net_w ||
+        batch_size <= 0 || m_net_h <= 0 || m_net_w <= 0)
+        throw std::runtime_error("Preprocess buffers require one fixed NCHW RGB input");
+    bm_image_data_format_ext img_dtype;
+    switch (netinfo->input_dtypes[0]) {
+        case BM_FLOAT32: img_dtype = DATA_TYPE_EXT_FLOAT32; break;
+        case BM_INT8: img_dtype = DATA_TYPE_EXT_1N_BYTE_SIGNED; break;
+        case BM_UINT8: img_dtype = DATA_TYPE_EXT_1N_BYTE; break;
+        default: throw std::runtime_error("Preprocess supports FP32, INT8 or UINT8 input tensors");
+    }
+    try {
+        resized_images.resize(batch_size);
+        converted_images.resize(batch_size);
+        const int aligned_net_w = FFALIGN(m_net_w, 64);
+        int strides[3] = {aligned_net_w, aligned_net_w, aligned_net_w};
+        // The dependency's create_batch wrapper ignores individual create
+        // errors. Track successfully created descriptors for partial rollback.
+        for (int i = 0; i < batch_size; ++i) {
+            if (bm_image_create(handle, m_net_h, m_net_w, FORMAT_RGB_PLANAR,
+                                DATA_TYPE_EXT_1N_BYTE, &resized_images[i], strides) != BM_SUCCESS)
+                throw std::runtime_error("Cannot create persistent resize image");
+            ++resized_images_created;
+        }
+        if (bm_image_alloc_contiguous_mem(batch_size, resized_images.data()) != BM_SUCCESS)
+            throw std::runtime_error("Cannot allocate persistent resize images");
+        resized_memory_allocated = true;
+        for (int i = 0; i < batch_size; ++i) {
+            if (bm_image_create(handle, m_net_h, m_net_w, FORMAT_RGB_PLANAR,
+                                img_dtype, &converted_images[i]) != BM_SUCCESS)
+                throw std::runtime_error("Cannot create persistent conversion image");
+            ++converted_images_created;
+        }
+        if (!bmrt_tensor(&resident_input, bmrt, netinfo->input_dtypes[0], shape))
+            throw std::runtime_error("Cannot allocate persistent input tensor");
+        resident_input_owned = resident_input.device_mem;
+        input_memory_allocated = true;
+        if (bm_image_attach_contiguous_mem(batch_size, converted_images.data(), resident_input_owned) != BM_SUCCESS)
+            throw std::runtime_error("Cannot attach persistent input tensor to conversion images");
+        converted_memory_attached = true;
+        preprocess_buffers_ready = true;
+    } catch (...) {
+        release_preprocess_buffers();
+        throw;
+    }
+}
 
 void YoloV8_det::prepare_output_buffers() {
     if (!reuse_output_buffers || !resident_outputs.empty()) return;
@@ -163,15 +259,17 @@ bm_status_t YoloV8_det::read_score_gated_output(bm_tensor_t* tensor, float* host
     metrics.score_ms = duration_ms(start, std::chrono::steady_clock::now());
     if (ret != BM_SUCCESS) return ret;
     metrics.score_bytes = score_gate::score_bytes;
-    const auto plan = score_gate::make_plan(gate_host_maxima, m_confThreshold);
+    const auto plan = score_gate::make_plan(gate_host_maxima, m_confThreshold, score_gate_merge_budget_kib * 1024);
     metrics.selected_rows = plan.selected_rows; metrics.ranges = plan.ranges.size();
+    metrics.planned_read_ranges = plan.read_ranges.size();
     if (!plan.fallback.empty()) return fallback(plan.fallback);
     if (!score_gate_sparse_cpu) {
         start = std::chrono::steady_clock::now();
         std::fill(host, host + score_gate::rows * score_gate::stride, 0.0f);
         metrics.host_zero_ms = duration_ms(start, std::chrono::steady_clock::now());
     }
-    for (const auto& range : plan.ranges) {
+    std::size_t candidate_range = 0;
+    for (const auto& range : plan.read_ranges) {
         const auto first = range.first * score_gate::stride;
         const auto elements = range.second * score_gate::stride;
         const auto bytes = elements * sizeof(float);
@@ -180,13 +278,14 @@ bm_status_t YoloV8_det::read_score_gated_output(bm_tensor_t* tensor, float* host
         metrics.row_ms += duration_ms(start, std::chrono::steady_clock::now());
         if (ret != BM_SUCCESS) return ret;
         metrics.row_bytes += bytes;
-        if (std::any_of(host + first, host + first + elements, [](float value) { return !std::isfinite(value); }))
-            return fallback("nonfinite_selected_row");
-        if (score_gate_sparse_cpu) {
-            for (int row = range.first; row < range.first + range.second; ++row)
-                gate_candidate_rows.push_back(row);
-        }
+        metrics.copied_rows += range.second;
+        std::size_t selected_rows = 0;
+        while (candidate_range < plan.ranges.size() && plan.ranges[candidate_range].first < range.first + range.second)
+            selected_rows += plan.ranges[candidate_range++].second;
+        metrics.extra_row_bytes += (range.second - selected_rows) * score_gate::stride * sizeof(float);
     }
+    if (!score_gate::prepare_host_candidates(plan, host, score_gate_sparse_cpu ? &gate_candidate_rows : nullptr))
+        return fallback("nonfinite_selected_row");
     // Publish the sparse view only after EVERY selected row was read successfully.
     // Unselected host memory is unspecified and must never be scanned in this mode.
     gate_candidate_rows_valid = score_gate_sparse_cpu;
@@ -194,11 +293,12 @@ bm_status_t YoloV8_det::read_score_gated_output(bm_tensor_t* tensor, float* host
 }
 
 int YoloV8_det::Detect(const std::vector<bm_image>& input_images, std::vector<YoloV8BoxVec>& boxes) {
-    assert(input_images.size() <= batch_size);
+    if (input_images.empty() || input_images.size() > static_cast<size_t>(batch_size))
+        throw std::runtime_error("Detect requires between 1 and model batch_size input images");
     prepare_output_buffers();
     prepare_score_gate();
     int ret = 0;
-    bm_tensor_t input_tensor;
+    bm_tensor_t input_tensor{};
     std::vector<bm_tensor_t> output_tensors;
     output_tensors.resize(netinfo->output_num);
     std::vector<std::pair<int, int>> txy_batch;
@@ -239,54 +339,38 @@ int YoloV8_det::pre_process(const std::vector<bm_image>& images,
                             std::vector<std::pair<int, int>>& txy_batch,
                             std::vector<std::pair<float, float>>& ratios_batch) {
     int ret = 0;
-    std::vector<bm_image> m_resized_imgs;
-    std::vector<bm_image> m_converto_imgs;
-    m_resized_imgs.resize(batch_size);
-    m_converto_imgs.resize(batch_size);
-
-    //create bm_images
-    int aligned_net_w = FFALIGN(m_net_w, 64);
-    int strides[3] = {aligned_net_w, aligned_net_w, aligned_net_w};
-    ret = bm_image_create_batch(handle, m_net_h, m_net_w, FORMAT_RGB_PLANAR, DATA_TYPE_EXT_1N_BYTE, m_resized_imgs.data(), batch_size, strides);
-    if (ret != BM_SUCCESS) {
-        throw std::runtime_error("BMRuntime 操作失败");
-    }
-
-    bm_image_data_format_ext img_dtype = DATA_TYPE_EXT_FLOAT32;
-    if (netinfo->input_dtypes[0] == BM_INT8){
-        img_dtype = DATA_TYPE_EXT_1N_BYTE_SIGNED;
-    } else if (netinfo->input_dtypes[0] == BM_UINT8){
-        img_dtype = DATA_TYPE_EXT_1N_BYTE;
-    }
-    ret = bm_image_create_batch(handle, m_net_h, m_net_w, FORMAT_RGB_PLANAR, img_dtype, m_converto_imgs.data(), batch_size, NULL, -1, false);
-    if (ret != BM_SUCCESS) {
-        throw std::runtime_error("BMRuntime 操作失败");
-    }
+    prepare_preprocess_buffers();
+    if (batch_size != static_cast<int>(resized_images.size()))
+        throw std::runtime_error("Model batch size changed after preprocessing buffer allocation");
 
     int image_n = images.size();
     // 1. resize image letterbox
     for (int i = 0; i < image_n; ++i) {
         bm_image image1 = images[i];
-        bm_image image_aligned;
+        bm_image image_aligned = image1;
+        ScopedImage aligned_copy;
         bool need_copy = image1.width & (64 - 1);
         if (need_copy) {
             int stride1[3], stride2[3];
-            bm_image_get_stride(image1, stride1);
+            if (bm_image_get_stride(image1, stride1) != BM_SUCCESS)
+                throw std::runtime_error("Cannot read source image stride");
             stride2[0] = FFALIGN(stride1[0], 64);
             stride2[1] = FFALIGN(stride1[1], 64);
             stride2[2] = FFALIGN(stride1[2], 64);
-            bm_image_create(handle, image1.height, image1.width, image1.image_format, image1.data_type,
-                            &image_aligned, stride2);
-
-            bm_image_alloc_dev_mem(image_aligned, BMCV_IMAGE_FOR_IN);
+            if (bm_image_create(handle, image1.height, image1.width, image1.image_format, image1.data_type,
+                                &aligned_copy.image, stride2) != BM_SUCCESS)
+                throw std::runtime_error("Cannot create aligned source image");
+            aligned_copy.created = true;
+            image_aligned = aligned_copy.image;
+            if (bm_image_alloc_dev_mem(image_aligned, BMCV_IMAGE_FOR_IN) != BM_SUCCESS)
+                throw std::runtime_error("Cannot allocate aligned source image");
             bmcv_copy_to_atrr_t copyToAttr;
             memset(&copyToAttr, 0, sizeof(copyToAttr));
             copyToAttr.start_x = 0;
             copyToAttr.start_y = 0;
             copyToAttr.if_padding = 1;
-            bmcv_image_copy_to(handle, copyToAttr, image1, image_aligned);
-        } else {
-            image_aligned = image1;
+            if (bmcv_image_copy_to(handle, copyToAttr, image1, image_aligned) != BM_SUCCESS)
+                throw std::runtime_error("Cannot copy source image to aligned image");
         }
 #if USE_ASPECT_RATIO
         bool isAlignWidth = false;
@@ -318,38 +402,39 @@ int YoloV8_det::pre_process(const std::vector<bm_image>& images,
         txy_batch.push_back(std::make_pair(tx1, ty1));
         ratios_batch.push_back(std::make_pair(ratio, ratio));
         bmcv_rect_t crop_rect{0, 0, image1.width, image1.height};
-        auto ret = bmcv_image_vpp_convert_padding(handle, 1, image_aligned, &m_resized_imgs[i],
-                                                  &padding_attr, &crop_rect);
+        bm_status_t ret;
+        if (preprocess_csc >= 0) {
+            int count = 1;
+            ret = bmcv_image_vpp_basic(handle, 1, &image_aligned, &resized_images[i], &count,
+                &crop_rect, &padding_attr, BMCV_INTER_LINEAR, static_cast<csc_type_t>(preprocess_csc), nullptr);
+        } else {
+            ret = bmcv_image_vpp_convert_padding(handle, 1, image_aligned, &resized_images[i],
+                &padding_attr, &crop_rect);
+        }
 #else
-        auto ret = bmcv_image_vpp_convert(handle, 1, images[i], &m_resized_imgs[i]);
+        bm_status_t ret;
+        if (preprocess_csc >= 0) {
+            int count = 1;
+            bmcv_rect_t crop_rect{0, 0, image_aligned.width, image_aligned.height};
+            ret = bmcv_image_vpp_basic(handle, 1, &image_aligned, &resized_images[i], &count,
+                &crop_rect, nullptr, BMCV_INTER_LINEAR, static_cast<csc_type_t>(preprocess_csc), nullptr);
+        } else ret = bmcv_image_vpp_convert(handle, 1, images[i], &resized_images[i]);
         txy_batch.push_back(std::make_pair(0, 0));
         ratios_batch.push_back(std::make_pair((float)m_net_w/images[i].width,(float)m_net_h/images[i].height));
 #endif
         if (ret != BM_SUCCESS) {
-        throw std::runtime_error("BMRuntime 操作失败");
+            throw std::runtime_error("BMRuntime 操作失败");
+        }
     }
-        if (need_copy)
-            bm_image_destroy(image_aligned);
-    }
-
-    // create tensor for converto_img to attach
-    ret = bmrt_tensor(&input_tensor, bmrt, netinfo->input_dtypes[0], netinfo->stages[0].input_shapes[0]);
-    assert(true == ret);
-    bm_image_attach_contiguous_mem(batch_size, m_converto_imgs.data(), input_tensor.device_mem);
 
     // 2. converto img /= 255
-    ret = bmcv_image_convert_to(handle, image_n, converto_attr, m_resized_imgs.data(),
-                                m_converto_imgs.data());
-    assert(ret == 0);
-
-    // destroy bm_images
-    bm_image_destroy_batch(m_resized_imgs.data(), batch_size);
-#if BMCV_VERSION_MAJOR > 1
-    bm_image_detach_contiguous_mem(batch_size, m_converto_imgs.data());
-#else
-    bm_image_dettach_contiguous_mem(batch_size, m_converto_imgs.data());
-#endif
-    bm_image_destroy_batch(m_converto_imgs.data(), batch_size, false);
+    ret = bmcv_image_convert_to(handle, image_n, converto_attr, resized_images.data(),
+                                converted_images.data());
+    if (ret != BM_SUCCESS) throw std::runtime_error("BMRuntime image conversion failed");
+    // All valid batch entries are overwritten before launch; post_process still
+    // consumes only image_n outputs. No resized/converted image is retained from
+    // a caller, and the input tensor remains owned by this detector instance.
+    input_tensor = resident_input;
 
     return 0;
 }
@@ -379,11 +464,14 @@ int YoloV8_det::forward(bm_tensor_t& input_tensor, std::vector<bm_tensor_t>& out
     if (ret != BM_SUCCESS) {
         throw std::runtime_error("BMRuntime 操作失败");
     }
-    bm_free_device(handle, input_tensor.device_mem);
-    const auto released = std::chrono::steady_clock::now();
+    if (input_tensor.dtype != resident_input.dtype || input_tensor.st_mode != resident_input.st_mode ||
+        !bmrt_shape_is_same(&input_tensor.shape, &resident_input.shape) ||
+        bm_mem_get_device_addr(input_tensor.device_mem) != bm_mem_get_device_addr(resident_input_owned) ||
+        bm_mem_get_device_size(input_tensor.device_mem) != bm_mem_get_device_size(resident_input_owned))
+        throw std::runtime_error("BMRuntime changed the borrowed persistent input descriptor");
     inference_submit_ms = std::chrono::duration<double, std::milli>(submitted_end - submitted_begin).count();
     inference_sync_ms = std::chrono::duration<double, std::milli>(synced - submitted_end).count();
-    input_release_ms = std::chrono::duration<double, std::milli>(released - synced).count();
+    input_release_ms = 0; // Persistent input storage is released at detector destruction.
     return 0;
 }
 

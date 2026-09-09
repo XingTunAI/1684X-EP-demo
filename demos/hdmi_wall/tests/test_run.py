@@ -45,6 +45,46 @@ class LauncherTests(unittest.TestCase):
                 self.assertEqual(float(self.command_value(plan, "--max-frame-age-ms")), float(age))
                 self.assertEqual(self.command_value(plan, "--streams"), "32")
 
+    def test_gate_merge_budget_defaults_and_bounds_preserve_output_position(self):
+        default = runner.build_plan(self.parse())
+        self.assertEqual(default["gate_merge_budget_kib"], 0)
+        self.assertEqual(self.command_value(default, "--gate-merge-budget-kib"), "0")
+        for budget in (0, 1, 1024):
+            with self.subTest(budget=budget):
+                plan = runner.build_plan(self.parse("--score-gate", "on", "--gate-merge-budget-kib", str(budget)))
+                self.assertEqual(plan["gate_merge_budget_kib"], budget)
+                self.assertEqual(self.command_value(plan, "--gate-merge-budget-kib"), str(budget))
+                self.assertEqual(plan["worker_command"][-2:], ["--output", plan["output"]])
+
+    def test_record_mode_defaults_full_and_summary_is_forwarded(self):
+        for mode in ("full", "summary"):
+            with self.subTest(mode=mode):
+                plan = runner.build_plan(self.parse(*([] if mode == "full" else ["--record-mode", mode])))
+                self.assertEqual(plan["record_mode"], mode)
+                self.assertEqual(self.command_value(plan, "--record-mode"), mode)
+                self.assertEqual(plan["worker_command"][-2:], ["--output", plan["output"]])
+        with patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):
+            self.parse("--record-mode", "none")
+
+    def test_local_decoder_priming_defaults_off_and_forwards_on(self):
+        for mode in ("off", "on"):
+            with self.subTest(mode=mode):
+                plan = runner.build_plan(self.parse(*([] if mode == "off" else ["--prime-local-decoders", mode])))
+                self.assertEqual(plan["prime_local_decoders"], mode)
+                self.assertEqual(self.command_value(plan, "--prime-local-decoders"), mode)
+        with patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):
+            self.parse("--prime-local-decoders", "maybe")
+
+    def test_gate_merge_budget_rejects_nonintegers_out_of_range_and_disabled_gate(self):
+        for value in ("-1", "1025", "1.5", "nan", "inf", ""):
+            with self.subTest(value=value), patch("sys.stderr", new_callable=io.StringIO):
+                with self.assertRaises(SystemExit):
+                    self.parse("--score-gate", "on", f"--gate-merge-budget-kib={value}")
+        with patch("sys.stderr", new_callable=io.StringIO) as error:
+            with self.assertRaises(SystemExit):
+                self.parse("--score-gate", "off", "--gate-merge-budget-kib", "1")
+            self.assertIn("must be 0 with --score-gate off", error.getvalue())
+
     def test_all_accepts_only_disabled_limits(self):
         args = self.parse("--policy", "all", "--infer-fps", "0", "--max-frame-age-ms", "0")
         self.assertEqual(args.infer_fps, 0.0)

@@ -48,11 +48,102 @@ class PlanTests(unittest.TestCase):
             self.assertIn("--score-gate-model", worker["worker_command"])
             self.assertIn(worker["score_gate_model"], runner.required_files(self.parse("--score-gate", "on"), plan))
 
+    def test_gate_merge_budget_is_forwarded_to_every_device_and_metadata(self):
+        self.assertEqual(runner.build_plan(self.parse())["gate_merge_budget_kib"], 0)
+        for budget in (0, 128, 1024):
+            with self.subTest(budget=budget):
+                plan = runner.build_plan(self.parse("--devices", "0,1,2,3", "--score-gate", "on",
+                                                    "--gate-merge-budget-kib", str(budget)))
+                self.assertEqual(plan["gate_merge_budget_kib"], budget)
+                for worker in plan["workers"]:
+                    command = worker["worker_command"]
+                    self.assertEqual(worker["gate_merge_budget_kib"], budget)
+                    self.assertEqual(command[command.index("--gate-merge-budget-kib") + 1], str(budget))
+                    self.assertEqual(command[-2:], ["--output", worker["output"]])
+
     def test_policy_defaults_and_fractional_limits(self):
         args = self.parse("--policy", "all")
         self.assertEqual((args.infer_fps, args.max_frame_age_ms), (0, 0))
         args = self.parse("--infer-fps", "2.5", "--max-frame-age-ms", "0")
         self.assertEqual((args.infer_fps, args.max_frame_age_ms), (2.5, 0))
+
+    def test_heterogeneous_four_device_configuration_and_summary_metadata(self):
+        options = {"0": {"streams": 20, "gate_merge_budget_kib": 64},
+                   "1": {"streams": 32, "gate_merge_budget_kib": 128},
+                   "2": {"streams": 12}, "3": {"gate_merge_budget_kib": 256}}
+        context = {"pcie_devices": [{"device": 0, "label": "PCIe 2.0 x1"}]}
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "card settings.json"
+            config.write_text(json.dumps({"devices": options, "context": context}), encoding="utf-8")
+            plan = runner.build_plan(self.parse("--devices", "3,2,1,0", "--streams", "30",
+                                                "--score-gate", "on", "--gate-merge-budget-kib", "8",
+                                                "--device-config", str(config), "--record-mode", "summary"))
+        self.assertEqual(plan["total_streams"], 94)
+        self.assertIsNone(plan["streams_per_device"])
+        self.assertIsNone(plan["gate_merge_budget_kib"])
+        self.assertEqual(plan["device_configuration_context"], context)
+        self.assertEqual(plan["streams_by_device"], {"0": 20, "1": 32, "2": 12, "3": 30})
+        self.assertEqual(plan["gate_merge_budget_kib_by_device"], {"0": 64, "1": 128, "2": 8, "3": 256})
+        for worker, page in zip(plan["workers"], plan["viewer_manifest"]["devices"]):
+            command = worker["worker_command"]
+            self.assertEqual(page["streams"], worker["streams"])
+            self.assertEqual(command[command.index("--streams") + 1], str(worker["streams"]))
+            self.assertEqual(command[command.index("--gate-merge-budget-kib") + 1], str(worker["gate_merge_budget_kib"]))
+            self.assertEqual(command[command.index("--record-mode") + 1], "summary")
+            self.assertEqual(command[-2:], ["--output", worker["output"]])
+
+    def test_bad_device_configuration_is_rejected_before_launch(self):
+        invalid = [{"devices": []}, {"devices": {"01": {"streams": 1}}},
+                   {"devices": {"0": {"streams": True}}}, {"devices": {"0": {"streams": 33}}},
+                   {"devices": {"0": {"gate_merge_budget_kib": -1}}},
+                   {"devices": {"0": {"gate_merge_budget_kib": 1025}}},
+                   {"devices": {"0": {"model": "n"}}}, {"devices": {"4": {"streams": 1}}},
+                   {"devices": {}, "context": []}, {"devices": {}, "unexpected": 1}]
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "config.json"
+            for document in invalid:
+                with self.subTest(document=document), patch("sys.stderr", new_callable=io.StringIO):
+                    config.write_text(json.dumps(document), encoding="utf-8")
+                    with self.assertRaises(SystemExit):
+                        self.parse("--score-gate", "on", "--device-config", str(config))
+            config.write_text(json.dumps({"devices": {"0": {"gate_merge_budget_kib": 64}}}), encoding="utf-8")
+            with patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):
+                self.parse("--device-config", str(config))
+            config.write_text(json.dumps({"devices": {"0": {"streams": 2}}}), encoding="utf-8")
+            with patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):
+                self.parse("--devices", "0", "--streams", "1", "--input", "rtsp://camera/live", "--device-config", str(config))
+
+    def test_viewer_links_follow_actual_device_ids_and_require_available_observation(self):
+        args = self.parse("--devices", "7,0,1", "--score-gate", "on")
+        args.device_overrides = {"7": {"streams": 20}, "0": {"streams": 30}}
+        args.device_configuration_context = {"pcie_devices": [
+            {"device": 0, "available": True, "label": "PCIe 3.0 x2"},
+            {"device": 1, "available": False, "label": "PCIe 2.0 x1"},
+            {"device": 7, "available": True, "label": "PCIe 2.0 x1"},
+        ]}
+        pages = runner.build_plan(args)["viewer_manifest"]["devices"]
+        self.assertEqual([(page["device"], page["streams"], page.get("pcie_link_label")) for page in pages],
+                         [(7, 20, "PCIe 2.0 x1"), (0, 30, "PCIe 3.0 x2"), (1, 32, None)])
+        args.device_configuration_context = {}
+        self.assertTrue(all("pcie_link_label" not in page for page in runner.build_plan(args)["viewer_manifest"]["devices"]))
+
+    def test_ambiguous_or_malformed_pcie_context_is_not_presented_as_a_link(self):
+        self.assertEqual(runner.viewer_pcie_labels({"pcie_devices": "unknown"}), {})
+        self.assertEqual(runner.viewer_pcie_labels({"pcie_devices": [
+            {"device": 0, "available": True, "label": "PCIe 3.0 x2"},
+            {"device": 0, "available": True, "label": "PCIe 2.0 x1"},
+            {"device": 1, "available": True, "label": "PCIe guessed from device ID"},
+            {"device": True, "available": True, "label": "PCIe 2.0 x1"},
+            {"device": 2, "label": "PCIe 2.0 x1"}, None]}), {})
+
+    def test_stop_does_not_read_device_config_and_telemetry_defaults_off(self):
+        args = self.parse("--stop", "--device-config", "/missing/config.json")
+        self.assertEqual(args.device_overrides, {})
+        self.assertEqual(runner.build_plan(args)["telemetry_interval_seconds"], 0)
+        self.assertEqual(runner.build_plan(self.parse("--telemetry-interval", "5"))["telemetry_interval_seconds"], 5)
+        for value in ("-1", "nan", "inf"):
+            with self.subTest(value=value), patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):
+                self.parse("--telemetry-interval=" + value)
 
     def test_invalid_limits_devices_and_combinations_are_rejected(self):
         invalid = [
@@ -61,6 +152,9 @@ class PlanTests(unittest.TestCase):
             ("--streams", "33"), ("--streams", "0"),
             ("--infer-fps", "nan"), ("--max-frame-age-ms", "inf"),
             ("--infer-fps=-1",), ("--policy", "all", "--infer-fps", "5"),
+            ("--gate-merge-budget-kib", "1"),
+            ("--score-gate", "on", "--gate-merge-budget-kib", "1025"),
+            ("--score-gate", "on", "--gate-merge-budget-kib", "1.5"),
             ("--policy", "all", "--max-frame-age-ms", "250"), ("--stop", "--dry-run"),
         ]
         for options in invalid:
@@ -97,12 +191,115 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(json.loads(completed.stdout)["total_streams"], 128)
 
 
+class TelemetryTests(unittest.TestCase):
+    def test_formal_load_uses_each_worker_window_and_labels_incomplete_or_missing_summary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workers = [{"device": device, "output": str(root / f"device_{device}"),
+                        "status": "completed", "streams": 32} for device in range(3)]
+            for device, start, end, status in ((0, 1, 5, "measured"), (1, 2, 4, "interrupted")):
+                output = Path(workers[device]["output"])
+                output.mkdir()
+                (output / "summary.json").write_text(json.dumps({"measurement_start_monotonic_s": start,
+                    "observed_measurement_end_monotonic_s": end, "status": status,
+                    "record_mode": "summary", "accounting_complete": True}), encoding="utf-8")
+            sampler = runner.Telemetry(root, root, workers, 5)
+            for device, timestamp, value in ((0, 0, 1), (0, 1, 90), (0, 3, None), (0, 5, 0),
+                                             (1, 1, 0), (1, 2, 100), (1, 4, 0)):
+                sampler.handle.write(json.dumps({"device": device, "monotonic_s": timestamp,
+                                                 "tpu_util_percent": value}) + "\n")
+            sampler.handle.write('{"incomplete_tail":')
+            formal = sampler.close()["formal_measurement"]
+            self.assertEqual(formal["malformed_rows"], 1)
+            self.assertIsNone(formal["read_error"])
+            self.assertEqual(formal["devices"]["0"]["mean_percent"], 90)
+            self.assertEqual(formal["devices"]["0"]["samples"], 2)
+            self.assertEqual(formal["devices"]["0"]["read_failures"], 1)
+            self.assertEqual(formal["devices"]["1"]["mean_percent"], 100)
+            self.assertEqual(formal["devices"]["1"]["worker_summary_status"], "interrupted")
+            self.assertIsNone(formal["devices"]["2"]["mean_percent"])
+            self.assertTrue(formal["devices"]["2"]["error"])
+
+    def test_four_cards_are_staggered_with_at_most_one_bounded_query_per_tick(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workers = [{"device": device, "output": directory, "status": "running", "streams": 32}
+                       for device in (0, 1, 2, 3)]
+            (root / "status.json").write_text(json.dumps({"timestamp_unix_ms": 123, "streams": [
+                {"has_image": True, "stale": False}, {"has_image": False, "stale": True}]}), encoding="utf-8")
+            now = [0.0]
+            with patch.object(runner.time, "monotonic", side_effect=lambda: now[0]), \
+                    patch.object(runner.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "TPU 96% Memory 30%", "")) as query:
+                sampler = runner.Telemetry(root, root, workers, 5)
+                for index in range(4):
+                    now[0] = index * 1.25
+                    sampler.tick()
+                    self.assertEqual(query.call_count, index + 1)
+                    sampler.tick()
+                    self.assertEqual(query.call_count, index + 1)
+                summary = sampler.close()
+            rows = [json.loads(line) for line in (root / "telemetry.jsonl").read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([row["device"] for row in rows], [0, 1, 2, 3])
+            self.assertEqual([row["tpu_util_percent"] for row in rows], [96] * 4)
+            self.assertEqual(rows[0]["wall"]["has_image"], 1)
+            self.assertEqual(rows[0]["wall"]["stale"], 1)
+            self.assertEqual(rows[0]["wall"]["timestamp_unix_ms"], 123)
+            self.assertGreater(rows[0]["disk_free_bytes"], 0)
+            for index, call in enumerate(query.call_args_list):
+                self.assertEqual(call.args[0][1:3], [f"--start_dev={index}", f"--last_dev={index}"])
+                self.assertEqual(call.kwargs["timeout"], 2)
+                self.assertEqual(summary["devices"][str(index)]["mean_percent"], 96)
+
+    def test_failed_queries_are_null_and_excluded_from_mean_without_catchup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            worker = {"device": 1, "output": directory, "status": "starting", "streams": 30}
+            now = [0.0]
+            responses = [subprocess.CompletedProcess([], 0, "95%", ""),
+                         subprocess.TimeoutExpired("bm-smi", 2), subprocess.CompletedProcess([], 0, "unavailable", ""),
+                         subprocess.CompletedProcess([], 0, "0%", "")]
+            with patch.object(runner.time, "monotonic", side_effect=lambda: now[0]), \
+                    patch.object(runner.subprocess, "run", side_effect=responses) as query:
+                sampler = runner.Telemetry(root, root, [worker], 5)
+                for timestamp in (0, 5, 50, 55):
+                    now[0] = timestamp
+                    sampler.tick()
+                    sampler.tick()
+                summary = sampler.close()
+                self.assertEqual(query.call_count, 4)
+            rows = [json.loads(line) for line in (root / "telemetry.jsonl").read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([row["tpu_util_percent"] for row in rows], [95, None, None, 0])
+            self.assertTrue(rows[1]["error"])
+            self.assertIsNone(rows[0]["wall"]["has_image"])
+            self.assertEqual(summary["devices"]["1"], {"samples": 4, "valid_samples": 2, "read_failures": 2,
+                                                       "sum_percent": 95, "min_percent": 0, "max_percent": 95,
+                                                       "mean_percent": 47.5})
+
+    def test_invalid_first_percentage_is_never_reinterpreted_as_a_valid_later_value(self):
+        outputs = ("TPU -1% Memory 90%", "TPU N/A% Memory 90%", "TPU 1e2% Memory 90%", "TPU 101%")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            worker = {"device": 0, "output": directory, "status": "running", "streams": 32}
+            now = [0.0]
+            responses = [subprocess.CompletedProcess([], 0, value, "") for value in outputs]
+            with patch.object(runner.time, "monotonic", side_effect=lambda: now[0]), \
+                    patch.object(runner.subprocess, "run", side_effect=responses):
+                sampler = runner.Telemetry(root, root, [worker], 5)
+                for index in range(len(outputs)):
+                    now[0] = index * 5
+                    sampler.tick()
+                summary = sampler.close()
+            self.assertEqual(summary["devices"]["0"]["read_failures"], len(outputs))
+            self.assertIsNone(summary["devices"]["0"]["mean_percent"])
+
+
 class SupervisionTests(unittest.TestCase):
     def run_fixture(self, codes, viewer_codes=None, capture_fail_at=None, signal_at_tick=None, timeout=False,
-                    fifo_ready=False, close_at_tick=None, close_pid=None):
+                    fifo_ready=False, close_at_tick=None, close_pid=None, telemetry=None, telemetry_save_failure=False):
         """Fake child lifetimes while exercising real metadata and cleanup flow."""
         with tempfile.TemporaryDirectory() as directory, contextlib.ExitStack() as stack:
             args = runner.arguments(["--root", "/board/repo", "--streams", "1", "--fifo-timeout", "1"])
+            args.telemetry_interval = 5 if telemetry is not None else 0
             args.root = directory
             plan = runner.build_plan(args)
             events = []
@@ -176,6 +373,15 @@ class SupervisionTests(unittest.TestCase):
             stack.enter_context(patch.object(runner.signal, "signal", side_effect=install_handler))
             stack.enter_context(patch.object(runner.time, "sleep", side_effect=sleep))
             stack.enter_context(patch.object(runner.time, "monotonic", side_effect=lambda: tick[0] * (1 if timeout else 0.01)))
+            if telemetry is not None:
+                stack.enter_context(patch.object(runner, "Telemetry", return_value=telemetry))
+            if telemetry_save_failure:
+                save_json = runner.single.save_json
+                def save_metadata(path, value):
+                    if path.name == "telemetry-summary.json":
+                        raise OSError("telemetry attachment cannot be written")
+                    save_json(path, value)
+                stack.enter_context(patch.object(runner.single, "save_json", side_effect=save_metadata))
             if fifo_ready:
                 original_stat = runner.Path.stat
 
@@ -272,8 +478,33 @@ class SupervisionTests(unittest.TestCase):
             self.assertEqual(record["status"], "failed")
             self.assertIn("Timed out waiting for FIFO", record["error"])
 
+    def test_telemetry_write_failure_keeps_final_metadata_and_worker_cleanup(self):
+        for attachment_error in (False, True):
+            with self.subTest(attachment_error=attachment_error):
+                telemetry = Mock()
+                telemetry.close.return_value = {"write_error": None if attachment_error else "disk write error"}
+                result, metadata, _manifest, events = self.run_fixture(
+                    {0: [None, 0], 1: [None, 0]}, telemetry=telemetry, telemetry_save_failure=attachment_error)
+                self.assertEqual(result, 1)
+                self.assertEqual(metadata["exit_status"], 1)
+                self.assertEqual(metadata["status"], "stopped")
+                self.assertEqual([worker["returncode"] for worker in metadata["workers"]], [0, 0])
+                self.assertEqual([event[1] for event in events if event[0] == "cleanup"], ["worker0", "worker1", "viewer"])
+                self.assertEqual(telemetry.close.call_count, 1)
+                if attachment_error:
+                    self.assertIn("attachment cannot be written", metadata["telemetry_error"])
+
 
 class StopTests(unittest.TestCase):
+    def test_cli_stop_never_builds_a_display_or_worker_launch_plan(self):
+        args = runner.arguments(["--root", "/board/repo", "--stop"])
+        with patch.object(runner, "arguments", return_value=args), \
+                patch.object(runner.sys, "platform", "linux"), \
+                patch.object(runner, "build_plan", side_effect=AssertionError("display/worker plan")), \
+                patch.object(runner, "stop_latest", return_value=0) as stop:
+            self.assertEqual(runner.main(), 0)
+            stop.assert_called_once_with(Path("/board/repo/data/results/hdmi-wall-multi"))
+
     def test_close_request_ignores_missing_malformed_and_nonboolean_status(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)

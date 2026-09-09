@@ -60,6 +60,13 @@ def nonnegative_finite(value: str) -> float:
     return number
 
 
+def gate_merge_budget_kib(value: str) -> int:
+    number = int(value)
+    if number < 0 or number > 1024:
+        raise argparse.ArgumentTypeError("must be an integer between 0 and 1024 KiB")
+    return number
+
+
 def live_source(source: str) -> bool:
     return source.startswith(("rtsp://", "rtsps://"))
 
@@ -87,6 +94,14 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-frame-age-ms", type=nonnegative_finite, default=None,
                         help="Discard stale frames before detection: age since local frame due time or RTSP decode completion. 0 disables; defaults: latest=250, all=0.")
     parser.add_argument("--score-gate", choices=("off", "on"), default="off")
+    parser.add_argument("--record-mode", choices=("full", "summary"), default="full",
+                        help="full writes per-frame JSONL; summary retains bounded aggregate measurement output.")
+    parser.add_argument("--prime-local-decoders", choices=("off", "on"), default="off",
+                        help="Experimental: wait for each local file's first decoded frame before starting its playback clock.")
+    parser.add_argument("--gate-merge-budget-kib", type=gate_merge_budget_kib, default=0,
+                        help="Extra output-read budget for merging small score-gate ranges, 0..1024 KiB; nonzero requires score-gate on.")
+    parser.add_argument("--image-path", choices=("auto", "bgr", "yuv"), default="auto",
+                        help="auto uses direct YUV preprocessing when supported; bgr retains the reference conversion path.")
     parser.add_argument("--fifo-timeout", type=positive, default=90, help="Maximum FIFO startup wait, seconds.")
     parser.add_argument("--dry-run", action="store_true", help="Print the plan without checking board files or launching anything.")
     parser.add_argument("--stop", action="store_true", help="Stop the latest verified launcher and its children.")
@@ -95,6 +110,8 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--device must be nonnegative")
     if args.streams > 32:
         parser.error("--streams must be between 1 and 32")
+    if args.score_gate == "off" and args.gate_merge_budget_kib != 0:
+        parser.error("--gate-merge-budget-kib must be 0 with --score-gate off")
     if args.max_frame_age_ms is None:
         args.max_frame_age_ms = 250.0 if args.policy == "latest" else 0.0
     if args.policy == "all" and args.infer_fps != 0:
@@ -131,9 +148,13 @@ def build_plan(args: argparse.Namespace) -> dict:
         "--bmodel", str(model), "--classnames", str(classes), "--warmup", "3",
         "--duration", str(args.duration), "--window", str(min(10, args.duration)), "--local-eof", "loop",
         "--output-buffer", "baseline", "--score-gate", args.score_gate,
+        "--record-mode", args.record_mode,
+        "--prime-local-decoders", args.prime_local_decoders,
+        "--gate-merge-budget-kib", str(args.gate_merge_budget_kib),
         "--cpu-post", "selected" if args.score_gate == "on" else "dense",
         "--policy", args.policy, "--infer-fps", str(args.infer_fps),
         "--max-frame-age-ms", str(args.max_frame_age_ms),
+        "--image-path", args.image_path,
     ]
     if args.score_gate == "on":
         worker.extend(["--score-gate-model", str(gate)])
@@ -147,7 +168,11 @@ def build_plan(args: argparse.Namespace) -> dict:
         "player_environment": player_environment(), "input": str(source), "model": str(model),
         "classnames": str(classes), "score_gate_model": str(gate),
         "selected_device": args.device, "streams": args.streams,
+        "gate_merge_budget_kib": args.gate_merge_budget_kib,
+        "record_mode": args.record_mode,
+        "prime_local_decoders": args.prime_local_decoders,
         "policy": args.policy, "infer_fps": args.infer_fps, "max_frame_age_ms": args.max_frame_age_ms,
+        "image_path": args.image_path,
     }
 
 

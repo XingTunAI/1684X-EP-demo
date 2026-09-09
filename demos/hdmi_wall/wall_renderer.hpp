@@ -34,7 +34,7 @@ public:
     WallRenderer(size_t count, const std::string& output_dir, int device,
                  const std::string& model_name, const std::string& policy = "all")
         : count_(count), output_dir_(output_dir), device_(device),
-          model_name_(model_name), policy_(policy), frames_(count), stopped_(false),
+          model_name_(model_name), policy_(policy), frames_(count), scaled_tiles_(count), stopped_(false),
           failed_(false), started_(false), rendered_(0), published_(0) {
         if (!count || count > 36) throw std::runtime_error("Wall requires 1 to 36 inputs");
         if (output_dir.empty()) throw std::runtime_error("Wall output directory is empty");
@@ -165,6 +165,11 @@ private:
         Time updated;
         int64_t unix_ms = 0;
     };
+    struct ScaledTile {
+        cv::Mat image;
+        uint64_t source_count = 0;
+        Time source_updated;
+    };
     struct PipeSignalMask {
         sigset_t blocked, previous;
         bool restore;
@@ -194,6 +199,9 @@ private:
     std::string model_name_;
     std::string policy_;
     std::vector<Frame> frames_;
+    // Only run()/render() access these owned pixels. submit() continues to
+    // publish immutable thumbnails under frames_lock_; no shared cache writes.
+    std::vector<ScaledTile> scaled_tiles_;
     mutable std::mutex frames_lock_, error_lock_, wait_lock_;
     std::condition_variable wake_;
     std::atomic<bool> stopped_, failed_, started_;
@@ -240,7 +248,7 @@ private:
         cv::putText(canvas, text, cv::Point(x, y), cv::FONT_HERSHEY_SIMPLEX,
                     scale, color, weight, cv::LINE_AA);
     }
-    cv::Mat render(const std::vector<Frame>& frames, Time now) const {
+    cv::Mat render(const std::vector<Frame>& frames, Time now) {
         cv::Mat canvas(1080, 1920, CV_8UC3, cv::Scalar(18, 15, 12));
         const cv::Scalar white(245, 243, 239), gray(180, 176, 170), cyan(208, 208, 58), red(65, 65, 245);
         std::ostringstream title;
@@ -264,14 +272,25 @@ private:
                 continue;
             }
             const Frame& frame = frames[id];
+            ScaledTile& scaled = scaled_tiles_[id];
             if (!frame.image.empty()) {
-                const double scale = std::min(316.0 / frame.image.cols, 164.0 / frame.image.rows);
-                const int width = std::max(1, std::min(316, static_cast<int>(frame.image.cols * scale)));
-                const int height = std::max(1, std::min(164, static_cast<int>(frame.image.rows * scale)));
-                cv::Mat scaled;
-                cv::resize(frame.image, scaled, cv::Size(width, height), 0, 0, cv::INTER_LINEAR);
-                scaled.copyTo(canvas(cv::Rect(x + (320 - width) / 2, y + (168 - height) / 2, width, height)));
+                // A wall tick often repeats the same submitted inference frame.
+                // Reuse only its resized pixels; all ages and status below are
+                // recomputed every tick. updated also invalidates a resubmitted
+                // source count, while the image and its boxes stay together.
+                if (scaled.image.empty() || scaled.source_count != frame.count ||
+                    scaled.source_updated != frame.updated) {
+                    const double scale = std::min(316.0 / frame.image.cols, 164.0 / frame.image.rows);
+                    const int width = std::max(1, std::min(316, static_cast<int>(frame.image.cols * scale)));
+                    const int height = std::max(1, std::min(164, static_cast<int>(frame.image.rows * scale)));
+                    cv::resize(frame.image, scaled.image, cv::Size(width, height), 0, 0, cv::INTER_LINEAR);
+                    scaled.source_count = frame.count;
+                    scaled.source_updated = frame.updated;
+                }
+                const int width = scaled.image.cols, height = scaled.image.rows;
+                scaled.image.copyTo(canvas(cv::Rect(x + (320 - width) / 2, y + (168 - height) / 2, width, height)));
             } else {
+                scaled.image.release();
                 label(canvas, "WAITING FOR INFERENCE", x + 32, y + 91, .48, gray);
             }
             cv::rectangle(canvas, cv::Rect(x + 2, y + 2, 316, 23), cv::Scalar(16, 15, 12), -1);

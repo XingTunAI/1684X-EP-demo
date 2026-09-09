@@ -90,6 +90,39 @@ third_party/sophon-demo/sample/<sample>/
 
 模型包地址分别为 `open@sophgo.com:sophon-demo/YOLOv8_plus_det/BM1684X.tar.gz` 和 `open@sophgo.com:sophon-demo/YOLO26_det/BM1684X.tar.gz`。同样先下载并解压到独立临时目录，核对所需模型后再补回对应 `models/BM1684X/`，不要删除整个现有模型目录。单纯 `test -s`、压缩包可解压或视频元数据可读都不是完整性保证。
 
+## HDMI 连续演示素材
+
+官方 `test_car_person_1080P.mp4` 只有约 24.67 秒。在多路并发演示中，短片结束后集中关闭、重开解码器会造成结果断档。可以使用[循环素材准备脚本](../scripts/prepare_hdmi_loop.sh)先生成更长的本地文件，在板子的本仓库根目录执行：
+
+```bash
+bash scripts/prepare_hdmi_loop.sh --seconds 600
+```
+
+默认读取 YOLOv8 官方样例目录中的 `datasets/test_car_person_1080P.mp4`，生成：
+
+```text
+data/inputs/hdmi_wall_demo_loop_600s.mp4
+data/inputs/hdmi_wall_demo_loop_600s.mp4.manifest.json
+```
+
+脚本使用系统 `/usr/bin/ffprobe` 检查输入，再由 `/usr/bin/ffmpeg` 通过 `-stream_loop` 和 `-c copy` 复制视频包，不重新编码、不调整分辨率或帧率；仅保留第一个视频流。系统工具的库环境与 SOPHON 库隔离。默认官方素材原样保持 **1920×1080、24 FPS**，本次生成的约 600 秒文件占用约 **1.09 GB**，请留足本地磁盘空间。
+
+生成成功后，标准输出只打印产物的绝对路径。`manifest.json` 保存源文件和成品的 SHA256、请求时长、视频信息及生成命令；再次运行时，仅当源 SHA256、时长和成品 SHA256 都匹配本脚本的 manifest 才复用，不覆盖无法验证的已有文件。失败时清理本次临时文件；视频和 manifest 均保留在本地，不加入 Git。
+
+输入、时长、输出路径均可指定，先用 `--dry-run` 查看命令：
+
+```bash
+bash scripts/prepare_hdmi_loop.sh \
+  --input data/inputs/input.mp4 --seconds 900 \
+  --output data/inputs/my_hdmi_loop_900s.mp4 --dry-run
+```
+
+实际生成时去掉 `--dry-run`。运行 HDMI demo 时通过 `--input data/inputs/hdmi_wall_demo_loop_600s.mp4` 使用产物，并确保**素材时长大于运行时长加预热时长**，例如 600 秒素材用于 300 秒正式测量。自有输入保留各自的原始帧率，不能统一按 24 或 25 FPS 解释。
+
+本次板端已验证生成及缓存复用成功；对成品前 1184 帧进行 `framemd5` 比较，与原片 592 帧重复两遍的解码帧校验一致。该检查覆盖两个完整重复片段，不代表已逐帧校验整个 600 秒文件。
+
+长文件中的画面仍是同一本地片段反复出现，不代表独立摄像头或真实直播输入。**短片 EOF 后的解码恢复问题尚未修复**；长素材是在本次运行期间避开文件末尾，运行超过素材长度仍会遇到 EOF 重开。其他实时输入的恢复能力和端到端延时需另行验证。
+
 ## HDMI 截图所用的可选素材
 
 仓库 HDMI 效果截图使用过 Freestocks 发布的 [Cars On Highway - Free Stock Creative Commons Video](https://www.youtube.com/watch?v=-vLTFQv2_Vo)。这是可选外部素材，获取方式及使用授权以原作者页面为准，与官方默认测试视频分开。

@@ -6,6 +6,12 @@
 
 此前通过短时低延时检查的是设备 1 单独运行 24 路 1080p25 输入、每路约 5 FPS 检测（n / gate on / latest）；尚不能据此认定所有设备同时各 24 路也能达到相同效果。
 
+设备 1 单卡 30 路、YOLOv8s 的 [300 秒长素材实测](performance-30.md)测得总检测 **270.27 FPS**、每路 **8.92–9.06 FPS**，TPU 利用率采样平均 **97.25%**，全部通道各 10 秒窗口都有结果。正式开始后首帧最长等待 1.91 秒；长素材只避开测量期间 EOF，短片循环恢复问题尚未修复。报告提供完整启动命令和同输入 60 秒 A/B，该数据不代表多卡同时各 30 路的性能。
+
+每次复跑 device 1 的 30 路基准可使用统一 [`benchmark.sh` 入口](performance-30.md#每次使用统一基准入口)，默认 300 秒并自动准备长素材。另有[设备 1 单卡 32 路扩展](performance-30.md#设备-1-单卡-32-路扩展测试)：全部 32 路能检测和显示，但启动有秒级等待与断档，尚不能把整场运行称为稳定实时；30 路基准保持不变。
+
+需要长期多卡展示时，使用[四小时 `showcase.sh` 入口](showcase.md)，统一准备长素材、检查磁盘余量、读取真实 PCIe 链路，并保存每卡独立参数、汇总统计和利用率采样。展示模式为每卡 32 路；需要更高 TPU 利用率时推荐压测模式，对 Gen2 ×1 选择 20 路、Gen3 ×2 选择 32 路。已有[两种模式双卡并发 120 秒对照](showcase.md#双卡展示与压测并发实测)：展示组 Gen2 ×1 TPU 平均 84.61%，压测组两卡分别为 97.59% / 100%，切页期间两卡都继续工作。默认四小时为运行配置，尚未完成四小时验收。
+
 ## 准备
 
 按[环境说明](../../../docs/setup.md)准备 SDK、编译工具和官方资源，执行 `bash demos/hdmi_wall/build.sh` 构建每卡使用的检测程序。多设备入口为 `multi_run.sh` / `multi_run.py`，统一显示程序为 `viewer.py`，需要 Python 3.9+、系统 SDL2 运行库和可访问的本地 X11 桌面；本次板上系统 ffplay 已依赖并安装 `libSDL2-2.0.so.0`。
@@ -29,7 +35,7 @@ sudo env DISPLAY=:0 \
   --duration 60 --policy latest --infer-fps 5 --max-frame-age-ms 250
 ```
 
-全部设备使用同一个每卡路数参数；页面只按 `--devices` 中的设备生成。仅使用设备 1 时可传 `--devices 1`，不会生成不存在的设备 0 页面。
+未提供 `--device-config` 时，全部设备使用同一个 `--streams` 参数；需要逐卡路数和回传预算时，使用[每卡配置](showcase.md#每卡独立配置)。页面只按 `--devices` 中的设备生成。仅使用设备 1 时可传 `--devices 1`，不会生成不存在的设备 0 页面。
 
 ### 每卡 32 路：优先完整显示的逐帧配置
 
@@ -78,7 +84,7 @@ sudo bash demos/hdmi_wall/multi_run.sh --stop
 
 ## 输出与后台处理
 
-每次运行保存到 `data/results/hdmi-wall-multi/<run-id>/`。根目录的 `run.json` 记录整场启动与停止状态，`viewer.json` 描述页面和 FIFO，`viewer.log` 保存显示程序日志，`viewer-status.json` 保存当前页及各页接收画面的状态。各卡分别写入 `device_0/`、`device_1/` 等目录，包含独立的 `worker.log`、逐路检测记录、summary 和视频墙截图。
+每次运行保存到 `data/results/hdmi-wall-multi/<run-id>/`。根目录的 `run.json` 记录整场启动与停止状态，`viewer.json` 描述页面和 FIFO，`viewer.log` 保存显示程序日志，`viewer-status.json` 保存当前页及各页接收画面的状态。各卡分别写入 `device_0/`、`device_1/` 等目录，包含独立的 `worker.log`、summary 和视频墙截图。普通入口默认 `--record-mode full`，还写逐路检测记录；四小时入口固定采用[summary 记录方式](showcase.md#四小时的记录方式)，不生成逐帧框 JSONL。
 
 统一显示程序始终读取所有页面的 FIFO，每页仅保留最近的完整画面。未选中页也必须持续读取，否则会反过来阻塞该卡输出；切页只更换当前显示的画面。半帧必须接收完整后才可替换，不能将不同帧的字节拼接。页面接收更新与单路检测更新分开：页面持续收到拼屏画面，并不代表其中每条视频都没有超龄，逐路判断仍以画面上的年龄和最终 summary 为准。
 

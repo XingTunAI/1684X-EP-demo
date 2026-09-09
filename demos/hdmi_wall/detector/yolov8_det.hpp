@@ -14,6 +14,7 @@
 #include <fstream>
 #include <vector>
 #include <cstdint>
+#include <cstddef>
 #include "opencv2/opencv.hpp"
 #include "utils.hpp"
 // Define USE_OPENCV for enabling OPENCV related funtions in bm_wrapper.hpp
@@ -32,6 +33,7 @@ using YoloV8BoxVec = std::vector<YoloV8Box>;
 struct ScoreGateMetrics {
     uint64_t kernel_calls = 0, score_calls = 0, row_calls = 0, full_calls = 0;
     uint64_t selected_rows = 0, ranges = 0, score_bytes = 0, row_bytes = 0, full_bytes = 0;
+    uint64_t planned_read_ranges = 0, copied_rows = 0, extra_row_bytes = 0;
     double kernel_ms = 0, submit_ms = 0, sync_ms = 0, score_ms = 0, row_ms = 0, full_ms = 0, host_zero_ms = 0;
     bool fallback = false;
     std::string fallback_reason;
@@ -60,6 +62,17 @@ class YoloV8_det {
     std::vector<bm_tensor_t> resident_outputs;
     std::vector<float> host_output_cache;
     void prepare_output_buffers();
+    // Each detector is used serially by its channel's inference thread. The
+    // fixed network-size images borrow one persistent input tensor allocation.
+    std::vector<bm_image> resized_images;
+    std::vector<bm_image> converted_images;
+    int resized_images_created = 0, converted_images_created = 0;
+    bool resized_memory_allocated = false, converted_memory_attached = false;
+    bm_tensor_t resident_input{};
+    bm_device_mem_t resident_input_owned{};
+    bool input_memory_allocated = false, preprocess_buffers_ready = false;
+    void prepare_preprocess_buffers();
+    void release_preprocess_buffers() noexcept;
     void* gate_runtime = nullptr;
     const bm_net_info_t* gate_netinfo = nullptr;
     std::string gate_network_name;
@@ -90,8 +103,10 @@ private:
     void NMS(YoloV8BoxVec& dets, float nmsConfidence);
     void clip_boxes(YoloV8BoxVec& yolobox_vec, int src_w, int src_h);
 public:
+    int preprocess_csc = -1; // -1 retains the reference BGR path; otherwise an explicit SDK CSC.
     bool score_gate_enabled = false;
     bool score_gate_sparse_cpu = false;
+    std::size_t score_gate_merge_budget_kib = 0; // Additional D2H KiB allowed when bridging candidate ranges.
     std::string score_gate_model;
     void initialize_score_gate() { prepare_score_gate(); }
     ScoreGateMetrics score_gate_metrics;
@@ -104,6 +119,8 @@ public:
     std::string transfer_lock_path; // Empty disables the per-run transfer gate.
     int batch_size = -1;
     TimeStamp* m_ts = NULL;
+    YoloV8_det(const YoloV8_det&) = delete;
+    YoloV8_det& operator=(const YoloV8_det&) = delete;
     YoloV8_det(std::string bmodel_file, std::string coco_names_file, int dev_id = 0, float confThresh = 0.25, float nmsThresh = 0.7){
         std::ifstream ifs(coco_names_file);
         if (ifs.is_open()) {
@@ -180,6 +197,7 @@ public:
         m_ts = &tmp_ts;
     }
     ~YoloV8_det(){
+        release_preprocess_buffers();
         if (gate_output_allocated) bm_free_device(handle, gate_output_owned);
         if (gate_runtime) bmrt_destroy(gate_runtime);
         for (auto& tensor : resident_outputs) bm_free_device(handle, tensor.device_mem);

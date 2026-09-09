@@ -250,6 +250,66 @@ class ViewerTests(unittest.TestCase):
             self.assertEqual(status["devices"][1]["partial_bytes"], 1)
             self.assertFalse(path.with_name(path.name + ".tmp").exists())
 
+    def test_manifest_hardware_metadata_survives_switch_without_id_inference(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "viewer.json"
+            devices = [{"device": device, "fifo": str(Path(temp) / str(device) / "preview.bgr"),
+                        "output": str(Path(temp) / str(device)), "streams": streams, "pcie_link_label": label}
+                       for device, streams, label in ((7, 20, "PCIe 2.0 x1"), (0, 30, "PCIe 3.0 x2"),
+                                                       (1, 32, None))]
+            path.write_text(json.dumps({"devices": devices}))
+            state, *_ = viewer.read_manifest(path)
+            self.assertEqual([page.hardware_label() for page in state.pages],
+                             ["PCIe 2.0 x1 | 20 CH", "PCIe 3.0 x2 | 30 CH", ""])
+            state.select(1)
+            snapshot = state.snapshot(0, 0)
+            self.assertEqual(snapshot["active_device"], 0)
+            self.assertEqual([(page["device"], page["streams"], page["pcie_link_label"]) for page in snapshot["devices"]],
+                             [(7, 20, "PCIe 2.0 x1"), (0, 30, "PCIe 3.0 x2"), (1, 32, None)])
+            devices[0].update(streams=True, pcie_link_label="PCIe guessed\n3.0")
+            path.write_text(json.dumps({"devices": devices}))
+            state, *_ = viewer.read_manifest(path)
+            self.assertIsNone(state.pages[0].streams)
+            self.assertEqual(state.pages[0].hardware_label(), "")
+
+    def test_four_button_hardware_and_status_text_stays_inside_buttons(self):
+        pages = [viewer.DevicePage(device, Path("/preview"), Path("/worker"), 6, 32, label)
+                 for device, label in ((7, "PCIe 2.0 x1"), (0, "PCIe 3.0 x2"),
+                                       (4, "PCIe 128 GT/s x32"), (1, None))]
+        state = viewer.ViewerState(pages)
+        display = viewer.SDLViewer.__new__(viewer.SDLViewer)
+        display.lib = Mock()
+        display.renderer = None
+        display.text, display.color, display.fill = Mock(), Mock(), Mock()
+        display.lib.SDL_RenderClear.return_value = 0
+
+        def output_size(_renderer, width, height):
+            width._obj.value, height._obj.value = 1920, 1080
+            return 0
+
+        display.lib.SDL_GetRendererOutputSize.side_effect = output_size
+        display.render(state, 0)
+        for index, (page, box) in enumerate(zip(pages, viewer.button_rects(4))):
+            expected = ["DEVICE " + str(page.device), str(index + 1) + " | waiting"]
+            if page.hardware_label():
+                expected.append(page.hardware_label())
+            for label in expected:
+                matching = [call.args for call in display.text.call_args_list
+                            if call.args[0] == label and call.args[1] == box[0] + 18]
+                self.assertEqual(len(matching), 1, label)
+                _, x, y, size, *_ = matching[0]
+                self.assertGreaterEqual(y, box[1])
+                self.assertLessEqual(y + 7 * size, box[1] + box[3])
+                self.assertLessEqual(x + len(label) * 6 * size, box[0] + box[2])
+            if not page.hardware_label():
+                display.text.assert_any_call("DEVICE 1", box[0] + 18, 24, 3)
+                display.text.assert_any_call("4 | waiting", box[0] + 18, 57, 2, (249, 189, 104))
+        # Page-reception freshness still has its explicit VIEW LIVE wording.
+        pages[0].buffer.latest_monotonic = 0
+        display.text.reset_mock()
+        display.render(state, .1)
+        self.assertTrue(any(call.args[0] == "1 | VIEW LIVE" for call in display.text.call_args_list))
+
     def test_supervised_close_is_idempotent_locks_switch_and_has_deadline(self):
         state = viewer.ViewerState([self.page(0), self.page(7)], supervised_close=True)
         self.assertFalse(state.request_close(0))
