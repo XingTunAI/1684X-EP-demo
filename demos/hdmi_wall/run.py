@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import math
 import os
 from pathlib import Path, PurePosixPath
 import shlex
@@ -20,6 +21,8 @@ import uuid
 DEFAULT_ROOT = str(Path(__file__).resolve().parents[2]) if sys.platform.startswith("linux") else None
 LOAD_NAMES = {"stream_threads.pcie", "single_card_pipeline.pcie", "hdmi_wall.pcie"}
 STOP_GRACE = 5.0
+REAP_TIMEOUT = 2.0
+IDENTITY_TIMEOUT = 1.0
 
 
 def player_environment() -> dict[str, str]:
@@ -50,7 +53,18 @@ def positive(value: str) -> int:
     return number
 
 
-def arguments() -> argparse.Namespace:
+def nonnegative_finite(value: str) -> float:
+    number = float(value)
+    if not math.isfinite(number) or number < 0:
+        raise argparse.ArgumentTypeError("must be a finite nonnegative number")
+    return number
+
+
+def live_source(source: str) -> bool:
+    return source.startswith(("rtsp://", "rtsps://"))
+
+
+def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=DEFAULT_ROOT, help="Absolute board repository directory; inferred on Linux, required for Windows --dry-run.")
     parser.add_argument("--duration", type=positive, default=1800, help="Run duration in seconds.")
@@ -66,15 +80,29 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--device", type=int, default=0)
     parser.add_argument("--input", default="third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/test_car_person_1080P.mp4")
     parser.add_argument("--model", choices=("n", "s"), default="s")
+    parser.add_argument("--policy", choices=("all", "latest"), default="latest",
+                        help="latest keeps only the newest waiting frame; all processes frames sequentially (default: latest).")
+    parser.add_argument("--infer-fps", type=nonnegative_finite, default=0.0,
+                        help="Per-channel detection start-rate limit; 0 runs as capacity allows. Requires latest when nonzero.")
+    parser.add_argument("--max-frame-age-ms", type=nonnegative_finite, default=None,
+                        help="Discard stale frames before detection: age since local frame due time or RTSP decode completion. 0 disables; defaults: latest=250, all=0.")
     parser.add_argument("--score-gate", choices=("off", "on"), default="off")
     parser.add_argument("--fifo-timeout", type=positive, default=90, help="Maximum FIFO startup wait, seconds.")
     parser.add_argument("--dry-run", action="store_true", help="Print the plan without checking board files or launching anything.")
     parser.add_argument("--stop", action="store_true", help="Stop the latest verified launcher and its children.")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.device < 0:
         parser.error("--device must be nonnegative")
     if args.streams > 32:
         parser.error("--streams must be between 1 and 32")
+    if args.max_frame_age_ms is None:
+        args.max_frame_age_ms = 250.0 if args.policy == "latest" else 0.0
+    if args.policy == "all" and args.infer_fps != 0:
+        parser.error("--infer-fps must be 0 with --policy all")
+    if args.policy == "all" and args.max_frame_age_ms != 0:
+        parser.error("--max-frame-age-ms must be 0 with --policy all")
+    if live_source(args.input) and args.streams > 1:
+        parser.error("RTSP --input requires --streams 1; use hdmi_wall.pcie --inputs-file for distinct camera sources")
     if args.root is None:
         parser.error("--root is required on non-Linux hosts; supply the absolute repository path on the board")
     if not PurePosixPath(args.root).is_absolute():
@@ -89,9 +117,11 @@ def build_plan(args: argparse.Namespace) -> dict:
     run_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:8]
     output = root / "data/results/hdmi-wall" / run_id
     demo = root / "third_party/sophon-demo/sample/YOLOv8_plus_det"
-    source = PurePosixPath(args.input)
-    if not source.is_absolute():
-        source = root / source
+    if live_source(args.input):
+        source = args.input
+    else:
+        source_path = PurePosixPath(args.input)
+        source = str(source_path if source_path.is_absolute() else root / source_path)
     model = demo / f"models/BM1684X/yolov8{args.model}_int8_1b.bmodel"
     classes = demo / "datasets/coco.names"
     gate = root / "data/models/score_gate/score_gate_reducemax_f32.bmodel"
@@ -102,6 +132,8 @@ def build_plan(args: argparse.Namespace) -> dict:
         "--duration", str(args.duration), "--window", str(min(10, args.duration)), "--local-eof", "loop",
         "--output-buffer", "baseline", "--score-gate", args.score_gate,
         "--cpu-post", "selected" if args.score_gate == "on" else "dense",
+        "--policy", args.policy, "--infer-fps", str(args.infer_fps),
+        "--max-frame-age-ms", str(args.max_frame_age_ms),
     ]
     if args.score_gate == "on":
         worker.extend(["--score-gate-model", str(gate)])
@@ -115,7 +147,17 @@ def build_plan(args: argparse.Namespace) -> dict:
         "player_environment": player_environment(), "input": str(source), "model": str(model),
         "classnames": str(classes), "score_gate_model": str(gate),
         "selected_device": args.device, "streams": args.streams,
+        "policy": args.policy, "infer_fps": args.infer_fps, "max_frame_age_ms": args.max_frame_age_ms,
     }
+
+
+def required_files(args: argparse.Namespace, plan: dict) -> list[str]:
+    required = [plan["worker_command"][0], plan["player_command"][0], plan["model"], plan["classnames"]]
+    if not live_source(plan["input"]):
+        required.append(plan["input"])
+    if args.score_gate == "on":
+        required.append(plan["score_gate_model"])
+    return required
 
 
 def boot_id() -> str:
@@ -130,8 +172,16 @@ def process_identity(pid: int) -> dict | None:
         fields = before[before.rfind(")") + 2:].split()
         if fields[0] == "Z":
             return None
-        cmdline = (proc / "cmdline").read_bytes().split(b"\0")
+        command_bytes = (proc / "cmdline").read_bytes()
+        cmdline = command_bytes.split(b"\0")
+        if cmdline[-1] == b"":
+            cmdline.pop()
+        if not cmdline or not cmdline[0]:
+            return None  # /proc can briefly expose an empty argv during exec.
         executable = os.readlink(proc / "exe")
+        if ((proc / "cmdline").read_bytes() != command_bytes or
+                os.readlink(proc / "exe") != executable):
+            return None
         after = (proc / "stat").read_text()
         final_fields = after[after.rfind(")") + 2:].split()
         if fields[19] != final_fields[19] or final_fields[0] == "Z":
@@ -139,10 +189,27 @@ def process_identity(pid: int) -> dict | None:
         return {
             "pid": pid, "pgid": int(fields[2]), "session": int(fields[3]),
             "start_ticks": fields[19], "boot_id": boot_id(), "exe": executable,
-            "cmdline": [os.fsdecode(part) for part in cmdline if part],
+            "cmdline": [os.fsdecode(part) for part in cmdline],
         }
     except (OSError, ValueError, IndexError):
         return None
+
+
+def capture_child_identity(process: subprocess.Popen, command: list[str]) -> dict | None:
+    """Wait briefly for the owned child to expose its complete post-exec identity."""
+    deadline = time.monotonic() + IDENTITY_TIMEOUT
+    executable = os.path.realpath(command[0])
+    while True:
+        if process.poll() is not None:
+            return None  # Let supervision preserve an early child's exit code.
+        identity = process_identity(process.pid)
+        if (identity is not None and identity["cmdline"] == command and
+                identity["exe"] == executable and
+                identity["pid"] == identity["pgid"] == identity["session"] == process.pid):
+            return identity
+        if time.monotonic() >= deadline:
+            raise RuntimeError(f"Timed out capturing complete process identity for child {process.pid}: {command[0]}")
+        time.sleep(0.02)
 
 
 def is_same_process(identity: dict | None) -> bool:
@@ -223,18 +290,27 @@ def device_snapshot() -> list[dict]:
 
 
 def stop_children(children: list[tuple[subprocess.Popen, dict | None]]) -> None:
+    """Stop in dependency order: keep the player alive while the worker drains."""
+    def signal_owned(process: subprocess.Popen, identity: dict | None, signum: int) -> None:
+        if not send_verified(identity, signum, group=True):
+            # These Popen objects belong to this launcher, unlike identities read
+            # by --stop. If exec-time capture failed, the owned process still
+            # needs cleanup; do not weaken group or persisted identity checks.
+            if signum == signal.SIGTERM:
+                process.terminate()
+            else:
+                process.kill()
+
     for process, identity in children:
         if process.poll() is None:
-            send_verified(identity, signal.SIGTERM, group=True)
-    deadline = time.monotonic() + STOP_GRACE
-    while time.monotonic() < deadline and any(proc.poll() is None for proc, _ in children):
-        time.sleep(0.1)
-    for process, identity in children:
-        if process.poll() is None:
-            send_verified(identity, signal.SIGKILL, group=True)
-    for process, _ in children:
+            signal_owned(process, identity, signal.SIGTERM)
         try:
-            process.wait(timeout=2)
+            process.wait(timeout=STOP_GRACE)
+            continue
+        except subprocess.TimeoutExpired:
+            signal_owned(process, identity, signal.SIGKILL)
+        try:
+            process.wait(timeout=REAP_TIMEOUT)
         except subprocess.TimeoutExpired:
             print(f"Process {process.pid} did not exit within the cleanup deadline", file=sys.stderr)
 
@@ -254,7 +330,10 @@ def stop_latest(parent: Path) -> int:
     launcher = metadata.get("launcher")
     child_identities = [metadata.get("worker"), metadata.get("player")]
     sent = send_verified(launcher, signal.SIGTERM)
-    deadline = time.monotonic() + STOP_GRACE + 4
+    # The launcher stops worker, then player. Allow both bounded cleanup phases
+    # before falling back, or this command could disconnect the player's FIFO
+    # while the launcher is still waiting for the worker to finish its summary.
+    deadline = time.monotonic() + len(child_identities) * (STOP_GRACE + REAP_TIMEOUT) + 2
     while sent and is_same_process(launcher) and time.monotonic() < deadline:
         time.sleep(0.1)
     # Re-read: a player may have started between the first snapshot and TERM.
@@ -262,11 +341,13 @@ def stop_latest(parent: Path) -> int:
     child_identities = [metadata.get("worker"), metadata.get("player")]
     for identity in child_identities:
         sent = send_verified(identity, signal.SIGTERM, group=True) or sent
-    deadline = time.monotonic() + STOP_GRACE
-    while any(is_same_process(item) for item in child_identities) and time.monotonic() < deadline:
-        time.sleep(0.1)
-    for identity in child_identities:
+        deadline = time.monotonic() + STOP_GRACE
+        while is_same_process(identity) and time.monotonic() < deadline:
+            time.sleep(0.1)
         send_verified(identity, signal.SIGKILL, group=True)
+        deadline = time.monotonic() + REAP_TIMEOUT
+        while is_same_process(identity) and time.monotonic() < deadline:
+            time.sleep(0.1)
     if sent and is_same_process(launcher):
         send_verified(launcher, signal.SIGKILL)
     if any(is_same_process(item) for item in [launcher, *child_identities]):
@@ -289,10 +370,7 @@ def run(args: argparse.Namespace, plan: dict) -> int:
         loads = other_loads()
         if loads:
             raise RuntimeError("Existing accelerator load detected; refusing to start: " + json.dumps(loads))
-        required = [plan["worker_command"][0], plan["player_command"][0], plan["input"], plan["model"], plan["classnames"]]
-        if args.score_gate == "on":
-            required.append(plan["score_gate_model"])
-        for name in required:
+        for name in required_files(args, plan):
             if not Path(name).is_file():
                 raise RuntimeError(f"Required file is missing: {name}")
         for executable in (plan["worker_command"][0], plan["player_command"][0]):
@@ -333,8 +411,9 @@ def run(args: argparse.Namespace, plan: dict) -> int:
                 print("Worker: " + shlex.join(plan["worker_command"]), flush=True)
                 worker = subprocess.Popen(plan["worker_command"], cwd=args.root, stdout=worker_log,
                                           stderr=subprocess.STDOUT, start_new_session=True)
-                metadata["worker"] = process_identity(worker.pid)
-                children.append((worker, metadata["worker"]))
+                children.append((worker, None))
+                metadata["worker"] = capture_child_identity(worker, plan["worker_command"])
+                children[-1] = (worker, metadata["worker"])
                 deadline = time.monotonic() + args.fifo_timeout
                 fifo = output / "preview.bgr"
                 while True:
@@ -357,8 +436,9 @@ def run(args: argparse.Namespace, plan: dict) -> int:
                         print("Player: " + shlex.join(plan["player_command"]), flush=True)
                         player = subprocess.Popen(plan["player_command"], cwd=args.root, env=env,
                                                   stdout=player_log, stderr=subprocess.STDOUT, start_new_session=True)
-                        metadata["player"] = process_identity(player.pid)
-                        children.append((player, metadata["player"]))
+                        children.append((player, None))
+                        metadata["player"] = capture_child_identity(player, plan["player_command"])
+                        children[-1] = (player, metadata["player"])
                         metadata["status"] = "running"
                         publish()
                         print(f"HDMI wall is running; logs: {output}", flush=True)

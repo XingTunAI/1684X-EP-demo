@@ -1,6 +1,6 @@
 # HDMI 视频墙
 
-各路独立解码并执行 YOLOv8 检测，将最近完成的画面、同帧检测框和状态信息组成视频墙，通过系统 ffplay 输出至 HDMI。
+各路独立解码并执行 YOLOv8 检测，将最近完成的画面、同帧检测框和状态信息组成视频墙，通过系统 ffplay 输出至 HDMI。默认使用 `latest` 策略：检测忙时持续读取输入，每路仅保留最新一张待检测帧，避免应用层排队持续积压。
 
 ![HDMI 视频墙实际运行截图](images/hdmi-wall.png)
 
@@ -16,7 +16,7 @@
 
 | 数据 | 位置与要求 |
 |---|---|
-| 输入视频 | 默认 `third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/test_car_person_1080P.mp4`；自有文件用 `--input` 指定。 |
+| 输入视频 | 默认 `third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/test_car_person_1080P.mp4`；自有文件或单路 `rtsp://` / `rtsps://` 地址用 `--input` 指定。 |
 | YOLOv8 模型 | `--model s` / `--model n` 选择官方 INT8 batch 1 模型。 |
 | 模型目录 | `third_party/sophon-demo/sample/YOLOv8_plus_det/models/BM1684X/`。 |
 | 类别文件 | 同官方样例下的 `datasets/coco.names`。 |
@@ -39,14 +39,14 @@ bash demos/hdmi_wall/run.sh \
 
 `prepare.sh` 会安装基础工具并下载官方资源；已经准备好的环境和资源可跳过这一步。运行命令加 `--dry-run` 可以先查看计划，不启动检测或播放器。正常启动后显示带检测框的视频墙，控制台打印日志目录。
 
-`--duration` 设置正式测量秒数；程序在各路就绪后另预热 3 秒，总耗时还包含初始化与收尾。省略时默认为 1800 秒。默认单路、device 0、YOLOv8s、score gate 关闭；参数支持范围可查看：
+`--duration` 设置正式测量秒数；程序在各路就绪后另预热 3 秒，总耗时还包含初始化与收尾。省略时默认为 1800 秒。默认单路、device 0、YOLOv8s、score gate 关闭、`latest`、不限检测启动帧率、送检前最大帧年龄 250 ms；参数支持范围可查看：
 
 ```bash
 bash demos/hdmi_wall/run.sh --help
 bash demos/hdmi_wall/run.sh --list-streams
 ```
 
-`--streams N` 或 `-n N` 选择 1–32 内的路数。启动器为每路独立读取同一个输入文件；程序支持范围不表示某个路数已达到指定处理速度。
+`--streams N` 或 `-n N` 选择 1–32 内的路数。使用本地文件时，启动器为每路独立读取同一个输入文件；程序支持范围不表示某个路数已达到指定处理速度。
 
 播放器优先使用用户设置的 `DISPLAY`、`XAUTHORITY`、`PLAYER_LIB_PATH` 等环境变量。以有权限访问设备和当前桌面的用户运行；如环境需要提升权限，启动和停止应保持一致的身份。
 
@@ -59,7 +59,84 @@ bash demos/hdmi_wall/run.sh \
   --input data/inputs/input.mp4 --streams 4 --device 0 --duration 60
 ```
 
-### 截图素材
+单路相机输入可直接传入 URI，启动器保留原地址并跳过本地视频文件检查：
+
+```bash
+bash demos/hdmi_wall/run.sh \
+  --input 'rtsp://camera.example/live' --streams 1 --policy latest --duration 60
+```
+
+RTSP 不额外按软件源帧率节流。多个不同相机使用 C++ 程序的 `--inputs-file` 入口，每行一个不同地址；Python 启动器暂不提供这个参数，也不支持把同一 RTSP 地址重复为多路。RTSP 断流重连尚未实现。
+
+## 抽帧与实时处理
+
+`latest` 将每路解码与检测分开执行。解码线程按输入节奏持续读帧，待检测槽容量为 1；新帧覆盖仍在等待的旧帧。检测线程空闲且达到限频间隔后，才取出当时最新的一帧。正在检测的帧会正常完成，检测框与画面始终对应同一帧。
+
+| 参数 | 默认值 | 含义 |
+|---|---|---|
+| `--policy latest\|all` | `latest` | `latest` 优先处理新帧；`all` 保留原来的串行逐帧处理方式，便于对照。 |
+| `--infer-fps` | `0` | 每路检测启动速率上限，支持非负有限小数；`0` 按实际处理能力运行，不设置上限。 |
+| `--max-frame-age-ms` | `latest` 为 `250`，`all` 为 `0` | 送检前按本地帧的计划读取时刻或 RTSP 帧的解码完成时刻检查年龄，超龄则丢弃；`0` 关闭检查。支持非负有限小数。 |
+
+`--policy all` 仅接受 `--infer-fps 0 --max-frame-age-ms 0`；省略这两个参数时自动使用 0。`--infer-fps 8` 表示每路至多约每 125 ms 启动一次检测，实际完成 FPS 仍取决于解码、模型、设备与输出开销。
+
+### 上板实测的 HDMI 效果
+
+2026-09-09 在 RK3588 + 单张 BM1684X（device 1，PCIe Gen3 ×2）上对比同一份 1080p25 公路视频，使用 YOLOv8n INT8 batch 1、score gate 开启、HDMI 预览开启，得到以下结果：
+
+| 配置 | 正式时长 | 每路实际检测 FPS 范围 | 最差一路结果源帧年龄 P95 | 观察 |
+|---|---:|---:|---:|---|
+| 24 路逐帧 `all` | 60 秒 | 11.25–11.52 | 33.54 秒 | 画面在更新，但持续落后源视频，出现 STALE |
+| 24 路 `latest`，检测上限 8 FPS | 120 秒 | 5.57–6.19 | 341 ms | 最终各路都有结果；首个 10 秒窗口有 1 路未出结果 |
+| **24 路 `latest`，检测上限 5 FPS** | **60 秒** | **4.97–5.00** | **116 ms** | **源时间线持续推进，适合作为本次演示设置** |
+| 16 路 `latest`，检测上限 8 FPS | 60 秒 | 7.98–8.00 | 96 ms | 需要更高检测频率时可选择较少路数 |
+
+这里的 P95 取各路统计中的最大值，计时从本地帧计划读取到检测完成。24 路逐帧模式结束前最旧结果已落后约 **35 秒**，改为 latest / 5 后正式区间所有结果的最大源帧年龄为 **293 ms**。抽帧使画面能跟上当前源时间；HDMI 预览上限仍为 10 FPS，每路新画面的频率也受检测完成速率影响。这不是摄像头到显示器的端到端延迟测量。
+
+<details>
+<summary>查看 24 路 HDMI 实际画面对照</summary>
+
+逐帧处理：画面持续更新，但源年龄已经增长到数十秒，各格标记为 STALE。
+
+![24 路逐帧处理 HDMI 实际截图](images/hdmi-wall-all24.png)
+
+抽帧、每路检测上限 5 FPS：处理当前帧，显示主动丢帧数，保持源时间线推进。
+
+![24 路抽帧 5 FPS HDMI 实际截图](images/hdmi-wall-latest24-5fps.png)
+
+两张截图来自各自运行中的一次采样，取样时刻不同；定量比较以上表的完整正式区间统计为准。画面素材出处和署名见[截图素材](#截图素材)。
+
+</details>
+
+**32 路尚未满足实时要求。** 本轮 latest / 8 测得解码约 746 FPS，低于 32×25 的 800 FPS 输入需求，19 路始终没有检测结果。抽帧发生在解码之后，不能消除这部分解码不足；不能把少量幸存结果的低年龄当作全部通道实时达标。完整配置、原始 run ID、短测限制和复现方法见[ADB 上板验证报告](docs/realtime-board-validation.md)。
+
+### 推荐运行设置
+
+以下使用本次已验证的 24 路 / 5 FPS 配置，需已准备 YOLOv8n、score gate 辅助模型和同名本地视频。未准备辅助模型时使用 `--score-gate off` 并重新测量，不能直接套用上表结果；YOLOv8n 可用 `bash scripts/prepare_yolov8n.sh` 准备。
+
+```bash
+bash demos/hdmi_wall/run.sh \
+  --streams 24 --device 1 --model n --score-gate on --duration 60 \
+  --input data/inputs/highway_1080p25_h264_8mbps_20min.mp4 \
+  --policy latest --infer-fps 5 --max-frame-age-ms 250
+```
+
+需要每路约 8 FPS 时，先改为 `--streams 16 --infer-fps 8`。更换设备、素材、模型或输入规格后，查看逐路 `completed_fps`、`frame_age_ms`、`source_age_ms` 和丢帧统计再调整。解码后发布和取帧时都会检查年龄；检测完成时的年龄包含处理耗时，可以超过送检前的 250 ms 门槛。门槛过小或本地解码持续落后时，可能出现大量丢帧甚至没有检测结果。
+
+停止当前运行后，用相同输入、模型、路数和时长执行逐帧对照：
+
+```bash
+bash demos/hdmi_wall/run.sh --stop
+bash demos/hdmi_wall/run.sh \
+  --streams 24 --device 1 --model n --score-gate on --duration 60 \
+  --input data/inputs/highway_1080p25_h264_8mbps_20min.mp4 --policy all
+```
+
+抽帧发生在解码之后，不能减少源视频的解码负担。本地文件仍按源 FPS 读取；解码本身跟不上时，程序会丢弃超过年龄门槛的帧，关闭门槛后 `source_age_ms` 仍可能持续增长。RTSP 的相机、网络与解码器内部缓冲不在这个槽容量限制内，因此不能仅凭 `latest` 或帧年龄统计保证相机到 HDMI 的端到端延迟。
+
+线程与设备帧所有权、独立调度测试及上板验收步骤见[实时调度实现与验证](docs/realtime.md)。
+
+## 截图素材
 
 页首画面使用 Freestocks 发布的 [Cars On Highway](https://www.youtube.com/watch?v=-vLTFQv2_Vo)。原视频获取入口及作者信息见原页面；通过作者允许的方式取得本地文件后，再传给 `--input`。素材声明为 Creative Commons，具体许可说明以原页面为准，保留作者署名和来源链接。
 
@@ -110,8 +187,8 @@ data/results/hdmi-wall/
 | `run.json` | 启动参数、进程身份及启动/结束状态 |
 | `worker.log` / `player.log` | 检测程序与播放器日志 |
 | `config.json` | 模型、输入、设备与处理配置 |
-| `summary.json` / `streams.csv` | 解码、检测完成、窗口、处理阶段和异常统计 |
-| `detections.jsonl` | 每帧检测项，包含类别、置信度、原图像素坐标 xyxy 及阶段耗时 |
+| `summary.json` / `streams.csv` | 解码、检测完成、主动丢帧、帧年龄、窗口、处理阶段和异常统计 |
+| `detections.jsonl` | 每个已处理帧的检测项，包含类别、置信度、原图像素坐标 xyxy、帧年龄及阶段耗时 |
 | `preview.bgr` | 命名管道，传递原始拼屏画面，不是可独立播放的视频文件 |
 | `wall.bmp` | 最近发布的整幅视频墙截图 |
 | `status.json` | 各路最近帧号、检测数、推理 FPS、画面年龄和 stale 状态 |
@@ -119,6 +196,8 @@ data/results/hdmi-wall/
 `latest.json` 供停止入口定位对应运行；不要手动改成其他目录。截图和运行身份信息属于本地输出。
 
 ## 实际运行数据
+
+最新抽帧效果见[上板实测的 HDMI 效果](#上板实测的-hdmi-效果)及 [2026-09-09 ADB 上板验证报告](docs/realtime-board-validation.md)。下表为此前逐帧模式的历史数据。
 
 以下为 2026-09-08 在 RK3588 + 单张 BM1684X 上完成的历史运行：YOLOv8n INT8 batch 1，32 路独立读取本页所述高速公路 1080p25 H.264 视频，`device-bgr`，预热 3 秒，开启 HDMI 预览。
 
@@ -128,12 +207,18 @@ data/results/hdmi-wall/
 
 该次运行开启了 **score gate 辅助模型**；当前首次运行命令使用 YOLOv8s 且关闭 score gate，配置不同，不能直接套用表中速度。辅助模型不随仓库发布，未准备时保持关闭。
 
-这是持续 30 分钟的运行与记录数据，不表示 32 路逐帧 25 FPS，也不表示检测准确率已验收。预览的 10 FPS 与检测完成 FPS 分开计数。本次目录及启动入口整理后未上板复测，当前默认配置应以实际生成的报告为准。
+这是旧版串行逐帧逻辑下持续 30 分钟的运行与记录数据，不表示 32 路逐帧 25 FPS，也不表示检测准确率已验收。预览的 10 FPS 与检测完成 FPS 分开计数。新目录、启动参数及 `latest` 策略已于 2026-09-09 上板验证，结果见本页的[抽帧实测对照](#上板实测的-hdmi-效果)。
 
 ## 指标与限制
 
-画布为 1920×1080，显示更新上限为 10 FPS；它与每路检测 FPS 是不同指标。画面中的 infer FPS 是最近处理速率，最终报告使用正式记录窗口。`stale` 按画面最近更新时间判断，表示预览内容较旧。
+画布为 1920×1080，显示更新上限为 10 FPS；它与每路检测 FPS 是不同指标。画面中的 infer FPS 是最近处理速率，最终报告使用正式记录窗口。屏上 `src age` 表示本地源计划到当前预览的年龄，RTSP 的 `dec age` 从解码完成计起，年龄超过 2 秒显示 `stale`。
 
-完整检测计数在结果记录写入后推进，包含解码和显示准备相关工作；程序不输出完整编码视频，也未实现跟踪。每路逐帧处理，当前没有可配置抽帧功能。
+完整检测计数在结果记录写入后推进，包含解码和显示准备相关工作；程序不输出完整编码视频，也未实现跟踪。`latest` 的 `frame` / `source_frame_id` 可以跳号，连续性应检查 `processed_index`；主动丢弃的帧不生成检测记录，也不算推理失败。
+
+每路 summary 中，`dropped_overwrite` 是待检测旧帧被新帧覆盖的数量，`dropped_stale` 是送检前超龄丢弃的数量，`dropped_shutdown` 是收尾时放弃的待检测帧数量；`policy_drops` 为三者之和。`unprocessed_decoded_frames` 已扣除这些主动丢帧，正常收尾应为 0。`queue_high_watermark` 只统计等待槽，`latest` 最大为 1，不包含正在检测的帧。
+
+检测记录中的 `frame_age_ms` 从解码完成计至 Detect 完成；`source_age_ms` 从本地帧计划读取时刻计至 Detect 完成，直播为 `null`。逐路 summary 提供同名年龄统计。`status.json` 的这两个年龄还包含预览准备和画面停留时间；原有 `age_seconds` 只表示最近预览更新后经过的时间，完整口径见[指标说明](../../docs/metrics.md#hdmi-视频墙的抽帧与年龄)。
+
+预览显示的 `policy_drops` 是最近一次提交检测画面时的计数；没有新检测画面时它不会刷新，完整丢帧总数以结束后的 summary 为准。
 
 多个通道重复读取同一视频不能代表独立相机输入；预览画面年龄也不是相机到屏幕的延迟。详见[指标说明](../../docs/metrics.md)。

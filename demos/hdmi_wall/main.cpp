@@ -1,10 +1,10 @@
-// One process, one complete business thread per stream. Each thread owns its
-// decoder, detector, auxiliary runtime and buffers. No decoded-frame queue or
-// separate inference-worker pool. SDKs may create their own internal threads.
+// Each stream owns its detector/runtime. Latest mode adds a continuous decoder
+// and one replaceable pending frame; all mode retains sequential processing.
 #include "yolov8_det.hpp"
 #include "json.hpp"
 #include "score_gate_plan.hpp"
 #include "wall_renderer.hpp"
+#include "realtime_policy.hpp"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -67,21 +67,25 @@ struct Config {
     float conf = 0.25f, nms = 0.7f;
     std::string model, names, output, eof = "stop", output_buffer = "baseline";
     std::string score_gate = "off", score_gate_model, cpu_post = "dense";
+    std::string policy = "latest";
+    double infer_fps = 0, max_frame_age_ms = 250;
     std::vector<std::string> sources;
 };
 static Config arguments(int argc, char** argv) {
     std::map<std::string, std::string> opts;
-    const std::vector<std::string> accepted = {"input", "inputs-file", "streams", "slots", "device", "bmodel", "classnames", "output", "warmup", "duration", "window", "conf", "nms", "local-eof", "output-buffer", "policy", "score-gate", "score-gate-model", "cpu-post"};
+    const std::vector<std::string> accepted = {"input", "inputs-file", "streams", "slots", "device", "bmodel", "classnames", "output", "warmup", "duration", "window", "conf", "nms", "local-eof", "output-buffer", "policy", "infer-fps", "max-frame-age-ms", "score-gate", "score-gate-model", "cpu-post"};
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--help") {
             std::cout << "hdmi_wall.pcie --input FILE --streams N | --inputs-file FILE\n"
                       << "  --bmodel FILE --classnames FILE --output NEW_DIRECTORY\n"
                       << "  [--device 0 --warmup 5 --duration 30 --window 10]\n"
-                      << "  [--local-eof stop|loop|fail --output-buffer baseline|reuse --policy all]\n"
+                      << "  [--local-eof stop|loop|fail --output-buffer baseline|reuse --policy latest|all]\n"
+                      << "  [--infer-fps 0 --max-frame-age-ms 250] (latest only; 0 disables each limit)\n"
                       << "  [--score-gate off|on --score-gate-model AUXILIARY_BMODEL]\n"
                       << "  [--cpu-post dense|selected] (selected requires score-gate on)\n"
-                      << "RTSP is not software-paced. Local files use their source FPS. No frame skipping.\n";
+                      << "Default latest keeps one pending frame; all preserves every frame.\n"
+                      << "RTSP is not software-paced. Local files use their source FPS.\n";
             std::exit(0);
         }
         if (arg.compare(0, 2, "--")) throw std::runtime_error("Expected --argument");
@@ -122,7 +126,13 @@ static Config arguments(int argc, char** argv) {
         throw std::runtime_error("Score gate on requires readable score-gate-model and positive confidence");
     if (c.device < 0 || c.slots < 1 || c.warmup < 0 || c.duration <= 0 || c.window <= 0 || c.window > c.duration || c.conf < 0 || c.conf > 1 || c.nms < 0 || c.nms > 1)
         throw std::runtime_error("Invalid device/slots/timing/threshold value");
-    if (get("policy", "all") != "all") throw std::runtime_error("This prototype supports only explicit all-frame processing");
+    c.policy = get("policy", "latest");
+    c.infer_fps = number("infer-fps", 0);
+    c.max_frame_age_ms = number("max-frame-age-ms", c.policy == "latest" ? 250 : 0);
+    if (c.policy != "all" && c.policy != "latest") throw std::runtime_error("policy must be all or latest");
+    if (c.infer_fps < 0 || c.max_frame_age_ms < 0 ||
+        (c.policy == "all" && (c.infer_fps != 0 || c.max_frame_age_ms != 0)))
+        throw std::runtime_error("Nonnegative infer-fps/max-frame-age-ms require policy latest; use 0 in all mode");
     if (c.eof != "stop" && c.eof != "loop" && c.eof != "fail") throw std::runtime_error("Invalid local-eof policy");
     if (c.output_buffer != "baseline" && c.output_buffer != "reuse") throw std::runtime_error("Invalid output-buffer");
     if (c.model.empty() || c.names.empty() || c.output.empty()) throw std::runtime_error("bmodel, classnames and output are required");
@@ -208,9 +218,11 @@ struct Stream {
     bool done = false, eof_seen = false;
     std::string error;
     uint64_t decoded = 0, completed = 0, decoded_measured = 0, completed_measured = 0;
+    realtime::LatestSlot<Frame>::Counters drops;
     int width = 0, height = 0;
     double source_fps = 0;
     Metric decode, bridge, queue_age, service, pipeline, backpressure, lateness, inference, copy, cpu_post, pre;
+    Metric frame_age, source_age;
     GateSummary gate;
     std::vector<uint64_t> complete_windows, decode_windows;
     std::ofstream records;
@@ -232,7 +244,7 @@ struct Shared {
     std::vector<std::unique_ptr<Stream>> streams;
     std::vector<SlotInfo> slots;
     explicit Shared(const Config& c) : config(c),
-        wall(c.sources.size(), c.output, c.device, c.model.substr(c.model.find_last_of('/') + 1)), slots(c.slots) {
+        wall(c.sources.size(), c.output, c.device, c.model.substr(c.model.find_last_of('/') + 1), c.policy), slots(c.slots) {
         const size_t windows = static_cast<size_t>(std::ceil(c.duration / c.window));
         for (size_t i = 0; i < c.sources.size(); ++i) {
             streams.emplace_back(new Stream);
@@ -252,6 +264,10 @@ struct Shared {
         return started && !failed && !interrupted;
     }
     bool measured(Time t) const { return t >= measure_start && t < end; }
+    bool stopping() {
+        std::lock_guard<std::mutex> guard(lock);
+        return failed || interrupted || Clock::now() >= end;
+    }
     size_t window_index(Time t) const { return static_cast<size_t>(elapsed(measure_start, t) / config.window); }
 };
 
@@ -314,6 +330,8 @@ public:
 
 static void stream_thread(Shared& state, size_t id) {
     auto& stream = *state.streams[id];
+    realtime::LatestSlot<Frame> latest;
+    std::string decoder_error;
     try {
         // No detector, BMRuntime, mutable timestamp or output cache is shared.
         YoloV8_det net(state.config.model, state.config.names, state.config.device, state.config.conf, state.config.nms);
@@ -335,37 +353,88 @@ static void stream_thread(Shared& state, size_t id) {
         if (!state.barrier()) return;
         auto& slot = state.slots[id];
         uint64_t sequence = 0, source_frame = 0, source_loop = 0;
+        const bool realtime_mode = state.config.policy == "latest";
+        std::atomic<bool> stop_decode(false);
+        std::thread decoder;
+        auto read_next = [&]() -> std::unique_ptr<Frame> {
+            for (;;) {
+                const Time due = live ? Clock::now() : add_seconds(state.start, sequence / stream.source_fps);
+                {
+                    std::unique_lock<std::mutex> guard(state.lock);
+                    while (!live && !state.failed && !interrupted && !stop_decode.load() &&
+                           Clock::now() < due && Clock::now() < state.end)
+                        state.changed.wait_until(guard, std::min(std::min(due, state.end),
+                            Clock::now() + std::chrono::milliseconds(100)));
+                    if (state.failed || interrupted || stop_decode.load() || Clock::now() >= state.end) return nullptr;
+                }
+                // Always retrieve into a new, empty Mat. SOPHON transfers the
+                // decoded AVFrame into its refcounted Mat allocator. Retaining
+                // this owner keeps the device surface alive during inference.
+                std::unique_ptr<Frame> frame(new Frame);
+                frame->stream = id; frame->sequence = sequence;
+                frame->source_frame = source_frame; frame->source_loop = source_loop;
+                frame->live = live; frame->due = due;
+                frame->before_decode = Clock::now();
+                cap >> frame->mat; frame->after_decode = Clock::now();
+                if (frame->mat.empty()) {
+                    if (live) throw std::runtime_error("RTSP returned no frame; reconnect is not implemented");
+                    if (!source_frame) throw std::runtime_error("Local source returned no frames");
+                    if (state.config.eof == "fail") throw std::runtime_error("Local EOF before test deadline");
+                    if (state.config.eof == "stop") { stream.eof_seen = true; return nullptr; }
+                    cap.release(); configure_capture(cap, source, state.config.device);
+                    ++source_loop; source_frame = 0; continue;
+                }
+                ++sequence; ++source_frame; ++stream.decoded;
+                if (state.measured(frame->after_decode)) {
+                    ++stream.decoded_measured; ++stream.decode_windows.at(state.window_index(frame->after_decode));
+                }
+                frame->ready = frame->after_decode;
+                return frame;
+            }
+        };
+        // Declare after read_next: join before its captured closure, cap or
+        // detector can be destroyed, including on inference/record exceptions.
+        struct JoinDecoder {
+            std::thread& thread; std::atomic<bool>& stop; Shared& state;
+            realtime::LatestSlot<Frame>& latest;
+            ~JoinDecoder() {
+                stop.store(true); state.changed.notify_all(); latest.finish();
+                if (thread.joinable()) thread.join();
+                latest.discard_pending();
+            }
+        } join_decoder{decoder, stop_decode, state, latest};
+        if (realtime_mode) {
+            decoder = std::thread([&]() {
+                try {
+                    while (auto frame = read_next()) {
+                        // For a local file, media time remains anchored to
+                        // startup even across EOF loops and decoder stalls.
+                        if (realtime::expired(frame->live ? frame->ready : frame->due,
+                                              Clock::now(), state.config.max_frame_age_ms))
+                            latest.discard_stale();
+                        else latest.publish(std::move(frame));
+                    }
+                } catch (const std::exception& e) {
+                    decoder_error = e.what();
+                    state.fail("decoder " + std::to_string(id) + ": " + decoder_error);
+                }
+                latest.finish();
+            });
+        }
         Time last_preview = Time::min(), rate_start = Clock::now();
+        Time next_infer = Time::min();
         uint64_t rate_count = 0;
+        uint64_t previous_sequence = 0;
         double process_fps = 0;
         while (!interrupted) {
             if (state.wall.failed()) throw std::runtime_error("HDMI renderer: " + state.wall.error());
-            const Time due = live ? Clock::now() : add_seconds(state.start, sequence / stream.source_fps);
-            {
-                std::unique_lock<std::mutex> guard(state.lock);
-                while (!live && !state.failed && !interrupted && Clock::now() < due && Clock::now() < state.end)
-                    state.changed.wait_until(guard, std::min(due, state.end));
-                if (state.failed || interrupted || Clock::now() >= state.end) break;
+            auto frame = realtime_mode
+                ? latest.take(next_infer, state.end, [&]() { return state.stopping(); }) : read_next();
+            if (!frame) break;
+            if (realtime_mode && realtime::expired(frame->live ? frame->ready : frame->due,
+                                                   Clock::now(), state.config.max_frame_age_ms)) {
+                latest.discard_stale(); continue;
             }
-            // All image wrappers die at the end of this iteration, before cap.read runs again.
-            std::shared_ptr<Frame> frame(new Frame);
-            frame->stream = id; frame->sequence = sequence; frame->source_frame = source_frame; frame->source_loop = source_loop;
-            frame->live = live; frame->due = due; frame->backpressure_ms = 0;
-            frame->before_decode = Clock::now();
-            cap >> frame->mat; frame->after_decode = Clock::now();
-            if (frame->mat.empty()) {
-                if (live) throw std::runtime_error("RTSP returned no frame; reconnect is not implemented");
-                if (!source_frame) throw std::runtime_error("Local source returned no frames");
-                if (state.config.eof == "fail") throw std::runtime_error("Local EOF before test deadline");
-                if (state.config.eof == "stop") { stream.eof_seen = true; break; }
-                cap.release(); configure_capture(cap, source, state.config.device);
-                ++source_loop; source_frame = 0; continue;
-            }
-            ++stream.decoded;
-            if (state.measured(frame->after_decode)) {
-                ++stream.decoded_measured; ++stream.decode_windows.at(state.window_index(frame->after_decode));
-            }
-            frame->ready = frame->after_decode;
             if (slot.frames % 128 == 0) {
                 struct statvfs disk;
                 if (statvfs(state.config.output.c_str(), &disk) ||
@@ -373,6 +442,7 @@ static void stream_thread(Shared& state, size_t id) {
                     throw std::runtime_error("Less than 512 MiB free; stopping experiment");
             }
             const Time selected = Clock::now();
+            next_infer = realtime::next_inference(selected, state.config.infer_fps);
             cv::Mat device_bgr;
             if (cv::bmcv::toMAT(frame->mat, device_bgr, false) != BM_SUCCESS) throw std::runtime_error("Device YUV to BGR failed");
             bm_image image;
@@ -391,7 +461,10 @@ static void stream_thread(Shared& state, size_t id) {
             if (last_preview == Time::min() || elapsed(last_preview, after_detect) >= .1) {
                 const auto preview_start = Clock::now();
                 const auto host = thumbnail.render(image, boxes[0]);
-                state.wall.submit(id, host, sequence + 1, boxes[0].size(), process_fps);
+                const auto submitted = Clock::now();
+                state.wall.submit(id, host, frame->sequence + 1, boxes[0].size(), process_fps,
+                    millis(frame->after_decode, submitted), frame->live ? -1 : millis(frame->due, submitted),
+                    latest.counters().drops());
                 last_preview = Clock::now(); preview_ms = millis(preview_start, last_preview);
             }
             const double preprocess = stage(net.m_ts, "yolov8 preprocess"), inference = stage(net.m_ts, "yolov8 inference");
@@ -403,6 +476,7 @@ static void stream_thread(Shared& state, size_t id) {
             for (const auto& box : boxes[0]) detections.push_back({{"class_id", box.class_id}, {"score", box.score}, {"xyxy", {box.x1, box.y1, box.x2, box.y2}}});
             json record = {{"stream_id", frame->stream}, {"source_id", stream_name(frame->stream)}, {"slot_id", id},
                 {"frame", frame->sequence}, {"source_frame_id", frame->source_frame}, {"source_loop", frame->source_loop},
+                {"processed_index", stream.completed},
                 {"received_monotonic_s", monotonic_seconds(frame->after_decode)}, {"analysis_completed_monotonic_s", monotonic_seconds(after_detect)},
                 {"decode_ms", millis(frame->before_decode, frame->after_decode)}, {"image_bridge_ms", millis(selected, before_detect)},
                 {"queue_age_ms", millis(frame->ready, selected)}, {"backpressure_ms", frame->backpressure_ms},
@@ -416,12 +490,17 @@ static void stream_thread(Shared& state, size_t id) {
                 {"cpu_post", state.config.cpu_post},
                 {"preview_ms", preview_ms},
                 {"service_ms", millis(selected, after_detect)}, {"pipeline_ms", millis(frame->before_decode, after_detect)},
-                {"policy", "all"}, {"detections", detections}};
+                {"frame_age_ms", millis(frame->after_decode, after_detect)},
+                {"source_age_ms", frame->live ? json(nullptr) : json(millis(frame->due, after_detect))},
+                {"policy", state.config.policy}, {"detections", detections}};
             // Output counts follow successful JSON insertion, as in the baseline.
             stream.records << record.dump() << '\n';
-            if ((frame->sequence + 1) % 25 == 0) stream.records.flush();
+            if ((stream.completed + 1) % 25 == 0) stream.records.flush();
             const Time written = Clock::now();
-            if (stream.completed != frame->sequence) throw std::runtime_error("Stream output sequence was reordered");
+            if ((stream.completed && frame->sequence <= previous_sequence) ||
+                (!realtime_mode && stream.completed != frame->sequence))
+                throw std::runtime_error("Stream output sequence was reordered");
+            previous_sequence = frame->sequence;
             ++stream.completed; ++slot.frames;
             if (state.measured(written)) {
                 ++stream.completed_measured; ++stream.complete_windows.at(state.window_index(written)); ++slot.measured;
@@ -429,17 +508,20 @@ static void stream_thread(Shared& state, size_t id) {
                 stream.decode.add(millis(frame->before_decode, frame->after_decode)); stream.bridge.add(millis(selected, before_detect));
                 stream.queue_age.add(millis(frame->ready, selected)); stream.service.add(millis(selected, after_detect));
                 stream.pipeline.add(millis(frame->before_decode, written)); stream.backpressure.add(frame->backpressure_ms);
+                stream.frame_age.add(millis(frame->after_decode, after_detect));
+                if (!frame->live) stream.source_age.add(millis(frame->due, after_detect));
                 if (!frame->live) stream.lateness.add(std::max(0.0, millis(frame->due, frame->before_decode)));
                 stream.inference.add(inference); stream.copy.add(net.output_copy_ms); stream.cpu_post.add(cpu_post); stream.pre.add(preprocess);
                 stream.gate.add(net.score_gate_metrics); slot.gate.add(net.score_gate_metrics);
             }
-            ++sequence; ++source_frame;
         }
         slot.host_alloc = net.host_output_allocations; slot.device_alloc = net.device_output_allocations; slot.copy_bytes = net.output_copy_bytes;
         slot.gate_alloc = net.score_gate_buffer_allocations;
     } catch (const std::exception& e) {
         stream.error = e.what(); state.fail("stream " + std::to_string(id) + ": " + e.what());
     }
+    if (stream.error.empty() && !decoder_error.empty()) stream.error = decoder_error;
+    stream.drops = latest.counters();
     stream.done = true;
 }
 
@@ -452,12 +534,16 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < config.sources.size(); ++i) sources.push_back({{"stream_id", i}, {"source_id", stream_name(i)}, {"source", redacted(config.sources[i])}, {"live", live_source(config.sources[i])}});
         json_file(config.output + "/config.json", {{"device", config.device}, {"streams", config.sources.size()}, {"slots", config.slots},
             {"warmup_s", config.warmup}, {"duration_s", config.duration}, {"window_s", config.window}, {"model", config.model},
-            {"conf", config.conf}, {"nms", config.nms}, {"sources", sources}, {"policy", "all"}, {"local_eof", config.eof},
-            {"image_path", "device-bgr"}, {"output_buffer", config.output_buffer}, {"max_outstanding_per_stream", 1},
+            {"conf", config.conf}, {"nms", config.nms}, {"sources", sources}, {"policy", config.policy}, {"local_eof", config.eof},
+            {"infer_fps_cap", config.infer_fps}, {"max_frame_age_ms", config.max_frame_age_ms},
+            {"image_path", "device-bgr"}, {"output_buffer", config.output_buffer},
+            {"pending_queue_capacity", config.policy == "latest" ? 1 : 0},
+            {"max_outstanding_per_stream", config.policy == "latest" ? 3 : 1},
             {"score_gate", config.score_gate}, {"score_gate_model", config.score_gate_model}, {"score_gate_backend", "bmrt_auxiliary_reducemax"},
             {"cpu_post", config.cpu_post},
             {"gate_max_ranges", score_gate::max_ranges}, {"gate_max_rows", score_gate::max_rows}, {"gate_full_byte_fraction_percent", score_gate::byte_fraction_percent},
-            {"topology", "one_business_thread_per_stream"}, {"business_threads", config.sources.size()}, {"model_instances", config.slots}, {"draw", true}, {"encode", false},
+            {"topology", config.policy == "latest" ? "decoder_and_inference_per_stream_latest_slot" : "one_business_thread_per_stream"},
+            {"business_threads", config.sources.size() * (config.policy == "latest" ? 2 : 1)}, {"model_instances", config.slots}, {"draw", true}, {"encode", false},
             {"display", "HDMI via system ffplay"}, {"preview_max_fps", 10}, {"preview_thumbnail", {256, 144}}, {"wall_resolution", {1920, 1080}}});
         std::thread display([&]() { state.wall.run(); if (state.wall.failed()) state.fail("HDMI renderer: " + state.wall.error()); });
         std::vector<std::thread> threads;
@@ -483,12 +569,14 @@ int main(int argc, char** argv) {
         const double measured_seconds = std::max(0.0, elapsed(state.measure_start, std::min(finished, state.end)));
         bool eof_seen = false, complete = true;
         double total_fps = 0, minimum_fps = std::numeric_limits<double>::infinity();
+        uint64_t total_drops = 0;
         json streams = json::array(), slot_rows = json::array();
         std::ofstream csv(config.output + "/streams.csv"); csv.exceptions(std::ios::failbit | std::ios::badbit);
-        csv << "stream_id,decoded,completed,decoded_measured,completed_measured,decoded_fps,completed_fps,queue_mean_ms,queue_p95_ms,pipeline_p95_ms,schedule_lateness_max_ms,source_ended,error\n";
+        csv << "stream_id,decoded,completed,decoded_measured,completed_measured,decoded_fps,completed_fps,queue_mean_ms,queue_p95_ms,pipeline_p95_ms,schedule_lateness_max_ms,source_ended,error,policy_drops,dropped_overwrite,dropped_stale,dropped_shutdown,queue_high_watermark,frame_age_p95_ms,source_age_p95_ms\n";
         for (size_t i = 0; i < state.streams.size(); ++i) {
             auto& s = *state.streams[i]; s.records.close(); eof_seen = eof_seen || s.eof_seen;
-            complete = complete && s.decoded == s.completed && s.error.empty();
+            complete = complete && s.decoded == s.completed + s.drops.drops() && s.error.empty();
+            total_drops += s.drops.drops();
             const double fps = measured_seconds > 0 ? s.completed_measured / measured_seconds : 0;
             const double decode_fps = measured_seconds > 0 ? s.decoded_measured / measured_seconds : 0;
             total_fps += fps; minimum_fps = std::min(minimum_fps, fps);
@@ -502,16 +590,23 @@ int main(int argc, char** argv) {
             json result = {{"stream_id", i}, {"source_id", stream_name(i)}, {"decoded", s.decoded}, {"completed", s.completed},
                 {"decoded_measured", s.decoded_measured}, {"completed_measured", s.completed_measured}, {"decoded_fps", decode_fps}, {"completed_fps", fps},
                 {"source_width", s.width}, {"source_height", s.height}, {"source_fps", std::isfinite(s.source_fps) ? json(s.source_fps) : json(nullptr)},
-                {"source_ended", s.eof_seen}, {"error", s.error}, {"unprocessed_decoded_frames", s.decoded - s.completed}, {"policy_drops", 0}, {"decoder_drops", nullptr},
+                {"source_ended", s.eof_seen}, {"error", s.error},
+                {"unprocessed_decoded_frames", s.decoded - s.completed - s.drops.drops()},
+                {"policy", config.policy}, {"policy_drops", s.drops.drops()}, {"decoder_drops", nullptr},
+                {"dropped_overwrite", s.drops.overwritten}, {"dropped_stale", s.drops.stale},
+                {"dropped_shutdown", s.drops.shutdown}, {"queue_high_watermark", s.drops.high_watermark},
                 {"windows", windows}, {"decode_ms", s.decode.summary()}, {"image_bridge_ms", s.bridge.summary()},
                 {"queue_age_ms", s.queue_age.summary()}, {"service_ms", s.service.summary()}, {"pipeline_to_record_ms", s.pipeline.summary()},
                 {"backpressure_ms", s.backpressure.summary()}, {"schedule_lateness_ms", s.lateness.summary()},
+                {"frame_age_ms", s.frame_age.summary()}, {"source_age_ms", s.source_age.summary()},
                 {"preprocess_ms", s.pre.summary()}, {"inference_ms", s.inference.summary()}, {"output_copy_ms", s.copy.summary()}, {"cpu_postprocess_ms", s.cpu_post.summary()},
                 {"score_gate_measured", s.gate.summary()}};
             streams.push_back(result); json_file(config.output + "/" + stream_name(i) + "/summary.json", result);
             csv << i << ',' << s.decoded << ',' << s.completed << ',' << s.decoded_measured << ',' << s.completed_measured << ',' << decode_fps << ',' << fps << ','
                 << s.queue_age.summary()["mean"] << ',' << s.queue_age.summary()["p95"] << ',' << s.pipeline.summary()["p95"] << ','
-                << s.lateness.summary()["max"] << ',' << (s.eof_seen ? 1 : 0) << ',' << json(s.error).dump() << '\n';
+                << s.lateness.summary()["max"] << ',' << (s.eof_seen ? 1 : 0) << ',' << json(s.error).dump() << ','
+                << s.drops.drops() << ',' << s.drops.overwritten << ',' << s.drops.stale << ',' << s.drops.shutdown << ','
+                << s.drops.high_watermark << ',' << s.frame_age.summary()["p95"] << ',' << s.source_age.summary()["p95"] << '\n';
         }
         for (size_t i = 0; i < state.slots.size(); ++i) {
             const auto& s = state.slots[i]; slot_rows.push_back({{"slot_id", i}, {"frames", s.frames}, {"measured_frames", s.measured},
@@ -521,7 +616,8 @@ int main(int argc, char** argv) {
         const std::string status = state.failed ? "failed" : interrupted ? "interrupted" : !complete ? "incomplete_records" : eof_seen ? "source_ended" : measured_seconds < config.duration - .01 ? "incomplete_duration" : "measured";
         json_file(config.output + "/summary.json", {{"status", status}, {"error", state.error}, {"measured_seconds", measured_seconds},
             {"total_completed_fps", total_fps}, {"minimum_stream_fps", minimum_fps}, {"streams", streams}, {"slots", slot_rows},
-            {"records_complete", complete}, {"drain_seconds", std::max(0.0, elapsed(state.end, finished))}, {"application_drops", 0}, {"decoder_drops", nullptr},
+            {"records_complete", complete}, {"policy", config.policy},
+            {"drain_seconds", std::max(0.0, elapsed(state.end, finished))}, {"application_drops", total_drops}, {"decoder_drops", nullptr},
             {"acceptance", nullptr}, {"note", "Measured completion FPS is not a realtime acceptance verdict. RTSP internal buffering/drops and camera latency are unmeasured."}});
         std::cout << "status=" << status << " total_completed_fps=" << total_fps << " minimum_stream_fps=" << minimum_fps << std::endl;
         return status == "measured" ? 0 : 2;

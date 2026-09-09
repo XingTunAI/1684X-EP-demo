@@ -33,6 +33,8 @@
 | `cpu_postprocess_ms` | CPU 候选过滤、NMS 或坐标还原 |
 | `service_ms` / `pipeline_ms` | 各 demo 明确记录的一段处理区间 |
 | `schedule_lateness_ms` | 相对本地读取计划的落后时间 |
+| `frame_age_ms` | HDMI 视频墙中从解码完成至 Detect 完成的时间 |
+| `source_age_ms` | HDMI 视频墙中从本地帧计划读取时刻至 Detect 完成的时间；直播为 `null` |
 | `drain_seconds` | 规定结束时刻之后的收尾时间 |
 
 不同 demo 的 `service_ms` 边界不完全相同：YOLOv8 从取帧到写出调用返回；YOLO26/视频墙从选定处理时刻到检测完成。以对应代码和文件说明为准。
@@ -59,8 +61,45 @@
 
 ## 结果解释
 
-当前视频程序按顺序处理帧，不把低完成 FPS 自动解释成“实时选取最新帧”。改变模型输入大小也不会自动降低原视频的解码工作量。
+除 HDMI 视频墙的 `--policy latest` 外，当前视频入口仍按各自原有策略处理帧，不能把低完成 FPS 自动解释成“实时选取最新帧”。改变模型输入大小也不会自动降低原视频的解码工作量。
 
-应用未主动丢帧，不等于相机、网络或解码器内部完全没有丢帧。重复读取同一文件也不等于相同数量的独立实时输入。真实端到端延迟需要额外的源时间戳及显示端测量。
+应用层的丢帧计数只覆盖程序主动丢弃的帧，不能判断相机、网络或解码器内部是否丢帧。重复读取同一文件也不等于相同数量的独立实时输入。真实端到端延迟需要额外的源时间戳及显示端测量。
 
 `bm-smi` 的 TPU 利用率不是 VPU 解码利用率。进程数、显存或瞬时利用率不能单独证明实际处理能力。固定输入张量首末结果一致、JSON 连续或输出视频完整，都不能代替检测准确率评估。
+
+## HDMI 视频墙的抽帧与年龄
+
+`demos/hdmi_wall` 默认 `--policy latest`：每路独立持续解码，一个等待槽仅保留最新帧，检测线程空闲并达到 `--infer-fps` 间隔后再取帧。`--infer-fps` 是每路检测启动速率上限，`0` 表示按处理能力运行；它既不是源 FPS，也不承诺检测完成 FPS。`--policy all` 保留原来的串行逐帧逻辑，且要求检测限频和最大帧年龄参数都为 0。
+
+本地文件按源 FPS 安排读帧；RTSP 不另加软件节流。`latest` 不省去中间帧的解码，不能降低 VPU 解码工作量，也无法清除相机、网络及 RTSP 后端内部的缓冲。
+
+| 每路计数字段 | 定义 |
+|---|---|
+| `decoded` / `completed` | 全程成功解码 / 成功写入检测记录的帧数，包含预热和收尾 |
+| `decoded_measured` / `completed_measured` | 正式区间内分别按解码完成 / 检测记录写入时刻计数，用于各自的 FPS |
+| `dropped_overwrite` | 新帧覆盖等待槽中尚未处理的旧帧 |
+| `dropped_stale` | 解码后发布或取帧时，年龄超过启用的 `--max-frame-age-ms` 门槛而丢弃；本地按计划读取时刻起算，RTSP 按解码完成起算 |
+| `dropped_shutdown` | 结束或停止时放弃的待检测帧 |
+| `policy_drops` | 上述三类主动丢帧之和，属于全程计数 |
+| `unprocessed_decoded_frames` | `decoded - completed - policy_drops`；正常收尾应为 0 |
+| `queue_high_watermark` | 等待槽内帧数的最大值；`latest` 不超过 1，不包含正在检测的帧 |
+| `decoder_drops` | `null`，表示未测量解码器内部丢帧，不能解释成 0 |
+
+根级 `application_drops` 为各路 `policy_drops` 之和。`records_complete` 检查已解码帧能否由完成记录及主动丢帧计数解释，并结合逐路错误判断；有主动丢帧仍可为 `true`。它不表示源视频的每一帧都接受了检测，也不代表达到实时性能要求。
+
+`detections.jsonl` 只记录实际完成检测的帧。`processed_index` 连续递增，用于已处理记录的连续性核验；`frame` 是跨本地循环的解码序号，`source_frame_id` 是当前循环内的源帧号，`source_loop` 标记循环次数。`latest` 下这些源帧序号可以跳跃，不能按 `frame` 必须连续来判断记录损坏。
+
+| 年龄或耗时 | 计时边界与解释 |
+|---|---|
+| `queue_age_ms` | 解码完成到选取送检，反映应用等待时间 |
+| `frame_age_ms` | 解码完成到 Detect 返回，包含等待、图像桥接及检测 |
+| `source_age_ms` | 本地帧计划读取时刻到 Detect 返回，包含源调度落后；直播为 `null` |
+| `schedule_lateness_ms` | 本地计划读取到实际开始读取的非负落后量；直播为 `null` |
+| `pipeline_ms` / `pipeline_to_record_ms` | 分别从开始解码到 Detect 返回 / 检测记录写入 |
+| 预览 `age_seconds` | 从最近预览更新时间计算，反映屏上内容多久未更新 |
+| 预览 `frame_age_ms` / `source_age_ms` | 与检测记录的起点一致，终点延续到当前预览时刻，包含预览准备与画面停留时间 |
+| 预览 `stale` | 本地按 `source_age_ms`、RTSP 按 `frame_age_ms` 判断，超过 2 秒为 `true` |
+
+每帧年龄字段在检测记录中给出；逐路 summary 的同名统计使用正式记录区间内的已完成帧，未处理的丢帧不会进入年龄分布。无适用样本时按空统计解释，直播的 `source_age_ms` 不应当作零延迟。
+
+`--max-frame-age-ms` 在 `latest` 下默认 250 ms，`0` 关闭。本地从帧的计划读取时刻起算，RTSP 从解码完成起算；解码后发布和取帧时均检查。随后仍需完成图像桥接与检测，因此检测完成时的对应年龄可以超过门槛。若本地解码持续落后，可能大量丢弃超龄帧，关闭门槛后 `source_age_ms` 仍可持续增长。若 RTSP 内部已缓存旧帧，较低的 `frame_age_ms` 也不能证明相机到 HDMI 的低延迟。抽帧策略已于 2026-09-09 在本地视频输入下完成[上板验证](../demos/hdmi_wall/docs/realtime-board-validation.md)，推荐配置与对照命令见 [HDMI 视频墙](../demos/hdmi_wall/README.md#抽帧与实时处理)。
