@@ -10,11 +10,11 @@
 |---|---|---|---|
 | YOLOv8 | 单卡或多卡视频检测，保存逐帧检测结果 | [操作文档](demos/yolov8/README.md) | [查看数据](demos/yolov8/README.md#实际运行数据) |
 | YOLO26 | 使用 YOLO26 进行单卡或多卡视频检测 | [操作文档](demos/yolo26/README.md) | [查看数据](demos/yolo26/README.md#实际运行数据) |
-| **HDMI 视频墙** | **多路视频拼屏，显示检测框和各路状态** | **[操作文档](demos/hdmi_wall/README.md)** | [查看数据](demos/hdmi_wall/README.md#实际运行数据) |
+| **HDMI 视频墙** | **多路视频拼屏；支持每设备一页、按钮切页，后台同时处理** | **[操作文档](demos/hdmi_wall/README.md)** | [查看数据](demos/hdmi_wall/README.md#实际运行数据) |
 | 硬件解码 | 单独检查逐路解码进度与速率 | [操作文档](demos/decode/README.md) | [查看数据](demos/decode/README.md#实际运行数据) |
 | 模型与传输诊断 | 模型执行、结果回传、PCIe 传输和图像检测检查 | [操作文档](tools/diagnostics/README.md) | [查看数据](tools/diagnostics/README.md#实际运行数据) |
 
-两个 YOLO 入口用 `--devices 0` 或 `--devices 0,1` 选择设备，`--streams` 指定每卡路数，`--duration` 指定后端测量窗口。HDMI 和解码入口使用单数 `--device` 选择一个设备，其他参数以各自文档为准。测量窗口与启动器总耗时不同，预热及计时差异见对应说明。
+两个 YOLO 入口用 `--devices 0` 或 `--devices 0,1` 选择设备，`--streams` 指定每卡路数，`--duration` 指定后端测量窗口。HDMI 单设备和解码入口使用单数 `--device`；HDMI 的 [多设备分页入口](demos/hdmi_wall/docs/multi-device.md)使用 `--devices 0,1`，每卡 1–32 路、最多 4 张卡，后台同时运行。其他参数以各自文档为准。测量窗口与启动器总耗时不同，预热及计时差异见对应说明。
 
 不同 FPS 和状态的含义见[指标说明](docs/metrics.md)，本地输出位置见[数据目录](data/README.md#results)。
 

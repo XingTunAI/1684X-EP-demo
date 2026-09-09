@@ -106,6 +106,7 @@ third_party/sophon-demo/sample/<sample>/
 | YOLOv8 主入口 | `data/results/yolov8/<run-id>/`，每卡结果在 `device_<id>/<backend-run-id>/` |
 | YOLO26 主入口 | `data/results/yolo26/<run-id>/`，每卡结果在 `device_<id>/` |
 | HDMI 视频墙 | `data/results/hdmi-wall/<run-id>/` |
+| HDMI 多设备分页 | `data/results/hdmi-wall-multi/<run-id>/`，各卡在 `device_<id>/`，页面状态见根目录 `viewer-status.json` |
 | 诊断 | `data/results/inference-diagnostics/`、`bandwidth/`、`tpu/` |
 
 两个 YOLO 主入口的 `--output` 指定父目录，每次自动创建唯一运行目录；根级 `run.json`、`summary.json` 记录进程状态，`device_<id>.log` 保存后端日志，各卡目录保存检测统计和逐帧 JSONL。具体字段见 [YOLOv8](../demos/yolov8/README.md) 和 [YOLO26](../demos/yolo26/README.md)。
