@@ -1,17 +1,78 @@
 # 环境与依赖准备
 
-以下操作面向 Linux ARM64 的 RK3588 主机与 BM1684X PCIe 设备。SDK 安装、构建和实际运行命令都在 Linux 主机的仓库根目录执行。Windows 可用于编辑文件，以及使用 Python 运行两个 YOLO 入口的 `--dry-run` 查看命令计划；它不会启动硬件任务。
+以下操作面向 Linux ARM64 的 RK3588 主机与 BM1684X PCIe 设备。下方明确标注的 ADB、SSH 连接命令在电脑终端执行；连接成功后的 SDK 安装、构建和运行命令都在板端 Linux 执行。Windows 可用于编辑文件，以及使用 Python 运行两个 YOLO 入口的 `--dry-run` 查看命令计划；它不会启动硬件任务。
+
+## 从电脑进入设备
+
+ADB 和 SSH 二选一即可。进入后终端提示符通常变为 `linaro@Rockchip:...$` 或 root 的 `#`；以 `id` 输出确认实际用户，不要只凭提示符判断权限。
+
+### 使用 ADB
+
+电脑需要安装 Android Platform Tools，并能调用 `adb`；板子的固件需启用 ADB，USB 线连接到支持 ADB 的接口。在**电脑终端**（如 Windows PowerShell）执行：
+
+```powershell
+adb devices -l
+adb shell
+```
+
+先确认列表中的目标设备状态为 `device`。只有一台在线设备时可直接使用 `adb shell`；多台设备时，将下方 `YOUR_SERIAL` 替换为 `adb devices -l` 第一列的实际序列号，再执行：
+
+```powershell
+adb -s YOUR_SERIAL shell
+```
+
+连接后，在**板端 Linux shell** 执行：
+
+```bash
+id
+hostname -I
+```
+
+`id` 输出中的 `uid=0(root)` 表示当前是 root；ADB 是否默认以 root 登录由固件决定。`hostname -I` 显示板子的网络地址，可用于下面的 SSH 连接；请选择电脑能够访问的板端地址。执行 `exit` 可退出板端 shell，回到电脑终端。
+
+### 使用 SSH
+
+板子与电脑需要网络可达，rootfs 中应已有可登录的用户，并已启用 SSH 服务。下面以本次固件的 `linaro` 用户为例；若固件使用其他用户名，替换为实际用户。将 `BOARD_IP` 替换为板端 `hostname -I` 查到的可达地址，在**电脑终端**执行：
+
+```powershell
+ssh -x linaro@BOARD_IP
+```
+
+首次连接核对设备的主机密钥指纹，按终端提示使用自己的凭据登录。`-x` 关闭本次 SSH 连接的 X11 转发，避免播放器窗口被转发到电脑。登录后，在**板端 Linux shell** 执行：
+
+```bash
+id
+```
+
+普通用户安装系统包时需要相应的 `sudo` 权限。ADB 或 SSH 登录成功仅表示终端可用，不代表获得 HDMI 桌面的显示权限；板端桌面显示地址与认证文件的选择见 [通过 ADB 或 SSH 运行到 HDMI](../demos/hdmi_wall/README.md#通过-adb-或-ssh-运行到-hdmi)。
 
 ## 取得仓库
 
-已在 Linux 主机上放好仓库时，进入其根目录即可。首次使用且已安装 Git 时执行：
+本次板子使用 `/userdata/1684X-EP-demo`，把仓库、编译产物和下载资源放在较大的 `/userdata` 分区。以下命令都在**板端 Linux shell** 执行。先确认可用空间和当前用户的目录权限：
 
 ```bash
+df -h /userdata
+ls -ld /userdata
+```
+
+若仓库已经放好，直接进入：
+
+```bash
+cd /userdata/1684X-EP-demo
+test -w . && echo '仓库目录可写' || echo '当前用户不能写入仓库目录'
+```
+
+构建和下载资源需要当前用户能写入仓库及相应子目录。如果仓库由 ADB 的 root 用户创建，而后改用 SSH 普通用户，请先检查权限；无写权限时由管理员为该仓库配置合适的目录所有者或写权限，再继续。
+
+首次使用且已安装 Git、当前用户可写入 `/userdata` 时执行：
+
+```bash
+cd /userdata
 git clone https://github.com/XingTunAI/1684X-EP-demo.git
 cd 1684X-EP-demo
 ```
 
-后续命令均在这个目录执行，无需复制到固定的主机路径。
+后续命令均在仓库根目录执行。仓库也支持其他可写路径，无需复制到固定位置。Git 仅取得本项目源码和文档；SDK 安装包、官方依赖源码、模型和测试视频不会随本仓库的 `git clone` 下载，需要按下文分别准备。刷写 rootfs 后也应重新检查系统内的驱动、SDK 和构建工具，即使 `/userdata` 中的文件仍在。
 
 ## SDK 和构建工具
 
@@ -64,7 +125,7 @@ ls -ld /opt/sophon/sophon-ffmpeg-latest/lib/cmake \
 
 构建脚本默认查找以上 SOPHON FFmpeg/OpenCV 路径，libsophon 通过 CMake 的 `find_package(libsophon)` 查找。若 SDK 安装位置不同，构建时传入相应的 `FFMPEG_DIR`、`OpenCV_DIR`、`libsophon_DIR`；这些值应指向实际 SDK 的 CMake 配置目录。
 
-HDMI 还要求 Linux 主机已登录图形桌面、显示器可用，并安装系统播放器。`prepare.sh` 不安装播放器；使用 apt 的系统缺少 `/usr/bin/ffplay` 时执行：
+HDMI 还要求板子的图形显示服务和显示器可用、播放器具有访问该显示会话的权限，并安装系统播放器。可以在已登录的图形桌面运行；本次固件的 LightDM 登录界面也已通过显式指定对应显示地址和认证文件验证，操作见 [通过 ADB 或 SSH 运行到 HDMI](../demos/hdmi_wall/README.md#通过-adb-或-ssh-运行到-hdmi)。`prepare.sh` 不安装播放器；使用 apt 的系统缺少 `/usr/bin/ffplay` 时执行：
 
 ```bash
 sudo apt update
@@ -78,7 +139,7 @@ test -x /usr/bin/ffplay && echo 'ffplay: OK'
 printf 'DISPLAY=%s\n' "$DISPLAY"
 ```
 
-应能看到 `ffplay: OK` 和有效的 `DISPLAY`。仅有 SSH 终端或只设置一个 `DISPLAY` 字符串，不代表播放器已获得桌面访问权限；具体启动和排查见 [HDMI 文档](../demos/hdmi_wall/README.md)。
+应能看到 `ffplay: OK` 和有效的 `DISPLAY`。仅有 ADB、SSH 终端或只设置一个 `DISPLAY` 字符串，不代表播放器已获得桌面访问权限。SSH 中的 `DISPLAY=localhost:11.0` 一类地址表示 X11 转发；改为板端 `:0` 后仍需匹配的认证文件，当前用户的 `.Xauthority` 不一定适用于 LightDM 登录界面。具体启动和排查见 [通过 ADB 或 SSH 运行到 HDMI](../demos/hdmi_wall/README.md#通过-adb-或-ssh-运行到-hdmi)。
 
 ## 官方依赖与模型
 
