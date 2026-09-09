@@ -6,6 +6,8 @@
 
 单卡历史测量分别见 [device 1 的 30 路基准](performance-30.md)和 [device 0 路数及回传预算对照](device0-capacity.md)。多卡共享主机资源，应按同时运行的结果判断各卡实际速度，不能直接相加单卡结果。
 
+两种接口的理论带宽、20 / 32 路 TPU 利用率、检测吞吐及已记录回传量，见 [PCIe 2.0 ×1 与 PCIe 3.0 ×2 对比](pcie-comparison.md)。其中区分了带宽上限与实际传输统计，并说明 Gen2 ×1 为何选择 20 路作为当前满载档位。
+
 ## 启动与停止
 
 先完成[环境与资源准备](../../../docs/setup.md)并编译 `demos/hdmi_wall/build.sh`。本入口固定使用 **YOLOv8s INT8 batch 1、score gate on、latest、infer FPS 0、送检最大年龄 250 ms、image auto、本地解码预取 prime on、summary 记录**。辅助 score-gate bmodel 必须已准备在 `data/models/score_gate/score_gate_reducemax_f32.bmodel`；它不随 Git 分发。`infer-fps 0` 取消检测限速，`latest` 仍会主动丢弃被新帧覆盖或送检前过期的帧，不保证每路达到输入帧率，也不保证 TPU 每次采样都为 100%。
