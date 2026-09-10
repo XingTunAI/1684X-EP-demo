@@ -1,6 +1,7 @@
 #ifndef HDMI_WALL_RENDERER_HPP
 #define HDMI_WALL_RENDERER_HPP
 
+#include "decode_observation.hpp"
 #include <opencv2/opencv.hpp>
 #include <algorithm>
 #include <atomic>
@@ -31,10 +32,13 @@
 // rawvideo: -f rawvideo -pixel_format bgr24 -video_size 1920x1080 -framerate 10.
 class WallRenderer {
 public:
+    typedef std::chrono::steady_clock Clock;
+    typedef Clock::time_point Time;
     WallRenderer(size_t count, const std::string& output_dir, int device,
                  const std::string& model_name, const std::string& policy = "all")
         : count_(count), output_dir_(output_dir), device_(device),
-          model_name_(model_name), policy_(policy), frames_(count), scaled_tiles_(count), stopped_(false),
+          model_name_(model_name), policy_(policy), frames_(count), raw_frames_(count), observation_(count),
+          scaled_tiles_(count), observation_raw_tiles_(count), observation_detected_tiles_(count), stopped_(false),
           failed_(false), started_(false), rendered_(0), published_(0) {
         if (!count || count > 36) throw std::runtime_error("Wall requires 1 to 36 inputs");
         if (output_dir.empty()) throw std::runtime_error("Wall output directory is empty");
@@ -64,25 +68,76 @@ public:
         wake_.notify_all();
     }
 
+    void configure_observation(bool enabled, bool inference_enabled, const std::vector<size_t>& selected) {
+        if (started_.load()) throw std::logic_error("Configure observation before starting renderer");
+        std::lock_guard<std::mutex> guard(frames_lock_);
+        std::vector<size_t> choices = selected;
+        if (enabled && choices.empty()) { choices.push_back(0); if (count_ > 1) choices.push_back(1); }
+        if (enabled && (choices.empty() || choices.size() > 4)) throw std::invalid_argument("Select one to four observation channels");
+        std::vector<bool> seen(count_, false);
+        for (size_t id : choices) {
+            if (id >= count_ || seen[id]) throw std::invalid_argument("Invalid or duplicate observation channel");
+            seen[id] = true;
+        }
+        observation_enabled_ = enabled; observation_inference_ = inference_enabled;
+        observation_selected_ = choices; selected_mask_ = seen;
+    }
+    void configure_source(size_t id, double source_fps, bool live) {
+        if (!observation_enabled_) return;
+        std::lock_guard<std::mutex> guard(frames_lock_);
+        observation_.configure_source(id, source_fps, live);
+    }
+    void observation_start(Time start) {
+        if (!observation_enabled_) return;
+        std::lock_guard<std::mutex> guard(frames_lock_);
+        observation_.start(monotonic_seconds(start));
+    }
+    void observe_decode(size_t id, uint64_t sequence, double source_seconds, Time after_decode,
+                        double source_lag_ms, double read_ms) {
+        if (!observation_enabled_ || stopped_.load()) return;
+        std::lock_guard<std::mutex> guard(frames_lock_);
+        observation_.decoded(id, sequence, source_seconds, monotonic_seconds(after_decode), source_lag_ms, read_ms);
+    }
+    void observe_inference(size_t id, uint64_t sequence, double source_seconds, Time completed) {
+        if (!observation_enabled_ || stopped_.load()) return;
+        std::lock_guard<std::mutex> guard(frames_lock_);
+        observation_.inferred(id, sequence, source_seconds, monotonic_seconds(completed));
+    }
+    void submit_decoded(size_t id, const cv::Mat& host_bgr, uint64_t sequence, double source_seconds,
+                        Time decoded_at, double source_lag_ms) {
+        if (!observation_enabled_ || stopped_.load()) return;
+        if (id >= count_) throw std::invalid_argument("Invalid decoded preview channel");
+        if (!selected_mask_[id]) return;
+        if (host_bgr.empty() || host_bgr.type() != CV_8UC3)
+            throw std::invalid_argument("Decoded preview requires host CV_8UC3 BGR");
+        Frame frame;
+        copy_thumbnail(host_bgr, frame.image, 640, 360);
+        frame.count = sequence + 1; frame.sequence = sequence;
+        frame.source_seconds = valid_nonnegative(source_seconds);
+        frame.updated = Clock::now(); frame.decoded_at = decoded_at; frame.has_decode_time = true;
+        frame.frame_age_ms = std::max(0.0, std::chrono::duration<double, std::milli>(frame.updated - decoded_at).count());
+        frame.source_age_ms = valid_nonnegative(source_lag_ms);
+        if (frame.source_age_ms >= 0) frame.source_age_ms += frame.frame_age_ms;
+        frame.unix_ms = unix_millis();
+        std::lock_guard<std::mutex> guard(frames_lock_);
+        // An asynchronous thumbnail must never overwrite a newer decoded view.
+        if (raw_frames_[id].image.empty() || sequence > raw_frames_[id].sequence) raw_frames_[id] = frame;
+    }
+
     void submit(size_t id, const cv::Mat& host_bgr, uint64_t frame_count,
                 size_t detections, double process_fps, double frame_age_ms = 0,
-                double source_age_ms = -1, uint64_t policy_drops = 0) {
+                double source_age_ms = -1, uint64_t policy_drops = 0, double source_seconds = -1) {
         if (stopped_.load()) return;
         const auto submit_started = Clock::now();
         if (id >= count_) throw std::runtime_error("Invalid wall input index");
         if (host_bgr.empty() || host_bgr.type() != CV_8UC3)
             throw std::runtime_error("Wall submit requires nonempty host CV_8UC3 BGR");
         Frame frame;
-        const double scale = std::min(1.0, std::min(316.0 / host_bgr.cols, 164.0 / host_bgr.rows));
-        if (scale < 1.0) {
-            cv::resize(host_bgr, frame.image,
-                       cv::Size(std::max(1, static_cast<int>(host_bgr.cols * scale)),
-                                std::max(1, static_cast<int>(host_bgr.rows * scale))),
-                       0, 0, cv::INTER_AREA);
-        } else {
-            frame.image = host_bgr.clone();
-        }
+        const bool large = observation_enabled_ && selected_mask_[id];
+        copy_thumbnail(host_bgr, frame.image, large ? 640 : 316, large ? 360 : 164);
         frame.count = frame_count;
+        frame.sequence = frame_count ? frame_count - 1 : 0;
+        frame.source_seconds = valid_nonnegative(source_seconds);
         frame.detections = detections;
         frame.fps = std::isfinite(process_fps) && process_fps >= 0 ? process_fps : 0;
         frame.updated = Clock::now();
@@ -123,12 +178,12 @@ public:
             auto next_snapshot = next_frame;
             while (!stopped_.load()) {
                 const auto now = Clock::now();
-                const auto frames = snapshot_frames();
-                cv::Mat canvas = render(frames, now);
+                const auto view = snapshot_view(now);
+                cv::Mat canvas = render(view.frames, now, view);
                 ++rendered_;
                 if (now >= next_snapshot) {
-                    snapshot_files(canvas, frames, now);
-                    next_snapshot = now + std::chrono::seconds(5);
+                    snapshot_files(canvas, view.frames, now, view);
+                    next_snapshot = now + std::chrono::seconds(observation_enabled_ ? 1 : 5);
                 }
                 if (!write_frame(descriptor, canvas)) break;
                 ++published_;
@@ -144,31 +199,36 @@ public:
         // Preserve a final image/status even if the player disconnects.
         try {
             const auto now = Clock::now();
-            const auto frames = snapshot_frames();
-            snapshot_files(render(frames, now), frames, now);
+            const auto view = snapshot_view(now);
+            snapshot_files(render(view.frames, now, view), view.frames, now, view);
         } catch (const std::exception& exception) {
             fail(exception.what());
         }
     }
 
 private:
-    typedef std::chrono::steady_clock Clock;
-    typedef Clock::time_point Time;
     struct Frame {
         cv::Mat image;
         uint64_t count = 0;
+        uint64_t sequence = 0;
+        double source_seconds = -1;
         size_t detections = 0;
         double fps = 0;
         double frame_age_ms = 0;
         double source_age_ms = -1;
         uint64_t policy_drops = 0;
-        Time updated;
+        Time updated, decoded_at;
+        bool has_decode_time = false;
         int64_t unix_ms = 0;
     };
     struct ScaledTile {
         cv::Mat image;
         uint64_t source_count = 0;
         Time source_updated;
+    };
+    struct ViewSnapshot {
+        std::vector<Frame> frames, raw_frames;
+        std::vector<decode_observation::StreamSnapshot> metrics;
     };
     struct PipeSignalMask {
         sigset_t blocked, previous;
@@ -199,14 +259,29 @@ private:
     std::string model_name_;
     std::string policy_;
     std::vector<Frame> frames_;
+    std::vector<Frame> raw_frames_;
+    decode_observation::Ledger observation_;
+    bool observation_enabled_ = false, observation_inference_ = true;
+    std::vector<size_t> observation_selected_;
+    std::vector<bool> selected_mask_;
     // Only run()/render() access these owned pixels. submit() continues to
     // publish immutable thumbnails under frames_lock_; no shared cache writes.
     std::vector<ScaledTile> scaled_tiles_;
+    std::vector<ScaledTile> observation_raw_tiles_, observation_detected_tiles_;
     mutable std::mutex frames_lock_, error_lock_, wait_lock_;
     std::condition_variable wake_;
     std::atomic<bool> stopped_, failed_, started_;
     std::string error_;
     uint64_t rendered_, published_;
+
+    static double monotonic_seconds(Time time) { return std::chrono::duration<double>(time.time_since_epoch()).count(); }
+    static double valid_nonnegative(double value) { return std::isfinite(value) && value >= 0 ? value : -1; }
+    static void copy_thumbnail(const cv::Mat& input, cv::Mat& output, double width, double height) {
+        const double scale = std::min(1.0, std::min(width / input.cols, height / input.rows));
+        if (scale < 1.0) cv::resize(input, output, cv::Size(std::max(1, static_cast<int>(input.cols * scale)),
+                                                        std::max(1, static_cast<int>(input.rows * scale))), 0, 0, cv::INTER_AREA);
+        else output = input.clone();
+    }
 
     static int64_t unix_millis() {
         return std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -239,16 +314,20 @@ private:
         std::unique_lock<std::mutex> guard(wait_lock_);
         wake_.wait_until(guard, when, [this] { return stopped_.load(); });
     }
-    std::vector<Frame> snapshot_frames() const {
+    ViewSnapshot snapshot_view(Time now) {
         std::lock_guard<std::mutex> guard(frames_lock_);
-        return frames_; // cv::Mat refcounts keep these immutable thumbnails alive.
+        ViewSnapshot view;
+        view.frames = frames_; // cv::Mat refcounts retain immutable thumbnails, no pixel copies.
+        if (observation_enabled_) { view.raw_frames = raw_frames_; view.metrics = observation_.snapshot(monotonic_seconds(now)); }
+        return view;
     }
     static void label(cv::Mat& canvas, const std::string& text, int x, int y,
                       double scale, const cv::Scalar& color, int weight = 1) {
         cv::putText(canvas, text, cv::Point(x, y), cv::FONT_HERSHEY_SIMPLEX,
                     scale, color, weight, cv::LINE_AA);
     }
-    cv::Mat render(const std::vector<Frame>& frames, Time now) {
+    cv::Mat render(const std::vector<Frame>& frames, Time now, const ViewSnapshot& view) {
+        if (observation_enabled_) return render_observation(view, now);
         cv::Mat canvas(1080, 1920, CV_8UC3, cv::Scalar(18, 15, 12));
         const cv::Scalar white(245, 243, 239), gray(180, 176, 170), cyan(208, 208, 58), red(65, 65, 245);
         std::ostringstream title;
@@ -314,6 +393,171 @@ private:
         }
         return canvas;
     }
+    static std::string number(double value, int digits = 1) {
+        if (!std::isfinite(value) || value < 0) return "--";
+        std::ostringstream out; out << std::fixed << std::setprecision(digits) << value; return out.str();
+    }
+    static std::string observation_state(const decode_observation::StreamSnapshot& row) {
+        if (row.warming) return "START";
+        if (row.stalled) return "STALL";
+        if (row.sustained_slow) return "SLOW";
+        return row.target_fps > 0 ? "OK" : "NO TARGET";
+    }
+    void observation_image(cv::Mat& canvas, const Frame& frame, ScaledTile& cached, const cv::Rect& box,
+                           Time now, const std::string& empty_text) {
+        cv::rectangle(canvas, box, cv::Scalar(27, 25, 22), -1);
+        if (frame.image.empty()) {
+            label(canvas, empty_text, box.x + 18, box.y + box.height / 2, .55, cv::Scalar(180, 176, 170));
+            return;
+        }
+        if (cached.image.empty() || cached.source_count != frame.count || cached.source_updated != frame.updated) {
+            const double scale = std::min(static_cast<double>(box.width) / frame.image.cols,
+                                          static_cast<double>(box.height) / frame.image.rows);
+            cv::resize(frame.image, cached.image,
+                       cv::Size(std::max(1, std::min(box.width, static_cast<int>(frame.image.cols * scale))),
+                                std::max(1, std::min(box.height, static_cast<int>(frame.image.rows * scale)))),
+                       0, 0, cv::INTER_LINEAR);
+            cached.source_count = frame.count; cached.source_updated = frame.updated;
+        }
+        cached.image.copyTo(canvas(cv::Rect(box.x + (box.width - cached.image.cols) / 2,
+                                            box.y + (box.height - cached.image.rows) / 2,
+                                            cached.image.cols, cached.image.rows)));
+        if (freshness_age_millis(frame, now) > 2000) {
+            cv::rectangle(canvas, box, cv::Scalar(65, 65, 245), 2);
+            cv::rectangle(canvas, cv::Rect(box.x + 4, box.y + 4, 164, 25), cv::Scalar(16, 15, 12), -1);
+            label(canvas, "STALE PREVIEW", box.x + 10, box.y + 22, .5, cv::Scalar(65, 65, 245), 2);
+        }
+    }
+    cv::Mat render_observation(const ViewSnapshot& view, Time now) {
+        cv::Mat canvas(1080, 1920, CV_8UC3, cv::Scalar(18, 15, 12));
+        const cv::Scalar white(245, 243, 239), gray(180, 176, 170), cyan(208, 208, 58),
+                         amber(90, 185, 250), red(65, 65, 245);
+        double decoded = 0, inferred = 0, target = 0;
+        bool known_target = true;
+        for (const auto& row : view.metrics) {
+            decoded += row.decode_fps; inferred += row.infer_fps;
+            if (row.target_fps > 0) target += row.target_fps; else known_target = false;
+        }
+        label(canvas, std::to_string(count_) + "CH DECODE OBSERVATION / Device " + std::to_string(device_) +
+              (observation_inference_ ? " / INFERENCE ON" : " / INFERENCE OFF"), 18, 32, .8, white, 2);
+        label(canvas, "TOTAL decode " + number(decoded) + " FPS / target " + (known_target ? number(target) : "N/A") +
+              "  |  infer " + (observation_inference_ ? number(inferred) + " FPS" : "OFF") +
+              "  |  Rolling 2s, all successful events", 18, 61, .6, cyan);
+        label(canvas, "RAW and DETECTION show independent latest frames. HDMI refresh cap: 10 FPS; image sampling may be lower.",
+              18, 87, .49, gray);
+        const int row_height = 946 / static_cast<int>(observation_selected_.size());
+        for (size_t index = 0; index < observation_selected_.size(); ++index) {
+            const size_t id = observation_selected_[index];
+            const int top = 103 + static_cast<int>(index) * row_height;
+            const Frame* frames[] = {&view.raw_frames[id], &view.frames[id]};
+            for (int side = 0; side < 2; ++side) {
+                const int left = side ? 660 : 18;
+                const Frame& frame = *frames[side];
+                label(canvas, "CH " + std::to_string(id + 1) + (side ? "  DETECTION / SAME-FRAME BOXES" : "  RAW DECODE / NO BOXES"),
+                      left, top + 20, .55, side ? white : cyan, 1);
+                const cv::Rect image_box(left, top + 31, 624, row_height - 75);
+                observation_image(canvas, frame, side ? observation_detected_tiles_[id] : observation_raw_tiles_[id],
+                                  image_box, now, side ? (observation_inference_ ? "WAITING FOR DETECTION" : "INFERENCE DISABLED")
+                                                      : "WAITING FOR DECODE PREVIEW");
+                const std::string identity = frame.image.empty() ? "--" : std::to_string(frame.sequence);
+                label(canvas, "ID " + identity + " | media " + number(frame.source_seconds, 3) + "s | " +
+                      (frame.source_age_ms >= 0 ? "src age " : "dec age ") + number(freshness_age_millis(frame, now), 0) + "ms",
+                      left + 3, top + row_height - 24, .44, gray);
+                label(canvas, side ? "Image and boxes belong to the ID above" : "Preview may skip frames; decode counters include every frame",
+                      left + 3, top + row_height - 6, .36, gray);
+            }
+        }
+        cv::rectangle(canvas, cv::Rect(1305, 100, 602, 951), cv::Scalar(30, 27, 24), -1);
+        label(canvas, "ALL CHANNELS / FPS / milliseconds", 1320, 123, .52, white);
+        const int x[] = {1320, 1364, 1437, 1506, 1578, 1662, 1753};
+        const char* headers[] = {"CH", "TARGET", "DEC", "INFER", "LAG", "AGE", "STATE"};
+        for (size_t column = 0; column < 7; ++column) label(canvas, headers[column], x[column], 150, .44, gray);
+        const int pitch = std::min(26, 870 / static_cast<int>(count_));
+        for (size_t id = 0; id < view.metrics.size(); ++id) {
+            const auto& row = view.metrics[id];
+            const int y = 175 + static_cast<int>(id) * pitch;
+            const cv::Scalar color = row.stalled ? red : row.sustained_slow ? amber : white;
+            const std::string fields[] = {std::to_string(id + 1), row.target_fps > 0 ? number(row.target_fps) : "N/A",
+                number(row.decode_fps), observation_inference_ ? number(row.infer_fps) : "OFF",
+                number(row.source_lag_ms, 0), number(row.last_decoded_age_ms, 0), observation_state(row)};
+            for (size_t column = 0; column < 7; ++column) {
+                const int available = column + 1 < 7 ? x[column + 1] - x[column] - 8 : 1900 - x[column];
+                const auto text_size = cv::getTextSize(fields[column], cv::FONT_HERSHEY_SIMPLEX, .44, 1, nullptr);
+                const double scale = text_size.width > available ? .44 * available / text_size.width : .44;
+                label(canvas, fields[column], x[column], y, scale, color);
+            }
+        }
+        label(canvas, "LAG: last local decode vs schedule. AGE: since last decode. SLOW: decode below 85% target for 3s after 2s startup window.",
+              18, 1071, .46, gray);
+        return canvas;
+    }
+    static void json_number(std::ostream& file, double value) {
+        if (!std::isfinite(value) || value < 0) file << "null"; else file << value;
+    }
+    static void write_observation_image(std::ostream& file, const Frame& frame, Time now) {
+        file << "{\"has_image\":" << (frame.image.empty() ? "false" : "true") << ",\"sequence\":";
+        if (frame.image.empty()) file << "null"; else file << frame.sequence;
+        file << ",\"source_seconds\":"; json_number(file, frame.source_seconds);
+        file << ",\"updated_monotonic_s\":"; json_number(file, frame.image.empty() ? -1 : monotonic_seconds(frame.updated));
+        // submit_decoded receives the actual decode timestamp. The existing
+        // detected-image API supplies ages only: never invent an exact time.
+        file << ",\"decoded_monotonic_s\":"; json_number(file, frame.image.empty() || !frame.has_decode_time ? -1 : monotonic_seconds(frame.decoded_at));
+        file << ",\"view_age_ms\":"; json_number(file, frame.image.empty() ? -1 : age_seconds(frame, now) * 1000);
+        file << ",\"frame_age_ms\":"; json_number(file, frame_age_millis(frame, now));
+        file << ",\"source_age_ms\":"; json_number(file, source_age_millis(frame, now));
+        file << ",\"decode_source_lag_ms\":";
+        json_number(file, frame.image.empty() || frame.source_age_ms < 0 ? -1 : std::max(0.0, frame.source_age_ms - frame.frame_age_ms));
+        file << ",\"stale\":" << (freshness_age_millis(frame, now) > 2000 ? "true" : "false") << '}';
+    }
+    void write_observation(std::ostream& file, const ViewSnapshot& view, Time now) const {
+        double total_decode = 0, total_infer = 0, target = 0;
+        uint64_t decoded_count = 0, inferred_count = 0;
+        bool target_known = true;
+        for (const auto& row : view.metrics) {
+            total_decode += row.decode_fps; total_infer += row.infer_fps;
+            decoded_count += row.decoded; inferred_count += row.inferred;
+            if (row.target_fps > 0) target += row.target_fps; else target_known = false;
+        }
+        file << std::setprecision(15) << ",\n  \"observation\": {\"mode\":\"decode_observation\",\"layout\":\"selected_pairs_and_all_channel_metrics\",\"enabled\":true,\"inference_enabled\":"
+             << (observation_inference_ ? "true" : "false")
+             << ",\"rolling_window_seconds\":2,\"rolling_bucket_seconds\":0.1,\"slow_target_fraction\":0.85,\"slow_duration_seconds\":3"
+             << ",\"counter_population\":\"all_successful_decode_before_policy_filter_and_all_detect_completions\""
+             << ",\"sequence_base\":0,\"frame_matched_comparison\":false,\"detections_match_their_own_image\":true"
+             << ",\"total_decode_fps\":" << total_decode << ",\"total_infer_fps\":" << total_infer
+             << ",\"decoded_count\":" << decoded_count << ",\"inferred_count\":" << inferred_count << ",\"target_fps\":";
+        json_number(file, target_known ? target : -1);
+        file << ",\"selected\":[";
+        for (size_t index = 0; index < observation_selected_.size(); ++index) { if (index) file << ','; file << observation_selected_[index]; }
+        file << "],\"streams\":[";
+        for (size_t id = 0; id < view.metrics.size(); ++id) {
+            const auto& row = view.metrics[id];
+            if (id) file << ',';
+            file << "{\"id\":" << id << ",\"label\":" << id + 1 << ",\"live\":" << (row.live ? "true" : "false")
+                 << ",\"decoded_count\":" << row.decoded << ",\"inferred_count\":" << row.inferred << ",\"target_fps\":";
+            json_number(file, row.target_fps);
+            file << ",\"decode_fps\":" << row.decode_fps << ",\"infer_fps\":" << row.infer_fps << ",\"decode_sequence\":";
+            if (row.has_decode) file << row.decode_sequence; else file << "null";
+            file << ",\"infer_sequence\":"; if (row.has_inference) file << row.infer_sequence; else file << "null";
+            file << ",\"decode_source_seconds\":"; json_number(file, row.decode_source_seconds);
+            file << ",\"infer_source_seconds\":"; json_number(file, row.infer_source_seconds);
+            file << ",\"last_decode_monotonic_s\":"; json_number(file, row.last_decode_time);
+            file << ",\"last_infer_monotonic_s\":"; json_number(file, row.last_infer_time);
+            file << ",\"last_decoded_age_ms\":"; json_number(file, row.last_decoded_age_ms);
+            file << ",\"last_inferred_age_ms\":"; json_number(file, row.last_inferred_age_ms);
+            file << ",\"source_lag_ms\":"; json_number(file, row.source_lag_ms);
+            file << ",\"read_ms\":"; json_number(file, row.read_ms);
+            file << ",\"slow_seconds\":" << row.slow_seconds << ",\"sustained_slow\":" << (row.sustained_slow ? "true" : "false")
+                 << ",\"stalled\":" << (row.stalled ? "true" : "false") << ",\"state\":" << quote(observation_state(row)) << '}';
+        }
+        file << "],\"comparisons\":[";
+        for (size_t index = 0; index < observation_selected_.size(); ++index) {
+            const auto id = observation_selected_[index];
+            if (index) file << ',';
+            file << "{\"id\":" << id << ",\"decoded\":"; write_observation_image(file, view.raw_frames[id], now);
+            file << ",\"detected\":"; write_observation_image(file, view.frames[id], now); file << '}';
+        }
+        file << "],\"note\":\"Rolling rates count events, not preview frames. Decode age is not camera/display latency. Local primed pre-clock events retain identity but are excluded from rolling rates.\"}";
+    }
     bool write_frame(int descriptor, const cv::Mat& canvas) {
         if (descriptor < 0 || !canvas.isContinuous()) throw std::runtime_error("Invalid rawvideo frame");
         size_t offset = 0;
@@ -356,7 +600,7 @@ private:
         if (::rename(temporary.c_str(), final_path.c_str()))
             throw std::runtime_error("Cannot publish wall snapshot: " + std::string(std::strerror(errno)));
     }
-    void snapshot_files(const cv::Mat& canvas, const std::vector<Frame>& frames, Time now) {
+    void snapshot_files(const cv::Mat& canvas, const std::vector<Frame>& frames, Time now, const ViewSnapshot& view) {
         const std::string bitmap = output_dir_ + "/wall.bmp";
         {
             std::ofstream file(bitmap + ".tmp", std::ios::binary | std::ios::trunc);
@@ -407,7 +651,9 @@ private:
                      << ", \"stale\": " << (freshness_age_millis(frame, now) > 2000 ? "true" : "false")
                      << ", \"has_image\": " << (frame.image.empty() ? "false" : "true") << '}';
             }
-            file << "\n  ]\n}\n";
+            file << "\n  ]";
+            if (observation_enabled_) write_observation(file, view, now);
+            file << "\n}\n";
             file.close();
         }
         replace_file(status + ".tmp", status);

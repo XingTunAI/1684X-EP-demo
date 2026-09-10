@@ -67,6 +67,28 @@ class PlanTests(unittest.TestCase):
         args = self.parse("--infer-fps", "2.5", "--max-frame-age-ms", "0")
         self.assertEqual((args.infer_fps, args.max_frame_age_ms), (2.5, 0))
 
+    def test_observation_validates_actual_card_stream_counts_and_forwards_flags(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "config.json"
+            config.write_text('{"devices":{"0":{"streams":2},"1":{"streams":32}}}', encoding="utf-8")
+            with patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):
+                self.parse("--observe-decode", "on", "--compare-streams", "0,2", "--device-config", str(config))
+            args = self.parse("--observe-decode", "on", "--compare-streams", "1,0", "--inference", "off",
+                              "--observe-preview-fps", "10", "--device-config", str(config))
+            plan = runner.build_plan(args)
+        self.assertEqual(plan["inference"], "off")
+        self.assertEqual(plan["compare_stream_ids"], [1, 0])
+        for worker in plan["workers"]:
+            command = worker["worker_command"]
+            self.assertEqual(command[command.index("--observe-decode") + 1], "on")
+            self.assertEqual(command[command.index("--inference") + 1], "off")
+            self.assertEqual(command[command.index("--compare-streams") + 1], "1,0")
+            self.assertEqual(command[command.index("--observe-preview-fps") + 1], "10.0")
+            self.assertEqual(command[-2:], ["--output", worker["output"]])
+            self.assertNotIn(worker["model"], runner.required_files(args, plan))
+            self.assertNotIn(worker["classnames"], runner.required_files(args, plan))
+        self.assertEqual(runner.build_plan(self.parse())["observe_decode"], "off")
+
     def test_heterogeneous_four_device_configuration_and_summary_metadata(self):
         options = {"0": {"streams": 20, "gate_merge_budget_kib": 64},
                    "1": {"streams": 32, "gate_merge_budget_kib": 128},
@@ -192,6 +214,18 @@ class PlanTests(unittest.TestCase):
 
 
 class TelemetryTests(unittest.TestCase):
+    def test_sudo_path_falls_back_to_sdk_bm_smi_and_records_valid_utilization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            worker = {"device": 1, "output": directory, "status": "running", "streams": 32}
+            with patch.object(runner.shutil, "which", return_value=None), \
+                    patch.object(runner.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "TPU 98%", "")) as query:
+                sampler = runner.Telemetry(root, root, [worker], 5)
+                sampler.tick()
+                summary = sampler.close()
+            self.assertEqual(query.call_args.args[0][0], "/opt/sophon/libsophon-current/bin/bm-smi")
+            self.assertEqual(summary["devices"]["1"]["mean_percent"], 98)
+
     def test_formal_load_uses_each_worker_window_and_labels_incomplete_or_missing_summary(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

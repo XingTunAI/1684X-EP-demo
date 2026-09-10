@@ -92,6 +92,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Per-channel detection start-rate cap; defaults: latest=5, all=0.")
     parser.add_argument("--max-frame-age-ms", type=single.nonnegative_finite, default=None,
                         help="Discard expired waiting frames; defaults: latest=250, all=0. Use 0 to disable.")
+    single.add_observation_arguments(parser)
     parser.add_argument("--fifo-timeout", type=single.positive, default=90,
                         help="Maximum wait for each worker's FIFO, seconds.")
     parser.add_argument("--telemetry-interval", type=single.nonnegative_finite, default=0,
@@ -136,6 +137,8 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--root must be an absolute Linux path (required on non-Linux hosts)")
     if args.stop and args.dry_run:
         parser.error("--stop and --dry-run cannot be combined")
+    single.validate_observation(parser, args, [args.device_overrides.get(str(device), {}).get("streams", args.streams)
+                                              for device in args.devices])
     return args
 
 
@@ -202,6 +205,9 @@ def build_plan(args: argparse.Namespace) -> dict:
         "gate_merge_budget_kib_by_device": {str(item["device"]): item["gate_merge_budget_kib"] for item in workers},
         "record_mode": args.record_mode,
         "prime_local_decoders": args.prime_local_decoders,
+        "observe_decode": args.observe_decode, "inference": args.inference,
+        "compare_streams": args.compare_streams, "compare_stream_ids": args.compare_stream_ids,
+        "observe_preview_fps": args.observe_preview_fps,
         "telemetry_interval_seconds": args.telemetry_interval,
         "device_config": args.device_config, "device_configuration_context": args.device_configuration_context,
         "workers": workers, "viewer_manifest": manifest,
@@ -246,6 +252,8 @@ class Telemetry:
         self.root = root
         self.interval = interval
         self.workers = workers
+        # sudo's secure_path commonly omits the SDK bin directory.
+        self.bm_smi = shutil.which("bm-smi") or "/opt/sophon/libsophon-current/bin/bm-smi"
         self.path = output / "telemetry.jsonl"
         self.handle = self.path.open("x", encoding="utf-8", buffering=1)
         started = time.monotonic()
@@ -284,7 +292,7 @@ class Telemetry:
         row = {"device": device, "timestamp_unix_s": time.time(), "monotonic_s": now,
                "tpu_util_percent": None, "error": None}
         try:
-            query = subprocess.run(["bm-smi", f"--start_dev={device}", f"--last_dev={device}",
+            query = subprocess.run([self.bm_smi, f"--start_dev={device}", f"--last_dev={device}",
                                     "--text_format", "--noloop"],
                                    capture_output=True, text=True, timeout=2, check=False)
             if query.returncode != 0:

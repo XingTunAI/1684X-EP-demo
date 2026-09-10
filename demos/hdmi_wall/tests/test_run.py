@@ -75,6 +75,40 @@ class LauncherTests(unittest.TestCase):
         with patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):
             self.parse("--prime-local-decoders", "maybe")
 
+    def test_observation_defaults_off_and_decoder_baseline_requires_no_model_assets(self):
+        normal = runner.build_plan(self.parse("--compare-streams", "ignored while off"))
+        self.assertEqual((normal["observe_decode"], normal["inference"]), ("off", "on"))
+        self.assertIn(normal["model"], runner.required_files(self.parse(), normal))
+        args = self.parse("--streams", "32", "--observe-decode", "on", "--inference", "off",
+                          "--compare-streams", " 3, 0 ", "--observe-preview-fps", "2.5")
+        baseline = runner.build_plan(args)
+        self.assertEqual(baseline["compare_stream_ids"], [3, 0])
+        self.assertEqual(baseline["compare_streams"], "3,0")
+        self.assertEqual(self.command_value(baseline, "--inference"), "off")
+        self.assertEqual(self.command_value(baseline, "--observe-preview-fps"), "2.5")
+        self.assertFalse(baseline["model_required"])
+        self.assertNotIn("--bmodel", baseline["worker_command"])
+        self.assertNotIn("--classnames", baseline["worker_command"])
+        self.assertNotIn("--score-gate-model", baseline["worker_command"])
+        required = runner.required_files(args, baseline)
+        for asset in (baseline["model"], baseline["classnames"], baseline["score_gate_model"]):
+            self.assertNotIn(asset, required)
+        self.assertIn(baseline["input"], required)
+        self.assertIn(baseline["worker_command"][0], required)
+        self.assertEqual(baseline["worker_command"][-2:], ["--output", baseline["output"]])
+
+    def test_observation_rejects_invalid_selections_fps_and_baseline_combinations(self):
+        cases = [("--compare-streams", value) for value in ("", "0,0", "0,1,2,3,4", "-1", "1.5", "32", "0,,1")]
+        cases += [("--observe-preview-fps", value) for value in ("0", "-1", "10.1", "nan", "inf")]
+        for options in cases:
+            with self.subTest(options=options), patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):
+                self.parse("--streams", "32", "--observe-decode", "on", *options)
+        for options in (("--inference", "off"),
+                        ("--inference", "off", "--observe-decode", "on", "--policy", "all"),
+                        ("--inference", "off", "--observe-decode", "on", "--score-gate", "on")):
+            with self.subTest(options=options), patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):
+                self.parse("--streams", "32", *options)
+
     def test_gate_merge_budget_rejects_nonintegers_out_of_range_and_disabled_gate(self):
         for value in ("-1", "1025", "1.5", "nan", "inf", ""):
             with self.subTest(value=value), patch("sys.stderr", new_callable=io.StringIO):

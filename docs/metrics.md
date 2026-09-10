@@ -4,6 +4,8 @@
 
 ## 帧率
 
+HDMI 的[解码观测入口](../demos/hdmi_wall/docs/decoder-observation.md)在抽帧过滤之前统计所有成功解码事件。`summary.json` 的 `total_decoded_fps` / `minimum_stream_decoded_fps` 和 `streams[].decode_observation` 用于比较关闭推理与开启推理的负载；页面的近期滚动解码 / 推理 FPS 独立计数，不能将选中预览画面的采样率当作解码速度。
+
 | 指标 | 定义 | 不能替代的内容 |
 |---|---|---|
 | 源帧率 | 文件或输入流的标称帧率 | 实际解码或检测完成速度 |

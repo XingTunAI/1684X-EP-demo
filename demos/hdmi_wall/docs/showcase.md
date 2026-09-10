@@ -10,6 +10,8 @@
 
 ## 启动与停止
 
+需要量化推理负载下的解码速度和停顿，使用独立的 [observe 解码观测入口](decoder-observation.md)。它保留每卡全部后台通道，只选少量画面作解码 / 检测对照，同时显示每路与总解码 FPS；原有 showcase / stress 默认布局不变。
+
 先完成[环境与资源准备](../../../docs/setup.md)并编译 `demos/hdmi_wall/build.sh`。本入口固定使用 **YOLOv8s INT8 batch 1、score gate on、latest、infer FPS 0、送检最大年龄 250 ms、image auto、本地解码预取 prime on、summary 记录**。辅助 score-gate bmodel 必须已准备在 `data/models/score_gate/score_gate_reducemax_f32.bmodel`；它不随 Git 分发。`infer-fps 0` 取消检测限速，`latest` 仍会主动丢弃被新帧覆盖或送检前过期的帧，不保证每路达到输入帧率，也不保证 TPU 每次采样都为 100%。
 
 以下在板端 `/userdata/1684X-EP-demo` 执行，适用于已确认 Xorg 为 `:0`、LightDM 认证为 `/var/run/lightdm/root/:0` 的系统。其他会话先按 [ADB / SSH 显示说明](../README.md#通过-adb-或-ssh-运行到-hdmi)选择正确认证；ADB root 可省略 `sudo`。

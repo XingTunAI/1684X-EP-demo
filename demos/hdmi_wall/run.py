@@ -67,6 +67,47 @@ def gate_merge_budget_kib(value: str) -> int:
     return number
 
 
+def observation_preview_fps(value: str) -> float:
+    number = nonnegative_finite(value)
+    if not 0 < number <= 10:
+        raise argparse.ArgumentTypeError("must be greater than 0 and no more than 10 FPS")
+    return number
+
+
+def add_observation_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--observe-decode", choices=("off", "on"), default="off",
+                        help="Observe all decoder completions and selected decoded-image comparisons.")
+    parser.add_argument("--inference", choices=("on", "off"), default="on",
+                        help="off runs decoder observation without model inference; requires observation and latest policy.")
+    parser.add_argument("--compare-streams", default="0,1",
+                        help="1..4 distinct zero-based comparison stream IDs; validated only with observation on.")
+    parser.add_argument("--observe-preview-fps", type=observation_preview_fps, default=5.0,
+                        help="Decoded comparison-image sampling cap per selected stream, (0,10] FPS; default 5.")
+
+
+def validate_observation(parser: argparse.ArgumentParser, args: argparse.Namespace, stream_counts: list[int]) -> None:
+    args.compare_stream_ids = []
+    if args.stop:
+        return
+    if args.inference == "off" and (args.observe_decode != "on" or args.policy != "latest"):
+        parser.error("--inference off requires --observe-decode on and --policy latest")
+    if args.inference == "off" and args.score_gate != "off":
+        parser.error("--inference off requires --score-gate off and a zero gate merge budget")
+    if args.observe_decode != "on":
+        return
+    try:
+        values = args.compare_streams.split(",")
+        ids = [int(value.strip()) for value in values]
+    except ValueError:
+        parser.error("--compare-streams requires comma-separated zero-based stream IDs")
+    if not 1 <= len(ids) <= 4 or len(set(ids)) != len(ids) or any(value < 0 for value in ids):
+        parser.error("--compare-streams requires 1..4 distinct nonnegative stream IDs")
+    if any(value >= count for count in stream_counts for value in ids):
+        parser.error("Every --compare-streams ID must be below the actual stream count of every selected device")
+    args.compare_stream_ids = ids
+    args.compare_streams = ",".join(map(str, ids))
+
+
 def live_source(source: str) -> bool:
     return source.startswith(("rtsp://", "rtsps://"))
 
@@ -102,6 +143,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Extra output-read budget for merging small score-gate ranges, 0..1024 KiB; nonzero requires score-gate on.")
     parser.add_argument("--image-path", choices=("auto", "bgr", "yuv"), default="auto",
                         help="auto uses direct YUV preprocessing when supported; bgr retains the reference conversion path.")
+    add_observation_arguments(parser)
     parser.add_argument("--fifo-timeout", type=positive, default=90, help="Maximum FIFO startup wait, seconds.")
     parser.add_argument("--dry-run", action="store_true", help="Print the plan without checking board files or launching anything.")
     parser.add_argument("--stop", action="store_true", help="Stop the latest verified launcher and its children.")
@@ -126,6 +168,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--root must be an absolute Linux path")
     if args.stop and args.dry_run:
         parser.error("--stop and --dry-run cannot be combined")
+    validate_observation(parser, args, [args.streams])
     return args
 
 
@@ -145,7 +188,7 @@ def build_plan(args: argparse.Namespace) -> dict:
     worker = [
         str(root / "demos/hdmi_wall/build/hdmi_wall.pcie"),
         "--input", str(source), "--streams", str(args.streams), "--device", str(args.device),
-        "--bmodel", str(model), "--classnames", str(classes), "--warmup", "3",
+        "--warmup", "3",
         "--duration", str(args.duration), "--window", str(min(10, args.duration)), "--local-eof", "loop",
         "--output-buffer", "baseline", "--score-gate", args.score_gate,
         "--record-mode", args.record_mode,
@@ -155,8 +198,12 @@ def build_plan(args: argparse.Namespace) -> dict:
         "--policy", args.policy, "--infer-fps", str(args.infer_fps),
         "--max-frame-age-ms", str(args.max_frame_age_ms),
         "--image-path", args.image_path,
+        "--observe-decode", args.observe_decode, "--inference", args.inference,
+        "--compare-streams", args.compare_streams, "--observe-preview-fps", str(args.observe_preview_fps),
     ]
-    if args.score_gate == "on":
+    if args.inference == "on":
+        worker.extend(["--bmodel", str(model), "--classnames", str(classes)])
+    if args.inference == "on" and args.score_gate == "on":
         worker.extend(["--score-gate-model", str(gate)])
     worker.extend(["--output", str(output)])
     player = [
@@ -173,14 +220,19 @@ def build_plan(args: argparse.Namespace) -> dict:
         "prime_local_decoders": args.prime_local_decoders,
         "policy": args.policy, "infer_fps": args.infer_fps, "max_frame_age_ms": args.max_frame_age_ms,
         "image_path": args.image_path,
+        "observe_decode": args.observe_decode, "inference": args.inference,
+        "compare_streams": args.compare_streams, "compare_stream_ids": args.compare_stream_ids,
+        "observe_preview_fps": args.observe_preview_fps, "model_required": args.inference == "on",
     }
 
 
 def required_files(args: argparse.Namespace, plan: dict) -> list[str]:
-    required = [plan["worker_command"][0], plan["player_command"][0], plan["model"], plan["classnames"]]
+    required = [plan["worker_command"][0], plan["player_command"][0]]
+    if plan.get("inference", "on") == "on":
+        required.extend([plan["model"], plan["classnames"]])
     if not live_source(plan["input"]):
         required.append(plan["input"])
-    if args.score_gate == "on":
+    if plan.get("inference", "on") == "on" and args.score_gate == "on":
         required.append(plan["score_gate_model"])
     return required
 
