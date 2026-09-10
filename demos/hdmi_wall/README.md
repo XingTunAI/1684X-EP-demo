@@ -77,7 +77,7 @@ sudo bash demos/hdmi_wall/showcase.sh --stop
 | 操作与输出 | [单设备](docs/single-device.md) · [多设备](docs/multi-device.md) · [展示 / 压测](docs/showcase.md) · [解码对照](docs/decoder-observation.md) |
 | 参数和读数 | [命令参数](docs/parameters.md) · [屏幕指标](docs/wall-indicators.md) · [JSON / CSV 统计口径](../../docs/metrics.md) |
 | 抽帧 | [参数与历史画面对照](docs/realtime-usage.md) · [32 路超龄淘汰机制](docs/32-channel-realtime.md) |
-| 实测 | [全部实测索引](docs/results.md) · [PCIe 对比](docs/pcie-comparison.md) |
+| 实测 | [全部实测索引](docs/results.md) · [PCIe 对比](docs/pcie-comparison.md) · [TPU 满载解码与回传隔离](docs/capacity-validation.md) |
 | 开发 | [实时调度实现与测试](docs/realtime.md) |
 
 ## 指标与限制
