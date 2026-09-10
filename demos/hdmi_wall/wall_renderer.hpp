@@ -83,23 +83,21 @@ public:
         observation_selected_ = choices; selected_mask_ = seen;
     }
     void configure_source(size_t id, double source_fps, bool live) {
-        if (!observation_enabled_) return;
         std::lock_guard<std::mutex> guard(frames_lock_);
         observation_.configure_source(id, source_fps, live);
     }
     void observation_start(Time start) {
-        if (!observation_enabled_) return;
         std::lock_guard<std::mutex> guard(frames_lock_);
         observation_.start(monotonic_seconds(start));
     }
     void observe_decode(size_t id, uint64_t sequence, double source_seconds, Time after_decode,
                         double source_lag_ms, double read_ms) {
-        if (!observation_enabled_ || stopped_.load()) return;
+        if (stopped_.load()) return;
         std::lock_guard<std::mutex> guard(frames_lock_);
         observation_.decoded(id, sequence, source_seconds, monotonic_seconds(after_decode), source_lag_ms, read_ms);
     }
     void observe_inference(size_t id, uint64_t sequence, double source_seconds, Time completed) {
-        if (!observation_enabled_ || stopped_.load()) return;
+        if (stopped_.load()) return;
         std::lock_guard<std::mutex> guard(frames_lock_);
         observation_.inferred(id, sequence, source_seconds, monotonic_seconds(completed));
     }
@@ -318,7 +316,8 @@ private:
         std::lock_guard<std::mutex> guard(frames_lock_);
         ViewSnapshot view;
         view.frames = frames_; // cv::Mat refcounts retain immutable thumbnails, no pixel copies.
-        if (observation_enabled_) { view.raw_frames = raw_frames_; view.metrics = observation_.snapshot(monotonic_seconds(now)); }
+        view.metrics = observation_.snapshot(monotonic_seconds(now));
+        if (observation_enabled_) view.raw_frames = raw_frames_;
         return view;
     }
     static void label(cv::Mat& canvas, const std::string& text, int x, int y,
@@ -333,7 +332,14 @@ private:
         std::ostringstream title;
         title << count_ << "CH  /  " << model_name_ << "  /  Device " << device_ << "  /  Policy " << policy_;
         label(canvas, title.str(), 20, 32, .8, white, 2);
-        label(canvas, "Live bounding boxes | HDMI preview 10 FPS | Age: local source / decode; excludes camera and display latency", 20, 58, .48, gray);
+        double decoded = 0, inferred = 0, target = 0;
+        bool target_known = true;
+        for (const auto& row : view.metrics) {
+            decoded += row.decode_fps; inferred += row.infer_fps;
+            if (row.target_fps > 0) target += row.target_fps; else target_known = false;
+        }
+        label(canvas, "TOTAL DEC " + number(decoded) + " / TARGET " + (target_known ? number(target) : "--") +
+              " FPS | TOTAL INF " + number(inferred) + " FPS | Rolling 2s | HDMI cap 10 FPS", 20, 58, .52, cyan);
         for (size_t id = 0; id < 36; ++id) {
             const int x = static_cast<int>(id % 6) * 320;
             const int y = 72 + static_cast<int>(id / 6) * 168;
@@ -342,9 +348,9 @@ private:
             if (id >= frames.size()) {
                 const size_t note = (id - frames.size()) % 4;
                 const std::string channel_title = std::to_string(count_) + " INDEPENDENT CHANNELS";
-                const char* headings[] = {channel_title.c_str(), "LIVE DETECTIONS", "DISPLAY RATE", "SOURCE AND STATUS"};
-                const char* lines[] = {"Independent local decoders", "Boxes from each channel", "Preview capped 10 FPS", "Repeated local test video"};
-                const char* sublines[] = {"One decoder per channel", "Live detections", "Inference FPS shown per tile", "Red STALE if older than 2s"};
+                const char* headings[] = {channel_title.c_str(), "DECODE TIMING", "DISPLAY RATE", "SOURCE AND STATUS"};
+                const char* lines[] = {"DEC / INF: separate FPS", "LAG: decode vs source clock", "Preview capped 10 FPS", "SLOW / STALL: decoder"};
+                const char* sublines[] = {"All decodes before dropping", "AGE: since last decode", "SRC: result source age", "STALE: old detection image"};
                 label(canvas, headings[note], x + 12, y + 46, .49, cyan, 1);
                 label(canvas, lines[note], x + 12, y + 83, .50, white);
                 label(canvas, sublines[note], x + 12, y + 115, .43, gray);
@@ -375,16 +381,19 @@ private:
             cv::rectangle(canvas, cv::Rect(x + 2, y + 2, 316, 23), cv::Scalar(16, 15, 12), -1);
             cv::rectangle(canvas, cv::Rect(x + 2, y + 131, 316, 35), cv::Scalar(16, 15, 12), -1);
             std::ostringstream top, bottom, timing;
-            top << "CH " << std::setw(2) << std::setfill('0') << id + 1 << "   infer " << std::fixed << std::setprecision(1) << frame.fps << " FPS";
-            bottom << "frame " << frame.count << "    det " << frame.detections;
+            const auto& row = view.metrics[id];
+            top << "CH " << std::setw(2) << std::setfill('0') << id + 1 << "  DEC " << number(row.decode_fps) << "  INF " << number(row.infer_fps);
+            bottom << "LAG " << number(row.source_lag_ms, 0) << "ms AGE " << number(row.last_decoded_age_ms, 0) << "ms " << observation_state(row);
             const double age_ms = freshness_age_millis(frame, now);
             timing << (frame.source_age_ms >= 0 ? "src age " : "dec age ");
             if (age_ms < 0) timing << "--";
             else timing << std::fixed << std::setprecision(0) << age_ms << "ms";
             timing << "  drop " << frame.policy_drops;
             label(canvas, top.str(), x + 9, y + 18, .45, white);
-            label(canvas, bottom.str(), x + 9, y + 144, .38, gray);
+            const cv::Scalar decode_color = row.stalled ? red : row.sustained_slow ? cv::Scalar(90, 185, 250) : gray;
+            label(canvas, bottom.str(), x + 9, y + 144, .38, decode_color);
             label(canvas, timing.str(), x + 9, y + 160, .38, gray);
+            if (row.stalled || row.sustained_slow) cv::rectangle(canvas, tile, decode_color, 2);
             if (age_ms > 2000) {
                 cv::rectangle(canvas, cv::Rect(x + 237, y + 29, 78, 23), cv::Scalar(16, 15, 12), -1);
                 label(canvas, "STALE", x + 245, y + 46, .46, red, 2);
@@ -640,18 +649,26 @@ private:
                 if (id) file << ",\n";
                 file << "    {\"id\": " << id << ", \"label\": " << id + 1
                      << ", \"frame\": " << frame.count << ", \"detections\": " << frame.detections
-                     << ", \"inference_fps\": " << std::setprecision(8) << frame.fps
+                     << ", \"inference_fps\": " << std::setprecision(8) << view.metrics[id].infer_fps
+                     << ", \"decode_fps\": " << view.metrics[id].decode_fps
                      << ", \"updated_unix_ms\": " << frame.unix_ms << ", \"age_seconds\": ";
                 if (age < 0) file << "null"; else file << age;
                 file << ", \"frame_age_ms\": ";
                 if (frame_age < 0) file << "null"; else file << frame_age;
                 file << ", \"source_age_ms\": ";
                 if (source_age < 0) file << "null"; else file << source_age;
+                file << ", \"decode_source_lag_ms\": "; json_number(file, view.metrics[id].source_lag_ms);
+                file << ", \"last_decoded_age_ms\": "; json_number(file, view.metrics[id].last_decoded_age_ms);
+                file << ", \"decode_state\": " << quote(observation_state(view.metrics[id]));
                 file << ", \"policy_drops\": " << frame.policy_drops
                      << ", \"stale\": " << (freshness_age_millis(frame, now) > 2000 ? "true" : "false")
                      << ", \"has_image\": " << (frame.image.empty() ? "false" : "true") << '}';
             }
             file << "\n  ]";
+            double total_decode = 0, total_infer = 0;
+            for (const auto& row : view.metrics) { total_decode += row.decode_fps; total_infer += row.infer_fps; }
+            file << ",\n  \"total_decode_fps\": " << total_decode << ", \"total_infer_fps\": " << total_infer
+                 << ", \"rate_window_note\": \"20 completed 100ms buckets; decoder counts before inference filtering\"";
             if (observation_enabled_) write_observation(file, view, now);
             file << "\n}\n";
             file.close();

@@ -273,6 +273,27 @@ class ViewerTests(unittest.TestCase):
             self.assertEqual(state.pages[0].hardware_label(), "")
 
     def test_four_button_hardware_and_status_text_stays_inside_buttons(self):
+        self.check_four_button_labels()
+
+    def test_tpu_indicator_expires_and_never_turns_missing_data_into_zero(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            page = viewer.DevicePage(1, root/'fifo', root/'device_1', 6)
+            path = root/'telemetry-live.json'
+            path.write_text(json.dumps({'interval_seconds': 5, 'devices': {'1': {
+                'tpu_util_percent': 98, 'monotonic_s': 100, 'error': None}}}))
+            page.poll_summary()
+            self.assertEqual(page.tpu_label(102), 'TPU 98%')
+            self.assertTrue(all(char in viewer.FONT for char in page.tpu_label(102)))
+            self.assertEqual(page.tpu_label(113), 'TPU --')
+            for invalid in [None, True, -1, 101, float('nan')]:
+                page.telemetry = {'tpu_util_percent': invalid, 'monotonic_s': 100, 'error': None}
+                self.assertEqual(page.tpu_label(102), 'TPU --')
+            path.write_text('{')
+            page.poll_summary()
+            self.assertEqual(page.tpu_label(102), 'TPU --')
+
+    def check_four_button_labels(self):
         pages = [viewer.DevicePage(device, Path("/preview"), Path("/worker"), 6, 32, label)
                  for device, label in ((7, "PCIe 2.0 x1"), (0, "PCIe 3.0 x2"),
                                        (4, "PCIe 128 GT/s x32"), (1, None))]
@@ -290,7 +311,7 @@ class ViewerTests(unittest.TestCase):
         display.lib.SDL_GetRendererOutputSize.side_effect = output_size
         display.render(state, 0)
         for index, (page, box) in enumerate(zip(pages, viewer.button_rects(4))):
-            expected = ["DEVICE " + str(page.device), str(index + 1) + " | waiting"]
+            expected = ["DEVICE " + str(page.device), str(index + 1) + " | waiting | TPU --"]
             if page.hardware_label():
                 expected.append(page.hardware_label())
             for label in expected:
@@ -303,12 +324,14 @@ class ViewerTests(unittest.TestCase):
                 self.assertLessEqual(x + len(label) * 6 * size, box[0] + box[2])
             if not page.hardware_label():
                 display.text.assert_any_call("DEVICE 1", box[0] + 18, 24, 3)
-                display.text.assert_any_call("4 | waiting", box[0] + 18, 57, 2, (249, 189, 104))
+                label = "4 | waiting | TPU --"
+                display.text.assert_any_call(label, box[0] + 18, 57,
+                                             min(2, (box[2] - 36) / (6 * len(label))), (249, 189, 104))
         # Page-reception freshness still has its explicit VIEW LIVE wording.
         pages[0].buffer.latest_monotonic = 0
         display.text.reset_mock()
         display.render(state, .1)
-        self.assertTrue(any(call.args[0] == "1 | VIEW LIVE" for call in display.text.call_args_list))
+        self.assertTrue(any(call.args[0] == "1 | VIEW LIVE | TPU --" for call in display.text.call_args_list))
 
     def test_supervised_close_is_idempotent_locks_switch_and_has_deadline(self):
         state = viewer.ViewerState([self.page(0), self.page(7)], supervised_close=True)

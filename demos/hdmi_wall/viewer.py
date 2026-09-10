@@ -75,6 +75,20 @@ class DevicePage:
         self.summary = None
         self.launcher_status = "starting"
         self.returncode = None
+        self.telemetry = None
+        self.telemetry_max_age = 10.0
+
+    def tpu_label(self, now: float) -> str:
+        row = self.telemetry
+        if not isinstance(row, dict) or row.get("error") is not None:
+            return "TPU --"
+        value, sampled = row.get("tpu_util_percent"), row.get("monotonic_s")
+        if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v)
+               for v in (value, sampled)):
+            return "TPU --"
+        if not 0 <= value <= 100 or not 0 <= now - sampled <= self.telemetry_max_age:
+            return "TPU --"
+        return f"TPU {value:.0f}%"
 
     def hardware_label(self) -> str:
         if self.pcie_link_label is None:
@@ -139,6 +153,15 @@ class DevicePage:
         return total
 
     def poll_summary(self):
+        try:
+            live = json.loads((self.output.parent / "telemetry-live.json").read_text(encoding="utf-8"))
+            interval = live["interval_seconds"]
+            if isinstance(interval, bool) or not isinstance(interval, (int, float)) or not math.isfinite(interval) or interval < 0:
+                raise ValueError("Invalid telemetry interval")
+            self.telemetry = live["devices"].get(str(self.device))
+            self.telemetry_max_age = max(10.0, interval * 2 + 2)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            self.telemetry = None
         if self.summary is not None:
             return
         try:
@@ -332,6 +355,7 @@ FONT = {
     "9": [14,17,17,15,1,1,14], "-": [0,0,0,31,0,0,0], ":": [0,4,4,0,4,4,0],
     ".": [0,0,0,0,0,4,4], "/": [1,1,2,4,8,16,16], "?": [14,17,1,2,4,0,4],
     " ": [0,0,0,0,0,0,0], "|": [4,4,4,4,4,4,4],
+    "%": [25,26,2,4,8,11,19],
 }
 
 
@@ -477,7 +501,9 @@ class SDLViewer:
                 self.text(hardware, box[0] + 18, 45, size, (190, 210, 231))
             page_state = page.state(now)
             state_label = "VIEW LIVE" if page_state == "live" else page_state
-            self.text(str(index + 1) + " | " + state_label, box[0] + 18, 66 if hardware else 57, 2,
+            state_text = str(index + 1) + " | " + state_label + " | " + page.tpu_label(now)
+            state_size = min(2, (box[2] - 36) / (6 * len(state_text)))
+            self.text(state_text, box[0] + 18, 66 if hardware else 57, state_size,
                       (121, 225, 178) if page_state == "live" else (249, 189, 104))
         page = state.active
         if page.buffer.frames:

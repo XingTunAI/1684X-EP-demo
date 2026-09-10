@@ -6,6 +6,8 @@
 
 HDMI 的[解码观测入口](../demos/hdmi_wall/docs/decoder-observation.md)在抽帧过滤之前统计所有成功解码事件。`summary.json` 的 `total_decoded_fps` / `minimum_stream_decoded_fps` 和 `streams[].decode_observation` 用于比较关闭推理与开启推理的负载；页面的近期滚动解码 / 推理 FPS 独立计数，不能将选中预览画面的采样率当作解码速度。
 
+普通 HDMI 视频墙也默认展示这些近期速率：`status.json.total_decode_fps` / `total_infer_fps`，及 `streams[].decode_fps` / `inference_fps`；其中 inference_fps 现在使用近期实际推理完成事件，避免沿用最后一张检测图片的历史 FPS。新增 `decode_source_lag_ms`、`last_decoded_age_ms`、`decode_state` 分别描述最近解码的本地时钟落后、距离最近解码的时间和状态。普通视频墙没有开启少量画面的解码原图回读，也不自动开启 observe 的正式解码耗时分布采集。
+
 | 指标 | 定义 | 不能替代的内容 |
 |---|---|---|
 | 源帧率 | 文件或输入流的标称帧率 | 实际解码或检测完成速度 |

@@ -640,11 +640,11 @@ static void stream_thread(Shared& state, size_t id) {
                 }
                 if (state.config.observe_decode) {
                     stream.decode_continuity.add(elapsed(state.measure_start, frame->after_decode), state.config.duration);
-                    state.wall.observe_decode(id, frame->sequence, live ? -1 : elapsed(state.start, due),
-                        frame->after_decode, live ? -1 : std::max(0.0, millis(due, frame->after_decode)),
-                        millis(frame->before_decode, frame->after_decode));
                     if (decoded_preview) decoded_preview->publish(*frame);
                 }
+                state.wall.observe_decode(id, frame->sequence, live ? -1 : elapsed(state.start, due),
+                    frame->after_decode, live ? -1 : std::max(0.0, millis(due, frame->after_decode)),
+                    millis(frame->before_decode, frame->after_decode));
                 frame->ready = frame->after_decode;
                 return frame;
             }

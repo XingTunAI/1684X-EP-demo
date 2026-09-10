@@ -263,6 +263,7 @@ class Telemetry:
                                      "sum_percent": 0.0, "min_percent": None, "max_percent": None}
                       for item in workers}
         self.write_error = None
+        self.latest_samples = {}
 
     @staticmethod
     def wall_status(worker: dict) -> dict:
@@ -334,6 +335,9 @@ class Telemetry:
             stats["max_percent"] = value if stats["max_percent"] is None else max(stats["max_percent"], value)
         try:
             self.handle.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
+            self.latest_samples[str(device)] = row
+            single.save_json(self.path.with_name("telemetry-live.json"),
+                             {"interval_seconds": self.interval, "devices": self.latest_samples})
         except OSError as exc:
             self.write_error = str(exc)
             print(f"HDMI telemetry write failed: {exc}", file=sys.stderr)
