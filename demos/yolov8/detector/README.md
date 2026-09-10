@@ -1,5 +1,7 @@
 # 检测器适配代码
 
+[YOLOv8 运行说明](../README.md) / [文档索引](../../../docs/README.md)
+
 基于 [SOPHON-DEMO YOLOv8 BMCV](https://github.com/sophgo/sophon-demo/tree/485e8a0dd21e3bba6cfa3c4c0241c8e28f76541b/sample/YOLOv8_plus_det/cpp/yolov8_bmcv)，保留原版权声明和本目录 LICENSE。来源为本工程已部署的官方示例适配版本，包含原有运行错误检查。
 
 在项目内保存检测器源码，使分阶段计时和性能优化可随仓库复现；utils.hpp、bm_wrapper.hpp 仍使用第三方示例依赖。

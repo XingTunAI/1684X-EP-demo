@@ -6,11 +6,11 @@
 
 `showcase.sh` 把长素材准备、设备识别、每卡配置、分页显示和利用率采样放进一个入口，默认正式运行 **14,400 秒（4 小时）**，另有 3 秒预热、初始化和收尾。所有选中的卡同时工作，顶部每张卡一个按钮；切页后其他卡仍继续解码、推理和更新预览。每卡可配置 1–32 路，最多选择 4 张卡。
 
-本板两种模式都已完成双卡并发 **120 秒**测试。需要 TPU 接近满载时，推荐 **`stress` 的 20 + 32 路**：Gen2 ×1 / Gen3 ×2 TPU 采样平均分别为 **97.59% / 100%**。需要每卡完整 32 路页面时，使用 **`showcase` 的 32 + 32 路**，两页共 64 路持续显示和检测，Gen2 ×1 TPU 平均为 **84.61%**。完整数据见[两种模式并发对照](#双卡展示与压测并发实测)。**默认四小时是运行时长，尚未完成四小时验收。**
+当前双卡各 32 路展示推荐 **showcase + 低回传 profile**：恢复显示后的稳定区间，Gen2 ×1 / Gen3 ×2 TPU 平均为 **95.18% / 99.98%**，总推理 **261.14 / 276.04 FPS**。按 R 关闭结果和预览回传后，17–19 秒稳定区间两卡 TPU 采样均为 100%。配置、计数范围及旧默认对照集中在 [当前数据总览](current-data.md)。**默认四小时是运行时长，尚未完成四小时验收。**
 
 单卡历史测量分别见 [device 1 的 30 路基准](performance-30.md)和 [device 0 路数及回传预算对照](device0-capacity.md)。多卡共享主机资源，应按同时运行的结果判断各卡实际速度，不能直接相加单卡结果。
 
-两种接口的理论带宽、20 / 32 路 TPU 利用率、检测吞吐及已记录回传量，见 [PCIe 2.0 ×1 与 PCIe 3.0 ×2 对比](pcie-comparison.md)。其中区分了带宽上限与实际传输统计，并说明 Gen2 ×1 为何选择 20 路作为当前满载档位。
+两种接口的理论带宽、20 / 32 路 TPU 利用率、检测吞吐及已记录回传量，见 [PCIe 2.0 ×1 与 PCIe 3.0 ×2 对比](pcie-comparison.md)。其中区分了带宽上限与实际传输统计，并保留 Gen2 ×1 的旧默认 20 路档位依据；新低回传 32 路结论单独列明。
 
 ## 启动与停止
 
@@ -22,7 +22,7 @@
 
 以下在板端 `/userdata/1684X-EP-demo` 执行，适用于已确认 Xorg 为 `:0`、LightDM 认证为 `/var/run/lightdm/root/:0` 的系统。其他会话先按 [ADB / SSH 显示说明](display.md)选择正确认证；ADB root 可省略 `sudo`。
 
-本板推荐先使用 `stress` 检查满载效果。先查看实际设备、PCIe 链路、各卡路数与完整命令：
+双卡各 32 路使用以下低回传配置。先查看实际设备、PCIe 链路、各卡路数与完整命令：
 
 ```bash
 cd /userdata/1684X-EP-demo
@@ -30,10 +30,11 @@ sudo env DISPLAY=:0 \
   XAUTHORITY=/var/run/lightdm/root/:0 \
   SDL_VIDEODRIVER=x11 \
   PLAYER_LIB_PATH=/usr/lib/aarch64-linux-gnu \
-  bash demos/hdmi_wall/showcase.sh --devices auto --mode stress --dry-run
+  bash demos/hdmi_wall/showcase.sh --devices 0,1 --mode showcase \
+  --profile demos/hdmi_wall/profiles/dual32-low-readback.json --dry-run
 ```
 
-正式启动压测模式（默认四小时）：
+正式启动双卡各 32 路低回传展示（默认四小时）：
 
 ```bash
 cd /userdata/1684X-EP-demo
@@ -41,7 +42,8 @@ sudo env DISPLAY=:0 \
   XAUTHORITY=/var/run/lightdm/root/:0 \
   SDL_VIDEODRIVER=x11 \
   PLAYER_LIB_PATH=/usr/lib/aarch64-linux-gnu \
-  bash demos/hdmi_wall/showcase.sh --devices auto --mode stress
+  bash demos/hdmi_wall/showcase.sh --devices 0,1 --mode showcase \
+  --profile demos/hdmi_wall/profiles/dual32-low-readback.json
 ```
 
 启动器会在大视频校验前检查现有 HDMI 任务；若已有任务运行，立即显示对应运行目录和停止命令，不先等待素材哈希。若任务刚启动、运行目录尚未发布，则提示已占用的启动锁及停止方式。按提示先结束现有任务，再启动新模式。
@@ -68,6 +70,8 @@ sudo bash demos/hdmi_wall/showcase.sh --stop
 `--stop` 不准备素材。`--duration 300` 可改为正式运行 300 秒。旧的 `run.sh`、`multi_run.sh` 和 30 路 `benchmark.sh` 默认配置不受此入口影响。
 
 ## 展示与压测档位
+
+下表是**不加 profile 时的旧默认**，代码仍保留这些值。上面的新推荐通过 profile 显式覆盖为双卡各 32 路、64 KiB、reuse、预览 3 FPS；不改变旧命令的复现行为。
 
 `--mode showcase` 为默认模式，优先每卡显示 32 路；`--mode stress` 使用本板负载测量选出的路数。两种模式均让所有选中的卡同时工作，并保留同帧画框、页面预览与切换；都默认正式运行四小时、prime on、summary 记录和约 5 秒一次的遥测。
 

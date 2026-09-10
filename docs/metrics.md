@@ -1,5 +1,7 @@
 # 输出指标与状态
 
+[仓库首页](../README.md) / [文档索引](../docs/README.md)
+
 本页定义 JSON / CSV 输出与统计口径。HDMI 页面读数见 [屏幕指标](../demos/hdmi_wall/docs/wall-indicators.md)，运行选项见 [命令参数](../demos/hdmi_wall/docs/parameters.md)。
 
 本页定义各 demo 共用的概念。具体文件树和参数以各 demo 的 README 为准，不同程序的计数位置和计时区间不能直接混用。
@@ -218,7 +220,7 @@ Metric 的 `count`、`sum`、`mean`、`max` 始终覆盖该指标的全部有效
 | `image_path` | 本帧实际使用的设备图像路径：`yuv` 或 `bgr` |
 | `preprocess_csc` | 传入预处理及预览的 SDK `csc_type_t` 数值；`-1` 为参考 BGR 路径，YUV 路径使用对应色彩转换枚举，或在元数据未明确指定时使用 SDK 默认值 |
 | `source_colorspace` / `source_color_range` | 解码 AVFrame 的 FFmpeg 色彩空间 / 范围枚举数值；无 AVFrame 时为 `-1`。枚举内的“未指定”值不等于已经确定色彩空间 |
-| `preview_submitted` | 本帧是否完成缩略图准备并提交给视频墙；受每路最多约 10 次/秒的预览节奏限制 |
+| `preview_submitted` | 本帧是否完成缩略图准备并提交给视频墙；受每路 preview_fps 上限限制，默认 10、新低回传 profile 为 3；READBACK OFF 时不提交 |
 | `preview_ms` | 从开始准备缩略图到视频墙提交调用返回的总耗时 |
 | `preview_vpp_ms` | 在设备上转换、缩放为 256×144 BGR 缩略图的调用耗时 |
 | `preview_readback_ms` | 将缩略图像素从设备回读至主机缓冲的调用耗时 |
@@ -233,3 +235,38 @@ Metric 的 `count`、`sum`、`mean`、`max` 始终覆盖该指标的全部有效
 `config.json` 的 `preprocess_buffer=resident_per_detector` 表示每个检测器复用固定网络尺寸的 resize、convert 和输入张量缓冲。预览另行复用每路的缩略图与主机像素缓冲；首次初始化成本与稳定运行成本应区分，并排除预热后再比较。
 
 `summary` 模式没有逐帧预览记录，但逐路 summary 的 `previews_submitted`、`previews_submitted_measured` 分别保留全程和正式完成计数区间内的提交次数，`preview_readback_bytes_measured = previews_submitted_measured × 110592`。各 `preview_*_ms` Metric 已只纳入正式完成帧中实际提交预览的帧，`preview_metric_population=measured_completion_accounting_events_with_preview_submitted` 明示这一集合；分位数是否近似仍按该 Metric 的元数据判断。
+
+上述 110592 B 对应普通墙；observe 所选放大图每侧为 640×360×3＝691200 B，解码原图与检测图分别计数。不能将放大图套用普通墙的大小。
+
+## HDMI 回传开关与区间统计
+
+READBACK OFF 保留真实解码、预处理和模型执行，但不读取模型结果、不运行 score gate 或检测 CPU 后处理，也不生成像素预览。输入、任务提交、同步和遥测仍有码流 / 控制传输，不能称“PCIe 完全没有流量”。操作与测试见 [回传开关](../demos/hdmi_wall/docs/readback-toggle.md)。
+
+| 文件 / 字段 | 定义 |
+|---|---|
+| 根目录 `readback-control.json.readback_enabled` | 所有卡共同的目标开关；缺少控制文件时初始为 ON |
+| `readback-events.jsonl` | 界面切换目标状态及单调时钟、Unix 时间，scope 为 all_selected_devices |
+| 每卡 `status.json.readback_enabled` | 该 worker 最近观察到的模式；切换不是所有卡瞬时同步 |
+| `readback_inflight` | 已经开始、尚未退出的 ON 处理次数，包含其模型与结果 / 预览路径；不是 DMA 队列深度 |
+| `snapshot_monotonic_s` | 本次状态快照的单调时钟秒数，差分 FPS 使用该时间 |
+| `streams[].decoded_count / inferred_count` | 全程累计成功解码 / 模型处理完成事件；不是正式区间专属计数 |
+| `total_decode_fps / total_infer_fps` | 最近 20 个完整 100 ms 桶的速率总和，非累计平均 |
+| `output_readback_bytes` | 全程累计模型结果有效载荷，包括 gate 分数、候选行或整块输出，不含预览 |
+| `preview_readback_bytes` | 全程累计成功缩略图像素回传，observe 含所选解码原图与检测图 |
+| `model_only_completed / results_readback_completed` | 全程两种模型路径的完成次数；与观测帧事件是相邻而非同一个原子操作 |
+| `summary.json.streams[].model_only_measured / results_readback_measured` | 正式完成计数集合的模式拆分，两项之和应等于该路 completed_measured |
+| full 模式逐帧 `results_readback` | 本帧执行哪条路径；OFF 的 detections 为 null，不是无目标的空列表 |
+
+开始 OFF 统计前等待该卡 `readback_enabled=false` 且 `readback_inflight=0`，并排除切换后的稳定等待区间。此前在途 ON 处理允许完成；关闭后两个回传累计数应停止增长，解码 / 模型完成数仍增长。重新 ON 后检查新图和检测结果恢复，再取稳定区间。
+
+```text
+区间总 DEC = Σ各路(decoded_count末 - decoded_count初) / (快照时刻末 - 快照时刻初)
+区间总 INF = Σ各路(inferred_count末 - inferred_count初) / (快照时刻末 - 快照时刻初)
+区间回传 MB/s = (累计字节末 - 累计字节初) / 同一区间秒数 / 1,000,000
+```
+
+snapshot 的不同原子计数读取时刻可能相差一个正在完成的事件，不能要求每秒快照的模式完成数与 inferred_count 严格相等；正式 summary 的模式计数在相同完成点核对。TPU 按各自有效样本时间统计，保留失败 / 缺失情况；其样本数不必等于状态文件个数。
+
+旧正式汇总的 `score_gate_measured.frames` 包括 OFF 完成帧，这些帧对应结果读取和 gate 指标为 0。因此混合 ON / OFF 的整场耗时均值不能代表“每次实际回传成本”；按时间和模式拆分集合，或者按实际调用数选择正确分母。新开关状态字节差分与旧“按正式完成时刻归属整帧字节”的边界不同，跨口径对照需注明。
+
+OFF 的缓存图不更新，正常隐藏且不作为预览 STALE 告警；解码状态仍独立统计。没有视频编码阶段，界面 ENCODE 为 N/A。单纯输出关闭不提供检测正确性证据。

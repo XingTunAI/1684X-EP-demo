@@ -1,6 +1,6 @@
 # 回传开关与双卡 32 路对照
 
-[HDMI 文档导航](../README.md) / [展示与压测](showcase.md)
+[HDMI 文档导航](../README.md) / [当前数据总览](current-data.md) / [展示与压测](showcase.md)
 
 多设备播放器左上角新增 **READBACK ON / OFF** 按钮，点击或按 **R**，所有选中的卡一起切换。切换不重新加载模型、不减少后台通道；仍可选择其他设备页面。启动时默认 ON。
 

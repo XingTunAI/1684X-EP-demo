@@ -1,5 +1,7 @@
 # 环境与依赖准备
 
+[仓库首页](../README.md) / [文档索引](../docs/README.md)
+
 以下操作面向 Linux ARM64 的 RK3588 主机与 BM1684X PCIe 设备。下方明确标注的 ADB、SSH 连接命令在电脑终端执行；连接成功后的 SDK 安装、构建和运行命令都在板端 Linux 执行。Windows 可用于编辑文件，以及使用 Python 运行两个 YOLO 入口的 `--dry-run` 查看命令计划；它不会启动硬件任务。
 
 ## 从电脑进入设备
@@ -73,6 +75,18 @@ cd 1684X-EP-demo
 ```
 
 后续命令均在仓库根目录执行。仓库也支持其他可写路径，无需复制到固定位置。Git 仅取得本项目源码和文档；SDK 安装包、官方依赖源码、模型和测试视频不会随本仓库的 `git clone` 下载，需要按下文分别准备。刷写 rootfs 后也应重新检查系统内的驱动、SDK 和构建工具，即使 `/userdata` 中的文件仍在。
+
+## 更新已有仓库
+
+先通过对应入口停止正在运行的 Demo，在板端仓库目录执行：
+
+```bash
+git status --short
+git pull --ff-only
+bash demos/hdmi_wall/build.sh
+```
+
+有本地改动时先保存、比较并处理冲突，不用强制重置覆盖。这里只示例 HDMI 构建；更新其他 Demo 时使用其 build.sh。模型和素材保持在本地，不因文档更新重新下载；刷写 rootfs 后仍要重新检查系统 SDK 和显示环境。
 
 ## SDK 和构建工具
 
@@ -223,7 +237,7 @@ ffprobe -v error -select_streams v:0 \
   -show_entries format=duration -of json data/inputs/input.mp4
 ```
 
-每个 demo 的输入约束不同，运行前以其 README 为准。模型必须面向 BM1684X，且 batch、输入布局、输出格式、类别顺序与程序相符。
+每个 demo 的输入约束不同，运行前以其 README 为准。特别是本板官方车辆素材为 1080p24，普通 YOLOv8 主入口固定要求 1080p25，需显式指定兼容的本地文件；HDMI 按其自身输入规则运行。模型必须面向 BM1684X，且 batch、输入布局、输出格式、类别顺序与程序相符。
 
 Windows 编辑的 Shell 脚本应使用 LF 换行后再在 Linux 执行。默认在各 demo 的 `build/` 生成程序；源码更新后重新构建对应 demo。
 

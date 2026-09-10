@@ -59,7 +59,7 @@
 | `--devices auto` | 从板端 sysfs 发现实际设备，也可指定 `0,1`。 |
 | `--mode showcase` | 默认每卡 32 路，优先完整页面；Gen2 ×1 合并预算 128 KiB，Gen3 ×2 为 64 KiB。 |
 | `--mode stress` | 使用已测负载档位：Gen2 ×1 为 20 路 / 64 KiB，Gen3 ×2 为 32 路 / 64 KiB。 |
-| `--profile PATH` | 按设备覆盖路数和预算；这里不直接接受 `--streams`，格式见 [每卡配置](showcase.md#每卡独立配置)。 |
+| `--profile PATH` | 按设备覆盖路数、预算、preview_fps 和 output_buffer；这里不直接接受 `--streams`，格式见 [每卡配置](showcase.md#每卡独立配置)。 |
 | `--telemetry-interval 5` | 默认每卡约 5 秒采样，0 关闭。 |
 | 固定配置 | YOLOv8s、gate on、latest、infer-fps 0、年龄 250 ms、image auto、prime on、summary。 |
 

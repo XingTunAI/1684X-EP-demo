@@ -6,6 +6,8 @@
 
 当前普通墙保留全部视频格：顶部显示总解码 / 总检测 FPS，每格显示 DEC、INF、LAG、AGE 和状态；启用遥测时设备按钮显示 TPU。图中使用官方 1080p24 本地素材，32 路输入目标为 768 FPS。屏幕字段逐项解释见 [指标说明](docs/wall-indicators.md)。
 
+**[当前数据与推荐配置](docs/current-data.md)** · [全仓库文档索引](../../docs/README.md)
+
 ## 选择运行入口
 
 多设备播放器新增 **READBACK ON / OFF** 按钮（快捷键 **R**）：所有卡一起停止或恢复模型结果与预览回传；关闭时保留真实解码、预处理和推理，改为显示各卡吞吐与 TPU 仪表页。双卡各 32 路的低回传配置、统计口径与实测见 [回传开关](docs/readback-toggle.md)。
@@ -14,7 +16,8 @@
 |---|---|---|---|
 | 首次确认单卡推理和 HDMI 正常 | `run.sh` | device 0、1 路、1800 秒，系统 ffplay | [单设备运行](docs/single-device.md) |
 | 自己指定多卡、路数和检测参数 | `multi_run.sh` | devices 0,1、每卡 32 路、1800 秒，按钮切页 | [多设备运行](docs/multi-device.md) |
-| 每张卡展示完整 32 路 | `showcase.sh --mode showcase` | 自动识别设备、每卡 32 路、4 小时 | [展示与压测](docs/showcase.md) |
+| 双卡各 32 路低回传展示，并切换结果回传 | `showcase.sh --mode showcase --profile demos/hdmi_wall/profiles/dual32-low-readback.json` | 设备 0、1 每卡 32 路，预览上限 3 FPS；R 键切换 | [回传开关](docs/readback-toggle.md) |
+| 复现默认每卡 32 路展示 | `showcase.sh --mode showcase` | 自动识别设备、每卡 32 路、4 小时 | [展示与压测](docs/showcase.md) |
 | 多卡并行，采用已测高 TPU 负载档位 | `showcase.sh --mode stress` | Gen2 ×1 为 20 路，Gen3 ×2 为 32 路、4 小时 | [展示与压测](docs/showcase.md) |
 | 比较开启推理前后，解码是否降速或停顿 | `observe.sh` | 自动识别设备、每卡后台 32 路、300 秒，选 2 路放大对照 | [解码观测](docs/decoder-observation.md) |
 | 复现 device 1 的历史 30 路基准 | `benchmark.sh` | device 1、30 路、300 秒 | [单卡基准](docs/performance-30.md#每次使用统一基准入口) |
@@ -61,7 +64,9 @@ sudo env DISPLAY=:0 \
   --devices auto --mode showcase --duration 60
 ```
 
-使用已测压测档位时，将 `--mode showcase` 改为 `--mode stress`。需要正式运行四小时，删除 `--duration 60` 或改为 `--duration 14400`；长素材准备、校验耗时及磁盘空间见 [长素材说明](docs/showcase.md#长素材与磁盘空间)。
+以上命令复现旧默认 showcase；要使用新低回传配置，在命令后追加 `--profile demos/hdmi_wall/profiles/dual32-low-readback.json`，并显式选择 `--devices 0,1`。
+
+使用旧默认压测档位时，将 `--mode showcase` 改为 `--mode stress`。需要正式运行四小时，删除 `--duration 60` 或改为 `--duration 14400`；长素材准备、校验耗时及磁盘空间见 [长素材说明](docs/showcase.md#长素材与磁盘空间)。
 
 点击设备按钮、按 `1`–`4` 或左右键切页。`Esc`、关闭窗口、启动终端 `Ctrl+C` 会结束整场多卡运行；也可在另一终端执行：
 
@@ -79,6 +84,7 @@ sudo bash demos/hdmi_wall/showcase.sh --stop
 | 操作与输出 | [单设备](docs/single-device.md) · [多设备](docs/multi-device.md) · [展示 / 压测](docs/showcase.md) · [解码对照](docs/decoder-observation.md) |
 | 参数和读数 | [命令参数](docs/parameters.md) · [屏幕指标](docs/wall-indicators.md) · [JSON / CSV 统计口径](../../docs/metrics.md) |
 | 抽帧 | [参数与历史画面对照](docs/realtime-usage.md) · [32 路超龄淘汰机制](docs/32-channel-realtime.md) |
+| 当前推荐与对照 | [数据总览](docs/current-data.md) · [回传开关](docs/readback-toggle.md) |
 | 实测 | [全部实测索引](docs/results.md) · [PCIe 对比](docs/pcie-comparison.md) · [TPU 满载解码与回传隔离](docs/capacity-validation.md) |
 | 开发 | [实时调度实现与测试](docs/realtime.md) |
 

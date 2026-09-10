@@ -1,5 +1,7 @@
 # 本地数据目录
 
+[仓库首页](../README.md) / [文档索引](../docs/README.md)
+
 `data/` 集中存放自行准备的数据和程序输出。除本说明外，其中视频、模型、SDK 包、日志和设备配置均保留在本地，不随源码发布。
 
 ```text
@@ -162,9 +164,11 @@ data/inputs/hdmi_wall_demo_loop_15000s.mp4.manifest.json
 | YOLO26 主入口 | `data/results/yolo26/<run-id>/`，每卡结果在 `device_<id>/` |
 | HDMI 视频墙 | `data/results/hdmi-wall/<run-id>/` |
 | HDMI 多设备分页 | `data/results/hdmi-wall-multi/<run-id>/`，各卡在 `device_<id>/`，页面状态见根目录 `viewer-status.json` |
-| 诊断 | `data/results/inference-diagnostics/`、`bandwidth/`、`tpu/` |
+| 诊断 | `data/results/inference-diagnostics/`、`bandwidth/`、`tpu/`、`decode-capacity/` |
 
 两个 YOLO 主入口的 `--output` 指定父目录，每次自动创建唯一运行目录；根级 `run.json`、`summary.json` 记录进程状态，`device_<id>.log` 保存后端日志，各卡目录保存检测统计和逐帧 JSONL。具体字段见 [YOLOv8](../demos/yolov8/README.md) 和 [YOLO26](../demos/yolo26/README.md)。
+
+HDMI 回传开关另保存 `readback-control.json`、`readback-events.jsonl`；每卡 `status.json` 记录累计解码 / 推理次数和模型 / 预览回传字节数。含 ON / OFF 切换的整场 summary 不能直接当作单一模式的性能，按 [区间统计](../demos/hdmi_wall/docs/readback-toggle.md#怎么读数)拆分。新低回传 profile 是源码配置文件，不是额外素材，位于 `demos/hdmi_wall/profiles/`。
 
 底层工具的输出约定可能不同，直接调用前查看对应说明。不要让不同运行复用同一结果目录。输出可能包含输入路径、设备信息、逐帧结果和截图，应保持本地存储。
 

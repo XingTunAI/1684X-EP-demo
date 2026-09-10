@@ -1,5 +1,7 @@
 # YOLOv8 单卡与多卡检测
 
+[仓库首页](../../README.md) / [文档索引](../../docs/README.md)
+
 用同一入口选择设备、每卡路数和运行时长。每张卡启动独立后端进程，每路完成硬件解码、预处理、YOLOv8 推理与检测记录写出。
 
 ## 依赖与数据
@@ -27,16 +29,18 @@ bash demos/yolov8/build.sh
 
 ## 运行
 
+本板下载的官方 `test_car_person_1080P.mp4` 实际为 **24 FPS**，而本入口的后端固定要求 **1080p25 H.264**；不传 `--input` 会选中官方文件，可能因帧率不符而退出。以下示例要求先准备 `data/inputs/input_1080p25.mp4`，用 ffprobe 确认编码、尺寸及实际帧率。需要直接使用官方 24 FPS 素材时，使用 [HDMI 单卡入口](../hdmi_wall/docs/single-device.md)。本次仅修正文档，不改变后端输入校验。
+
 ```bash
 # 单卡，测量 60 秒
-bash demos/yolov8/run.sh --devices 0 --duration 60
+bash demos/yolov8/run.sh --devices 0 --duration 60 --input data/inputs/input_1080p25.mp4
 
 # 双卡，每卡 2 路，测量 300 秒
-bash demos/yolov8/run.sh --devices 0,1 --streams 2 --duration 300
+bash demos/yolov8/run.sh --devices 0,1 --streams 2 --duration 300 --input data/inputs/input_1080p25.mp4
 
 # 自有输入、模型与输出父目录
 bash demos/yolov8/run.sh --devices 0 --duration 60 \
-  --input data/inputs/input.mp4 \
+  --input data/inputs/input_1080p25.mp4 \
   --bmodel data/models/yolov8.bmodel --classnames data/models/classes.names \
   --output data/results/yolov8
 ```
@@ -51,7 +55,7 @@ bash demos/yolov8/run.sh --devices 0 --duration 60 \
 | `--streams` | 每卡独立路数，1–32，默认 1；每路分别打开同一输入文件 |
 | `--duration` | 每卡后端测量窗口秒数，正数，默认 60 |
 | `--warmup` | 预热秒数，非负数，默认 5 |
-| `--input` | 本地视频，默认使用上表官方样例 |
+| `--input` | 本地 1080p25 H.264；默认路径指向官方样例，但该文件在本板为 24 FPS，运行时应显式选择符合要求的视频 |
 | `--bmodel / --classnames` | 覆盖默认模型和类别文件 |
 | `--output` | 结果父目录，默认 `data/results/yolov8`；每次自动创建唯一子目录 |
 | `--dry-run` | 打印命令计划；不检查文件、创建目录或启动硬件进程 |
@@ -114,7 +118,7 @@ data/results/yolov8/<run-id>/
 ```bash
 python3 demos/yolov8/runner.py --device 0 --steps 1 \
   --bmodel third_party/sophon-demo/sample/YOLOv8_plus_det/models/BM1684X/yolov8s_int8_1b.bmodel \
-  --input data/inputs/input.mp4 --mode encode --image-path bgr \
+  --input data/inputs/input_1080p25.mp4 --mode encode --image-path bgr \
   --warmup 5 --duration 60 --measure-only \
   --output data/results/yolov8-encode
 ```

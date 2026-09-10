@@ -8,6 +8,8 @@
 
 需要自动按 PCIe 链路选择配置、准备长素材时，使用 [showcase / stress](showcase.md)。需要关闭 / 开启推理作解码对照，使用 [observe](decoder-observation.md)。历史单卡、多卡测试集中在 [实测索引](results.md)，不能直接相加单卡速度推断双卡性能。
 
+启用推理时，左上角 READBACK 按钮或 R 键控制所有卡的模型结果与像素预览回传；OFF 保留实际解码 / 推理但隐藏视频墙。按钮含义、低回传 profile 和最新数据见 [回传开关](readback-toggle.md)。纯解码 `--inference off` 模式不提供该按钮。
+
 ## 准备
 
 按[环境说明](../../../docs/setup.md)准备 SDK、编译工具和官方资源，执行 `bash demos/hdmi_wall/build.sh` 构建每卡使用的检测程序。多设备入口为 `multi_run.sh` / `multi_run.py`，统一显示程序为 `viewer.py`，需要 Python 3.9+、系统 SDL2 运行库和可访问的本地 X11 桌面；本次板上系统 ffplay 已依赖并安装 `libSDL2-2.0.so.0`。
@@ -32,7 +34,7 @@ sudo env DISPLAY=:0 \
   --telemetry-interval 5
 ```
 
-未提供 `--device-config` 时，全部设备使用同一个 `--streams` 参数；需要逐卡路数和回传预算时，使用[每卡配置](showcase.md#每卡独立配置)。页面只按 `--devices` 中的设备生成。仅使用设备 1 时可传 `--devices 1`，不会生成不存在的设备 0 页面。
+未提供 `--device-config` 时，全部设备使用同一个 `--streams` 参数；需要逐卡路数、回传预算、preview_fps 和 output_buffer 时，使用[每卡配置](showcase.md#每卡独立配置)。页面只按 `--devices` 中的设备生成。仅使用设备 1 时可传 `--devices 1`，不会生成不存在的设备 0 页面。
 
 ### 每卡 32 路：优先完整显示的逐帧配置
 

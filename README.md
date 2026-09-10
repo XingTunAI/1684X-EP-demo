@@ -2,6 +2,8 @@
 
 在 RK3588 Linux ARM64 主机上通过 PCIe 使用 BM1684X，提供视频检测、HDMI 多路视频墙、硬件解码和模型 / 传输诊断。代码用于开发、演示和性能验证；每份实测报告单独注明输入、配置及验证范围。
 
+**[完整文档索引](docs/README.md)** · **[当前性能数据总览](demos/hdmi_wall/docs/current-data.md)** · [参数与读数](docs/metrics.md)
+
 ## 从哪里开始
 
 1. [进入设备并准备环境](docs/setup.md)：ADB / SSH、在 `/userdata` 取得仓库、SDK 和构建工具。
@@ -24,12 +26,13 @@
 
 ![双卡各 32 路 HDMI 视频墙与解码、检测、TPU 指标](demos/hdmi_wall/images/hdmi-wall-decode-metrics.png)
 
-上图是当前板端实际截图：两张卡各运行 32 路，当前显示 device 0，device 1 在后台继续处理。顶部按钮可切页，每路显示解码 / 检测 FPS 和时间指标。素材为 SOPHON 官方 1080p24 车辆 / 行人视频，各通道独立读取同一文件；布局支持最多 4 张卡，实体硬件验证目前为 2 张卡。
+上图是已记录的板端视频墙截图（早于 READBACK 按钮加入）：两张卡各运行 32 路，当前显示 device 0，device 1 在后台继续处理。顶部按钮可切页，每路显示解码 / 检测 FPS 和时间指标。素材为 SOPHON 官方 1080p24 车辆 / 行人视频，各通道独立读取同一文件；布局支持最多 4 张卡，实体硬件验证目前为 2 张卡。
 
 | HDMI 使用场景 | 查看文档 |
 |---|---|
 | 第一次运行，或不知道选哪个入口 | [快速开始与入口选择](demos/hdmi_wall/README.md#选择运行入口) |
-| 每卡 32 路展示；按 PCIe 链路选择压测档位 | [showcase / stress](demos/hdmi_wall/docs/showcase.md) |
+| 双卡各 32 路低回传展示，按 R 对比回传 ON / OFF | [推荐配置与开关](demos/hdmi_wall/docs/readback-toggle.md) |
+| 复现默认展示 / 压测档位，配置四小时运行 | [showcase / stress](demos/hdmi_wall/docs/showcase.md) |
 | 比较 TPU 高负载前后解码速度、停顿与落后 | [解码观测](demos/hdmi_wall/docs/decoder-observation.md) |
 | 理解 DEC、INF、LAG、AGE、STALE 等读数 | [屏幕指标](demos/hdmi_wall/docs/wall-indicators.md) |
 | 理解命令中的配置参数 | [命令参数](demos/hdmi_wall/docs/parameters.md) |
@@ -42,6 +45,8 @@
 | 内容 | 文档 |
 |---|---|
 | 环境、连接、SDK | [环境准备](docs/setup.md) |
+| PCIe、输出字节数、阶段耗时、FPS 的计算方法 | [完整计算流程](docs/performance-calculations.md) |
+| 卡的理论计算、实测差距与参数释义 | [BM1684X-EP 性能说明](docs/card-performance-explained.md) |
 | 视频、模型、SDK 包和运行产物存放位置 | [数据目录](data/README.md) |
 | FPS、阶段耗时、帧年龄、完整性与统计口径 | [输出指标](docs/metrics.md) |
 | HDMI 当前验证与历史记录 | [HDMI 实测索引](demos/hdmi_wall/docs/results.md) |

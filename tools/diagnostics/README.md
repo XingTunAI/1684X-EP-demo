@@ -1,5 +1,7 @@
 # 模型与传输诊断
 
+[仓库首页](../../README.md) / [文档索引](../../docs/README.md)
+
 本目录包含独立模型执行、输出回传、PCIe 传输和 YOLOv8 图像结果检查。所有命令从仓库根目录执行，运行依赖对应 SOPHON SDK；这些工具不启动视频演示。
 
 ## 构建与入口
@@ -102,6 +104,8 @@ test -f "$diagnostic_image" && tools/diagnostics/build/detector_check.pcie \
 此程序导出结果供对照，不自动计算准确率或 AP。
 
 ## 实际运行数据
+
+最新逐卡传输、驻留模型和解码扫描见 [2026-09-10 容量报告](../../demos/hdmi_wall/docs/capacity-validation.md)，计算方法见 [公式与复算](../../docs/performance-calculations.md)。下面保留 09-07 的单进程历史记录，不覆盖新数据；这些探针的次/秒不能作为 HDMI 检测 FPS。
 
 以下为 2026-09-07 在 RK3588 + 单张 BM1684X 上完成的诊断记录。模型为官方 YOLOv8s INT8 batch 1，单进程，预热 3 秒。输入为常驻的全零张量，输入/输出边界为 FP32；不读取或解码视频。
 
