@@ -207,7 +207,7 @@ public:
         }
         bm_dev_free(handle);
     };
-    int Detect(const std::vector<bm_image>& images, std::vector<YoloV8BoxVec>& boxes);
+    int Detect(const std::vector<bm_image>& images, std::vector<YoloV8BoxVec>& boxes, bool readback = true);
     void draw_result(cv::Mat& img, YoloV8BoxVec& result);
 };
 

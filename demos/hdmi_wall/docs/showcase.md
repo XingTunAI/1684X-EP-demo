@@ -14,6 +14,8 @@
 
 ## 启动与停止
 
+播放器左上角 **READBACK ON / OFF** 按钮（按 **R**）可同时切换所有卡：OFF 保留后台真实解码和模型推理，关闭结果 / 预览回传并隐藏视频墙，只显示指标；ON 恢复画面。要双卡都 32 路且降低正常预览回传开销，使用 [低回传 profile 与开关对照](readback-toggle.md)。旧 showcase / stress 档位不变，OFF 不是视频编码测试。
+
 需要量化推理负载下的解码速度和停顿，使用独立的 [observe 解码观测入口](decoder-observation.md)。它保留每卡全部后台通道，只选少量画面作解码 / 检测对照，同时显示每路与总解码 FPS；普通 showcase / stress 保留完整多路墙并显示 DEC / INF、LAG / AGE；observe 使用少量放大对照布局。
 
 先完成[环境与资源准备](../../../docs/setup.md)并编译 `demos/hdmi_wall/build.sh`。本入口固定使用 **YOLOv8s INT8 batch 1、score gate on、latest、infer FPS 0、送检最大年龄 250 ms、image auto、本地解码预取 prime on、summary 记录**。辅助 score-gate bmodel 必须已准备在 `data/models/score_gate/score_gate_reducemax_f32.bmodel`；它不随 Git 分发。`infer-fps 0` 取消检测限速，`latest` 仍会主动丢弃被新帧覆盖或送检前过期的帧，不保证每路达到输入帧率，也不保证 TPU 每次采样都为 100%。
@@ -93,7 +95,7 @@ sudo env DISPLAY=:0 \
 
 ## 每卡独立配置
 
-用 `--profile <JSON 文件>` 分别设置各卡的路数和小块回传合并预算。未覆盖的字段使用上述模式对应的链路档位；以 `--dry-run` 输出的 `device_configuration.devices` 为准。
+用 `--profile <JSON 文件>` 分别设置各卡的路数、小块回传合并预算、`preview_fps`（大于 0 且不超过 10）和 `output_buffer`（baseline / reuse）。未覆盖的字段使用模式及底层入口默认值；以 `--dry-run` 输出的 `device_configuration.devices` 为准。
 
 例如把以下内容保存为 `data/config/hdmi-showcase.json`：
 

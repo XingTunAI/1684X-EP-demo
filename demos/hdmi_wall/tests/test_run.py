@@ -16,6 +16,16 @@ spec.loader.exec_module(runner)
 
 
 class LauncherTests(unittest.TestCase):
+    def test_reduced_preview_keeps_inference_rate_independent(self):
+        args = self.parse("--preview-fps", "5", "--output-buffer", "reuse", "--infer-fps", "0")
+        plan = runner.build_plan(args)
+        self.assertEqual(self.command_value(plan, "--preview-fps"), "5.0")
+        self.assertEqual(self.command_value(plan, "--output-buffer"), "reuse")
+        self.assertEqual(plan["infer_fps"], 0)
+        for value in ("0", "-1", "11", "nan"):
+            with patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):
+                self.parse("--preview-fps", value)
+
     def parse(self, *extra):
         return runner.arguments(["--root", "/board/repo", *extra])
 

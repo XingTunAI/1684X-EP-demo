@@ -1,5 +1,7 @@
 # 32 路视频墙指标说明
 
+多设备页面左上角的 **READBACK ON / OFF**（快捷键 R）控制全部卡的模型输出和预览回传。OFF 隐藏视频墙，显示每卡 DEC / INF / TPU 与累计 OUTPUT BYTES / PREVIEW BYTES；仍执行真实解码和模型推理。两项字节数在切换完成后应停止增长，编码显示 N/A。详细口径和操作见 [回传开关](readback-toggle.md)。
+
 [仓库首页](../../../README.md) / [HDMI 文档导航](../README.md#文档导航) / [实测索引](results.md)
 
 这些是屏幕上的观测指标，运行命令中的 `--streams`、`--infer-fps` 等属于配置参数。普通视频墙保留全部 32 个视频格；多设备同时运行，通过顶部按钮切换页面。

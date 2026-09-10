@@ -96,6 +96,14 @@ public:
         std::lock_guard<std::mutex> guard(frames_lock_);
         observation_.decoded(id, sequence, source_seconds, monotonic_seconds(after_decode), source_lag_ms, read_ms);
     }
+    void set_readback_enabled(bool enabled) { readback_enabled_.store(enabled); }
+    void begin_readback() { ++readback_inflight_; }
+    void end_readback() { --readback_inflight_; }
+    void record_model_output(bool readback, uint64_t bytes) {
+        if (readback) ++results_readback_; else ++model_only_;
+        output_bytes_ += bytes;
+    }
+    void record_preview_bytes(uint64_t bytes) { preview_bytes_ += bytes; }
     void observe_inference(size_t id, uint64_t sequence, double source_seconds, Time completed) {
         if (stopped_.load()) return;
         std::lock_guard<std::mutex> guard(frames_lock_);
@@ -181,11 +189,11 @@ public:
                 ++rendered_;
                 if (now >= next_snapshot) {
                     snapshot_files(canvas, view.frames, now, view);
-                    next_snapshot = now + std::chrono::seconds(observation_enabled_ ? 1 : 5);
+                    next_snapshot = now + std::chrono::seconds(1);
                 }
                 if (!write_frame(descriptor, canvas)) break;
                 ++published_;
-                next_frame = std::max(next_frame + std::chrono::milliseconds(100), Clock::now());
+                next_frame = std::max(next_frame + std::chrono::milliseconds(readback_enabled_.load() ? 100 : 1000), Clock::now());
                 wait_until(next_frame);
             }
         } catch (const std::exception& exception) {
@@ -251,6 +259,10 @@ private:
             ::pthread_sigmask(SIG_SETMASK, &previous, NULL);
         }
     };
+    Time last_bitmap_ = Time::min();
+    std::atomic<bool> readback_enabled_{true};
+    std::atomic<unsigned> readback_inflight_{0};
+    std::atomic<uint64_t> output_bytes_{0}, preview_bytes_{0}, model_only_{0}, results_readback_{0};
     size_t count_;
     std::string output_dir_;
     int device_;
@@ -326,6 +338,11 @@ private:
                     scale, color, weight, cv::LINE_AA);
     }
     cv::Mat render(const std::vector<Frame>& frames, Time now, const ViewSnapshot& view) {
+        if (!readback_enabled_.load()) {
+            cv::Mat canvas(1080, 1920, CV_8UC3, cv::Scalar(18, 11, 7));
+            label(canvas, "MODEL OUTPUT AND PREVIEW READBACK OFF", 120, 180, 1.2, cv::Scalar(220, 230, 240), 2);
+            return canvas;
+        }
         if (observation_enabled_) return render_observation(view, now);
         cv::Mat canvas(1080, 1920, CV_8UC3, cv::Scalar(18, 15, 12));
         const cv::Scalar white(245, 243, 239), gray(180, 176, 170), cyan(208, 208, 58), red(65, 65, 245);
@@ -503,7 +520,7 @@ private:
     static void json_number(std::ostream& file, double value) {
         if (!std::isfinite(value) || value < 0) file << "null"; else file << value;
     }
-    static void write_observation_image(std::ostream& file, const Frame& frame, Time now) {
+    void write_observation_image(std::ostream& file, const Frame& frame, Time now) const {
         file << "{\"has_image\":" << (frame.image.empty() ? "false" : "true") << ",\"sequence\":";
         if (frame.image.empty()) file << "null"; else file << frame.sequence;
         file << ",\"source_seconds\":"; json_number(file, frame.source_seconds);
@@ -516,7 +533,7 @@ private:
         file << ",\"source_age_ms\":"; json_number(file, source_age_millis(frame, now));
         file << ",\"decode_source_lag_ms\":";
         json_number(file, frame.image.empty() || frame.source_age_ms < 0 ? -1 : std::max(0.0, frame.source_age_ms - frame.frame_age_ms));
-        file << ",\"stale\":" << (freshness_age_millis(frame, now) > 2000 ? "true" : "false") << '}';
+        file << ",\"stale\":" << (readback_enabled_.load() && freshness_age_millis(frame, now) > 2000 ? "true" : "false") << '}';
     }
     void write_observation(std::ostream& file, const ViewSnapshot& view, Time now) const {
         double total_decode = 0, total_infer = 0, target = 0;
@@ -611,7 +628,7 @@ private:
     }
     void snapshot_files(const cv::Mat& canvas, const std::vector<Frame>& frames, Time now, const ViewSnapshot& view) {
         const std::string bitmap = output_dir_ + "/wall.bmp";
-        {
+        if (last_bitmap_ == Time::min() || now - last_bitmap_ >= std::chrono::seconds(5) || stopped_.load()) {
             std::ofstream file(bitmap + ".tmp", std::ios::binary | std::ios::trunc);
             file.exceptions(std::ios::failbit | std::ios::badbit);
             const uint32_t stride = (canvas.cols * 3 + 3) & ~3;
@@ -625,8 +642,9 @@ private:
                 for (uint32_t padding = canvas.cols * 3; padding < stride; ++padding) file.put(0);
             }
             file.close();
+            replace_file(bitmap + ".tmp", bitmap);
+            last_bitmap_ = now;
         }
-        replace_file(bitmap + ".tmp", bitmap);
         const std::string status = output_dir_ + "/status.json";
         {
             std::ofstream file(status + ".tmp", std::ios::trunc);
@@ -651,6 +669,8 @@ private:
                      << ", \"frame\": " << frame.count << ", \"detections\": " << frame.detections
                      << ", \"inference_fps\": " << std::setprecision(8) << view.metrics[id].infer_fps
                      << ", \"decode_fps\": " << view.metrics[id].decode_fps
+                     << ", \"decoded_count\": " << view.metrics[id].decoded
+                     << ", \"inferred_count\": " << view.metrics[id].inferred
                      << ", \"updated_unix_ms\": " << frame.unix_ms << ", \"age_seconds\": ";
                 if (age < 0) file << "null"; else file << age;
                 file << ", \"frame_age_ms\": ";
@@ -661,10 +681,17 @@ private:
                 file << ", \"last_decoded_age_ms\": "; json_number(file, view.metrics[id].last_decoded_age_ms);
                 file << ", \"decode_state\": " << quote(observation_state(view.metrics[id]));
                 file << ", \"policy_drops\": " << frame.policy_drops
-                     << ", \"stale\": " << (freshness_age_millis(frame, now) > 2000 ? "true" : "false")
+                     << ", \"stale\": " << (readback_enabled_.load() && freshness_age_millis(frame, now) > 2000 ? "true" : "false")
                      << ", \"has_image\": " << (frame.image.empty() ? "false" : "true") << '}';
             }
             file << "\n  ]";
+            file << ",\n  \"readback_enabled\": " << (readback_enabled_.load() ? "true" : "false")
+                 << ", \"snapshot_monotonic_s\": " << std::fixed << std::setprecision(6) << monotonic_seconds(now)
+                 << ", \"readback_inflight\": " << readback_inflight_.load()
+                 << ", \"output_readback_bytes\": " << output_bytes_.load()
+                 << ", \"preview_readback_bytes\": " << preview_bytes_.load()
+                 << ", \"model_only_completed\": " << model_only_.load()
+                 << ", \"results_readback_completed\": " << results_readback_.load();
             double total_decode = 0, total_infer = 0;
             for (const auto& row : view.metrics) { total_decode += row.decode_fps; total_infer += row.infer_fps; }
             file << ",\n  \"total_decode_fps\": " << total_decode << ", \"total_infer_fps\": " << total_infer

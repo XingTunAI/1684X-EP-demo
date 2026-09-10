@@ -1,0 +1,10 @@
+{
+  "devices": {
+    "0": {"streams": 32, "gate_merge_budget_kib": 64, "preview_fps": 3, "output_buffer": "reuse"},
+    "1": {"streams": 32, "gate_merge_budget_kib": 64, "preview_fps": 3, "output_buffer": "reuse"}
+  },
+  "context": {
+    "purpose": "Both cards run 32 real decode/inference streams; reduce preview readback and reuse model output buffers.",
+    "validation": "Short comparison on Gen2 x1 and Gen3 x2, not a four-hour capacity certification. Device IDs are explicit overrides, not inferred PCIe generations."
+  }
+}

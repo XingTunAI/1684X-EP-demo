@@ -70,6 +70,7 @@ struct Config {
     int gate_merge_budget_kib = 0;
     double warmup = 5, duration = 30, window = 10;
     float conf = 0.25f, nms = 0.7f;
+    std::string readback_control;
     std::string model, names, output, eof = "stop", output_buffer = "baseline";
     std::string score_gate = "off", score_gate_model, cpu_post = "dense";
     std::string policy = "latest";
@@ -77,14 +78,14 @@ struct Config {
     std::string record_mode = "full";
     std::string prime_local_decoders = "off";
     bool observe_decode = false, inference_enabled = true;
-    double observe_preview_fps = 5;
+    double observe_preview_fps = 5, preview_fps = 10;
     std::vector<size_t> compare_streams;
     double infer_fps = 0, max_frame_age_ms = 250;
     std::vector<std::string> sources;
 };
 static Config arguments(int argc, char** argv) {
     std::map<std::string, std::string> opts;
-    const std::vector<std::string> accepted = {"input", "inputs-file", "streams", "slots", "device", "bmodel", "classnames", "output", "warmup", "duration", "window", "conf", "nms", "local-eof", "output-buffer", "policy", "infer-fps", "max-frame-age-ms", "score-gate", "score-gate-model", "cpu-post", "image-path", "gate-merge-budget-kib", "record-mode", "prime-local-decoders", "observe-decode", "inference", "compare-streams", "observe-preview-fps"};
+    const std::vector<std::string> accepted = {"input", "inputs-file", "streams", "slots", "device", "bmodel", "classnames", "output", "warmup", "duration", "window", "conf", "nms", "local-eof", "output-buffer", "policy", "infer-fps", "max-frame-age-ms", "score-gate", "score-gate-model", "cpu-post", "image-path", "gate-merge-budget-kib", "record-mode", "prime-local-decoders", "observe-decode", "inference", "compare-streams", "observe-preview-fps", "preview-fps", "readback-control"};
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--help") {
@@ -93,6 +94,8 @@ static Config arguments(int argc, char** argv) {
                       << "  [--device 0 --warmup 5 --duration 30 --window 10]\n"
                       << "  [--local-eof stop|loop|fail --output-buffer baseline|reuse --policy latest|all]\n"
                       << "  [--infer-fps 0 --max-frame-age-ms 250] (latest only; 0 disables each limit)\n"
+                      << "  [--readback-control JSON] (runtime output/preview toggle; decoded frames still inferred)\n"
+                      << "  [--preview-fps 10] (per-stream preview readback cap, 0 < FPS <= 10)\n"
                       << "  [--image-path auto|bgr|yuv] (auto selects direct YUV for supported layouts)\n"
                       << "  [--score-gate off|on --score-gate-model AUXILIARY_BMODEL]\n"
                       << "  [--gate-merge-budget-kib 0..1024] (extra row-read budget; nonzero requires gate on)\n"
@@ -137,6 +140,10 @@ static Config arguments(int argc, char** argv) {
     if ((observe != "on" && observe != "off") || (inference != "on" && inference != "off"))
         throw std::runtime_error("observe-decode and inference must be on or off");
     c.observe_decode = observe == "on"; c.inference_enabled = inference == "on";
+    c.readback_control = get("readback-control", "");
+    c.preview_fps = number("preview-fps", 10);
+    if (c.preview_fps <= 0 || c.preview_fps > 10)
+        throw std::runtime_error("preview-fps must be in (0,10]");
     c.observe_preview_fps = number("observe-preview-fps", 5);
     if (c.observe_preview_fps <= 0 || c.observe_preview_fps > 10)
         throw std::runtime_error("observe-preview-fps must be in (0,10]");
@@ -304,6 +311,7 @@ struct Stream {
     bool done = false, eof_seen = false;
     std::string error;
     uint64_t decoded = 0, completed = 0, decoded_measured = 0, completed_measured = 0;
+    uint64_t results_readback_measured = 0, model_only_measured = 0;
     uint64_t records_written = 0, records_written_measured = 0;
     uint64_t previews_submitted = 0, previews_submitted_measured = 0;
     uint64_t baseline_consumed = 0;
@@ -342,6 +350,32 @@ struct SlotInfo {
 struct Shared {
     Config config;
     WallRenderer wall;
+    std::mutex readback_lock;
+    Time next_control_poll = Time::min();
+    bool readback_enabled = true;
+    bool begin_readback() {
+        std::lock_guard<std::mutex> guard(readback_lock);
+        if (!config.readback_control.empty() && Clock::now() >= next_control_poll) {
+            next_control_poll = Clock::now() + std::chrono::milliseconds(100);
+            std::ifstream file(config.readback_control);
+            if (file) {
+                json value; file >> value;
+                if (!value.contains("readback_enabled") || !value["readback_enabled"].is_boolean())
+                    throw std::runtime_error("Invalid readback control document");
+                readback_enabled = value["readback_enabled"].get<bool>();
+            }
+            wall.set_readback_enabled(readback_enabled);
+        }
+        if (readback_enabled) wall.begin_readback();
+        return readback_enabled;
+    }
+    struct ReadbackLease {
+        Shared& state; bool enabled;
+        explicit ReadbackLease(Shared& s) : state(s), enabled(s.begin_readback()) {}
+        ~ReadbackLease() { if (enabled) state.wall.end_readback(); }
+        ReadbackLease(const ReadbackLease&) = delete;
+        ReadbackLease& operator=(const ReadbackLease&) = delete;
+    };
     std::mutex lock;
     std::condition_variable changed;
     bool started = false, failed = false;
@@ -496,6 +530,8 @@ class DecodedPreview {
                     if (stopped_ || state_.stopping()) break;
                     frame = std::move(pending_);
                 }
+                Shared::ReadbackLease readback(state_);
+                if (!readback.enabled) continue;
                 const auto begun = Clock::now();
                 next = add_seconds(begun, 1.0 / state_.config.observe_preview_fps);
                 int csc = -1;
@@ -512,6 +548,7 @@ class DecodedPreview {
                 struct Cleanup { bm_image& image; ~Cleanup() { bm_image_destroy(image); } } cleanup{image};
                 PreviewTiming timing;
                 const auto host = thumbnail.render(image, YoloV8BoxVec{}, csc, timing);
+                state_.wall.record_preview_bytes(640 * 360 * 3);
                 const double source_seconds = frame->live ? -1 : elapsed(state_.start, frame->due);
                 const double lag = frame->live ? -1 : std::max(0.0, millis(frame->due, frame->after_decode));
                 state_.wall.submit_decoded(id_, host, frame->sequence, source_seconds, frame->after_decode, lag);
@@ -722,8 +759,10 @@ static void stream_thread(Shared& state, size_t id) {
             net.preprocess_csc = direct_yuv ? csc : -1;
             const Time before_detect = Clock::now();
             std::vector<bm_image> images{image}; std::vector<YoloV8BoxVec> boxes;
-            if (net.Detect(images, boxes) != 0 || boxes.size() != 1) throw std::runtime_error("Detect failed");
+            Shared::ReadbackLease readback(state);
+            if (net.Detect(images, boxes, readback.enabled) != 0 || boxes.size() != 1) throw std::runtime_error("Detect failed");
             const Time after_detect = Clock::now();
+            state.wall.record_model_output(readback.enabled, net.score_gate_metrics.total_bytes());
             state.wall.observe_inference(id, frame->sequence, frame->live ? -1 : elapsed(state.start, frame->due), after_detect);
             stream.analysis_continuity.add(elapsed(state.measure_start, after_detect), state.config.duration);
             ++rate_count;
@@ -734,9 +773,10 @@ static void stream_thread(Shared& state, size_t id) {
             double preview_ms = 0;
             PreviewTiming preview_timing;
             bool preview_submitted = false;
-            if (last_preview == Time::min() || elapsed(last_preview, after_detect) >= (compare ? 1.0 / state.config.observe_preview_fps : .1)) {
+            if (readback.enabled && (last_preview == Time::min() || elapsed(last_preview, after_detect) >= (compare ? 1.0 / state.config.observe_preview_fps : 1.0 / state.config.preview_fps))) {
                 const auto preview_start = Clock::now();
                 const auto host = thumbnail->render(image, boxes[0], net.preprocess_csc, preview_timing);
+                state.wall.record_preview_bytes(compare ? 640 * 360 * 3 : 256 * 144 * 3);
                 const auto submitted = Clock::now();
                 state.wall.submit(id, host, frame->sequence + 1, boxes[0].size(), process_fps,
                     millis(frame->after_decode, submitted), frame->live ? -1 : millis(frame->due, submitted),
@@ -746,8 +786,8 @@ static void stream_thread(Shared& state, size_t id) {
                 ++stream.previews_submitted;
             }
             const double preprocess = stage(net.m_ts, "yolov8 preprocess"), inference = stage(net.m_ts, "yolov8 inference");
-            const double postprocess = stage(net.m_ts, "yolov8 postprocess"), transfer = stage(net.m_ts, "yolov8 output transfer");
-            const double transfer_wait = stage(net.m_ts, "yolov8 transfer wait"), cpu_post = stage(net.m_ts, "yolov8 cpu postprocess");
+            const double postprocess = readback.enabled ? stage(net.m_ts, "yolov8 postprocess") : 0, transfer = readback.enabled ? stage(net.m_ts, "yolov8 output transfer") : 0;
+            const double transfer_wait = readback.enabled ? stage(net.m_ts, "yolov8 transfer wait") : 0, cpu_post = readback.enabled ? stage(net.m_ts, "yolov8 cpu postprocess") : 0;
             for (auto& item : net.m_ts->records_) item.second->clear();
             for (auto& item : net.m_ts->records_bs) item.second->clear();
             if (state.config.record_mode == "full") {
@@ -777,7 +817,7 @@ static void stream_thread(Shared& state, size_t id) {
                     {"service_ms", millis(selected, after_detect)}, {"pipeline_ms", millis(frame->before_decode, after_detect)},
                     {"frame_age_ms", millis(frame->after_decode, after_detect)},
                     {"source_age_ms", frame->live ? json(nullptr) : json(millis(frame->due, after_detect))},
-                    {"policy", state.config.policy}, {"detections", detections}};
+                    {"policy", state.config.policy}, {"results_readback", readback.enabled}, {"detections", readback.enabled ? detections : json(nullptr)}};
                 // Output counts follow successful JSON insertion, as in the baseline.
                 stream.records << record.dump() << '\n';
                 ++stream.records_written;
@@ -793,6 +833,7 @@ static void stream_thread(Shared& state, size_t id) {
             previous_sequence = frame->sequence;
             ++stream.completed; ++slot.frames;
             if (state.measured(written)) {
+                if (readback.enabled) ++stream.results_readback_measured; else ++stream.model_only_measured;
                 ++stream.completed_measured; ++stream.complete_windows.at(state.window_index(written)); ++slot.measured;
                 slot.detect_ms += millis(before_detect, after_detect);
                 stream.decode.add(millis(frame->before_decode, frame->after_decode)); stream.bridge.add(millis(selected, before_detect));
@@ -836,7 +877,7 @@ int main(int argc, char** argv) {
             {"warmup_s", config.warmup}, {"duration_s", config.duration}, {"window_s", config.window}, {"model", config.model},
             {"conf", config.conf}, {"nms", config.nms}, {"sources", sources}, {"policy", config.policy}, {"local_eof", config.eof},
             {"infer_fps_cap", config.infer_fps}, {"max_frame_age_ms", config.max_frame_age_ms},
-            {"image_path", config.image_path}, {"preprocess_buffer", "resident_per_detector"}, {"output_buffer", config.output_buffer},
+            {"image_path", config.image_path}, {"preprocess_buffer", "resident_per_detector"}, {"output_buffer", config.output_buffer}, {"readback_control", config.readback_control},
             {"pending_queue_capacity", config.policy == "latest" ? 1 : 0},
             {"max_outstanding_per_stream", (config.inference_enabled && config.policy == "latest" ? 3 : 1) + (config.observe_decode ? 2 : 0)},
             {"score_gate", config.score_gate}, {"score_gate_model", config.score_gate_model}, {"score_gate_backend", "bmrt_auxiliary_reducemax"},
@@ -857,7 +898,7 @@ int main(int argc, char** argv) {
             {"business_threads", config.sources.size() * (config.inference_enabled && config.policy == "latest" ? 2 : 1)},
             {"decoded_preview_threads", config.compare_streams.size()},
             {"model_instances", config.inference_enabled ? config.slots : 0}, {"draw", config.inference_enabled}, {"encode", false},
-            {"display", "HDMI via system ffplay or multi-device viewer"}, {"preview_max_fps", 10}, {"preview_thumbnail", {256, 144}},
+            {"display", "HDMI via system ffplay or multi-device viewer"}, {"preview_max_fps", 10}, {"per_stream_preview_fps", config.preview_fps}, {"preview_thumbnail", {256, 144}},
             {"selected_comparison_thumbnail", config.observe_decode ? json({640, 360}) : json(nullptr)},
             {"wall_resolution", {1920, 1080}}});
         std::thread display([&]() { state.wall.run(); if (state.wall.failed()) state.fail("HDMI renderer: " + state.wall.error()); });
@@ -913,7 +954,7 @@ int main(int argc, char** argv) {
                     {"decoded", s.decode_windows[w]}, {"completed_fps", s.complete_windows[w] / duration}, {"decoded_fps", s.decode_windows[w] / duration}});
             }
             json result = {{"stream_id", i}, {"source_id", stream_name(i)}, {"decoded", s.decoded}, {"completed", s.completed},
-                {"decoded_measured", s.decoded_measured}, {"completed_measured", s.completed_measured}, {"decoded_fps", decode_fps}, {"completed_fps", fps},
+                {"decoded_measured", s.decoded_measured}, {"completed_measured", s.completed_measured}, {"decoded_fps", decode_fps}, {"results_readback_measured", s.results_readback_measured}, {"model_only_measured", s.model_only_measured}, {"completed_fps", fps},
                 {"source_width", s.width}, {"source_height", s.height}, {"source_fps", std::isfinite(s.source_fps) ? json(s.source_fps) : json(nullptr)},
                 {"source_ended", s.eof_seen}, {"error", s.error},
                 {"record_mode", config.record_mode}, {"records_written", s.records_written}, {"records_written_measured", s.records_written_measured},

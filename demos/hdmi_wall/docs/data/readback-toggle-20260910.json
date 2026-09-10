@@ -1,0 +1,255 @@
+{
+  "run_id": "20260910T075010Z-b5b1bd80",
+  "formal_seconds": 240,
+  "cards": {
+    "0": "Gen2 x1",
+    "1": "Gen3 x2"
+  },
+  "streams_per_card": 32,
+  "source": "1080p24 local official footage",
+  "settings": {
+    "model": "yolov8s INT8 batch1",
+    "gate": "on when readback enabled",
+    "gate_merge_budget_kib": 64,
+    "preview_fps": 3,
+    "output_buffer": "reuse",
+    "policy": "latest",
+    "infer_fps": 0,
+    "max_frame_age_ms": 250
+  },
+  "reported_phases": {
+    "OFF": 1,
+    "ON": 6
+  },
+  "method": "Exclude first 5 seconds after toggles, intersect formal measurement windows, exclude final 2 seconds. FPS from per-card cumulative count/time differences; TPU from every valid in-window sample. Multiple manual toggles, not continuous one-minute OFF. Source supply capped at 32*24 FPS per card.",
+  "phases": [
+    {
+      "phase": 1,
+      "enabled": false,
+      "devices": {
+        "0": {
+          "seconds": 17.000075999996625,
+          "decode_fps": 767.8789200708627,
+          "infer_fps": 312.5868378471399,
+          "min_stream_decode_fps": 23.94106943992961,
+          "min_stream_infer_fps": 9.7646622285708,
+          "output_bytes_delta": 0,
+          "preview_bytes_delta": 0,
+          "tpu_mean": 100.0,
+          "tpu_min": 100.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 18,
+          "channels": 32,
+          "model_only_delta": 5316,
+          "results_readback_delta": 0
+        },
+        "1": {
+          "seconds": 18.99998300000152,
+          "decode_fps": 768.000687158448,
+          "infer_fps": 314.3687023298664,
+          "min_stream_decode_fps": 23.947389847662684,
+          "min_stream_infer_fps": 9.78948244322035,
+          "output_bytes_delta": 0,
+          "preview_bytes_delta": 0,
+          "tpu_mean": 100.0,
+          "tpu_min": 100.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 18,
+          "channels": 32,
+          "model_only_delta": 5973,
+          "results_readback_delta": 0
+        }
+      }
+    },
+    {
+      "phase": 2,
+      "enabled": true,
+      "devices": {
+        "0": {
+          "seconds": 8.369258999999147,
+          "decode_fps": 769.3632136370325,
+          "infer_fps": 267.1682164454736,
+          "min_stream_decode_fps": 23.89697821515864,
+          "min_stream_infer_fps": 8.005487702078144,
+          "output_bytes_delta": 253858752,
+          "preview_bytes_delta": 68124672,
+          "tpu_mean": 97.75,
+          "tpu_min": 94.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 8,
+          "channels": 32,
+          "model_only_delta": 0,
+          "results_readback_delta": 2239
+        },
+        "1": {
+          "seconds": 7.511406999998144,
+          "decode_fps": 769.4963140729064,
+          "infer_fps": 275.3145981838704,
+          "min_stream_decode_fps": 23.963553033412314,
+          "min_stream_infer_fps": 8.520374411879933,
+          "output_bytes_delta": 227434704,
+          "preview_bytes_delta": 69341184,
+          "tpu_mean": 100.0,
+          "tpu_min": 100.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 8,
+          "channels": 32,
+          "model_only_delta": 0,
+          "results_readback_delta": 2067
+        }
+      }
+    },
+    {
+      "phase": 3,
+      "enabled": false,
+      "devices": {
+        "0": {
+          "seconds": 5.999244999999064,
+          "decode_fps": 767.9299645206553,
+          "infer_fps": 312.03926494088705,
+          "min_stream_decode_fps": 23.836332738539983,
+          "min_stream_infer_fps": 9.667883208638596,
+          "output_bytes_delta": 0,
+          "preview_bytes_delta": 0,
+          "tpu_mean": 100.0,
+          "tpu_min": 100.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 6,
+          "channels": 32,
+          "model_only_delta": 1874,
+          "results_readback_delta": 0
+        },
+        "1": {
+          "seconds": 5.999955999999656,
+          "decode_fps": 768.8389714858349,
+          "infer_fps": 314.1689705724689,
+          "min_stream_decode_fps": 23.83350811239419,
+          "min_stream_infer_fps": 9.666737556075965,
+          "output_bytes_delta": 0,
+          "preview_bytes_delta": 0,
+          "tpu_mean": 100.0,
+          "tpu_min": 100.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 6,
+          "channels": 32,
+          "model_only_delta": 1887,
+          "results_readback_delta": 0
+        }
+      }
+    },
+    {
+      "phase": 4,
+      "enabled": true,
+      "devices": {
+        "0": {
+          "seconds": 46.40237699999852,
+          "decode_fps": 767.9347978229894,
+          "infer_fps": 262.14174329906393,
+          "min_stream_decode_fps": 23.964289588010445,
+          "min_stream_infer_fps": 8.103033170046697,
+          "output_bytes_delta": 1458373728,
+          "preview_bytes_delta": 379330560,
+          "tpu_mean": 95.06382978723404,
+          "tpu_min": 72.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 47,
+          "channels": 32,
+          "model_only_delta": 0,
+          "results_readback_delta": 12164
+        },
+        "1": {
+          "seconds": 47.238439999997354,
+          "decode_fps": 768.2091110545148,
+          "infer_fps": 275.8770188008057,
+          "min_stream_decode_fps": 23.984703982605343,
+          "min_stream_infer_fps": 8.531187736089985,
+          "output_bytes_delta": 1450642032,
+          "preview_bytes_delta": 433852416,
+          "tpu_mean": 100.0,
+          "tpu_min": 100.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 46,
+          "channels": 32,
+          "model_only_delta": 0,
+          "results_readback_delta": 13028
+        }
+      }
+    },
+    {
+      "phase": 5,
+      "enabled": false,
+      "devices": {
+        "0": {
+          "seconds": 2.999973999998474,
+          "decode_fps": 768.0066560580765,
+          "infer_fps": 311.66936780134614,
+          "min_stream_decode_fps": 23.66687177956746,
+          "min_stream_infer_fps": 9.666750445175442,
+          "output_bytes_delta": 0,
+          "preview_bytes_delta": 0,
+          "tpu_mean": 100.0,
+          "tpu_min": 100.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 3,
+          "channels": 32,
+          "model_only_delta": 945,
+          "results_readback_delta": 0
+        },
+        "1": {
+          "seconds": 3.9999790000001667,
+          "decode_fps": 767.5040293961223,
+          "infer_fps": 314.50165113365534,
+          "min_stream_decode_fps": 23.750124688153623,
+          "min_stream_infer_fps": 9.75005118776833,
+          "output_bytes_delta": 0,
+          "preview_bytes_delta": 0,
+          "tpu_mean": 100.0,
+          "tpu_min": 100.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 4,
+          "channels": 32,
+          "model_only_delta": 1243,
+          "results_readback_delta": 0
+        }
+      }
+    },
+    {
+      "phase": 6,
+      "enabled": true,
+      "devices": {
+        "0": {
+          "seconds": 113.63275099999737,
+          "decode_fps": 768.0180162143748,
+          "infer_fps": 261.1395019381401,
+          "min_stream_decode_fps": 23.989562656984894,
+          "min_stream_infer_fps": 8.087457109966662,
+          "output_bytes_delta": 3540136320,
+          "preview_bytes_delta": 928641024,
+          "tpu_mean": 95.18181818181819,
+          "tpu_min": 84.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 110,
+          "channels": 32,
+          "model_only_delta": 0,
+          "results_readback_delta": 29676
+        },
+        "1": {
+          "seconds": 113.76040900000226,
+          "decode_fps": 767.9385189270748,
+          "infer_fps": 276.0362790186468,
+          "min_stream_decode_fps": 23.997804016333536,
+          "min_stream_infer_fps": 8.588225100350867,
+          "output_bytes_delta": 3478117104,
+          "preview_bytes_delta": 1032818688,
+          "tpu_mean": 99.98181818181818,
+          "tpu_min": 98.0,
+          "tpu_max": 100.0,
+          "tpu_samples": 110,
+          "channels": 32,
+          "model_only_delta": 0,
+          "results_readback_delta": 31400
+        }
+      }
+    }
+  ]
+}

@@ -26,6 +26,23 @@ class ShowcaseTests(unittest.TestCase):
         with patch.object(runner.sys, "platform", "win32"):
             return runner.build_plan(args)
 
+    def test_shipped_low_readback_profile_preserves_both_32_stream_workers(self):
+        profile = RUNNER_PATH.parent / "profiles" / "dual32-low-readback.json"
+        plan = self.off_board_plan(self.parse("--profile", str(profile)))
+        command = plan["run_command"][2:]
+        with tempfile.TemporaryDirectory() as temp:
+            config = Path(temp) / "devices.json"
+            config.write_text(json.dumps(plan["device_configuration"]))
+            command[command.index("--device-config") + 1] = str(config)
+            args = runner.multi_run.arguments(command)
+        multi = runner.multi_run.build_plan(args)
+        self.assertEqual(multi["total_streams"], 64)
+        for worker in multi["workers"]:
+            self.assertEqual(worker["preview_fps"], 3)
+            self.assertEqual(worker["output_buffer"], "reuse")
+            self.assertEqual(worker["infer_fps"], 0)
+            self.assertEqual(worker["gate_merge_budget_kib"], 64)
+
     def test_four_hour_default_rounding_summary_and_concurrent_pages(self):
         args = self.parse()
         plan = self.off_board_plan(args)

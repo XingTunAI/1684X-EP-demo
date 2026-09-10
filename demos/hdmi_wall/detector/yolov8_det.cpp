@@ -292,7 +292,7 @@ bm_status_t YoloV8_det::read_score_gated_output(bm_tensor_t* tensor, float* host
     return BM_SUCCESS;
 }
 
-int YoloV8_det::Detect(const std::vector<bm_image>& input_images, std::vector<YoloV8BoxVec>& boxes) {
+int YoloV8_det::Detect(const std::vector<bm_image>& input_images, std::vector<YoloV8BoxVec>& boxes, bool readback) {
     if (input_images.empty() || input_images.size() > static_cast<size_t>(batch_size))
         throw std::runtime_error("Detect requires between 1 and model batch_size input images");
     prepare_output_buffers();
@@ -313,6 +313,18 @@ int YoloV8_det::Detect(const std::vector<bm_image>& input_images, std::vector<Yo
     assert(ret == 0);
     m_ts->save("yolov8 inference", input_images.size());
 
+    if (!readback) {
+        // The real decoded input was preprocessed and inferred above. Only host
+        // output consumption is omitted; do not run the score-gate model either.
+        score_gate_metrics = ScoreGateMetrics{};
+        output_allocation_ms = output_copy_ms = 0;
+        gate_candidate_rows_valid = false;
+        gate_candidate_rows.clear();
+        boxes.assign(input_images.size(), YoloV8BoxVec{});
+        if (!reuse_output_buffers)
+            for (auto& output : output_tensors) bm_free_device(handle, output.device_mem);
+        return 0;
+    }
     m_ts->save("yolov8 postprocess", input_images.size());
     ret = post_process(input_images, output_tensors, txy_batch, ratios_batch, boxes);
     assert(ret == 0);

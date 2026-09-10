@@ -49,6 +49,71 @@ class ViewerTests(unittest.TestCase):
     def page(self, device=0):
         return viewer.DevicePage(device, Path("/preview.bgr"), Path("/worker"), 6)
 
+    def test_readback_toggle_is_global_atomic_and_audited(self):
+        with tempfile.TemporaryDirectory() as temp:
+            control = Path(temp) / "readback-control.json"
+            state = viewer.ViewerState([self.page(0), self.page(1)], control_path=control)
+            for expected in (False, True, False):
+                self.assertTrue(state.toggle_readback())
+                self.assertIs(json.loads(control.read_text())["readback_enabled"], expected)
+                self.assertIs(state.snapshot(0, 0)["readback_enabled_requested"], expected)
+                self.assertFalse(control.with_name(control.name + ".tmp").exists())
+            events = [json.loads(line) for line in control.with_name("readback-events.jsonl").read_text().splitlines()]
+            self.assertEqual([e["readback_enabled"] for e in events], [False, True, False])
+            self.assertTrue(all(e["scope"] == "all_selected_devices" for e in events))
+            self.assertEqual(state.active.device, 0)
+            state.close_requested = True
+            self.assertFalse(state.toggle_readback())
+            self.assertFalse(viewer.ViewerState([self.page()]).toggle_readback())
+
+    def test_readback_control_requires_supported_manifest_and_boolean(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            path = root / "viewer.json"
+            control = root / "readback-control.json"
+            manifest = {"devices": [{"device": 0, "fifo": str(root / "preview.bgr"), "output": str(root)}]}
+            path.write_text(json.dumps(manifest))
+            self.assertIsNone(viewer.read_manifest(path)[0].control_path)
+            manifest["readback_control"] = str(control)
+            path.write_text(json.dumps(manifest))
+            state = viewer.read_manifest(path)[0]
+            self.assertEqual(state.control_path, control)
+            control.write_text(json.dumps({"readback_enabled": False}))
+            state.poll_manifest(path)
+            self.assertFalse(state.readback_enabled)
+            for invalid in (1, "true", None):
+                control.write_text(json.dumps({"readback_enabled": invalid}))
+                state.poll_manifest(path)
+                self.assertFalse(state.readback_enabled)
+            manifest["readback_control"] = str(root / "unexpected.json")
+            path.write_text(json.dumps(manifest))
+            self.assertIsNone(viewer.read_manifest(path)[0].control_path)
+
+    def test_model_only_dashboard_hides_cached_video_and_shows_both_cards(self):
+        pages = [self.page(0), self.page(1)]
+        state = viewer.ViewerState(pages, control_path=Path("/control"))
+        state.readback_enabled = False
+        for page in pages:
+            page.buffer.feed(b"abcdef", 10, 10000)
+            page.live_status = {"timestamp_unix_ms": 10000, "readback_enabled": False,
+                                "readback_inflight": 0, "total_decode_fps": 768,
+                                "total_infer_fps": 360, "output_readback_bytes": 12,
+                                "preview_readback_bytes": 34}
+        display = viewer.SDLViewer.__new__(viewer.SDLViewer)
+        display.lib, display.renderer = Mock(), None
+        display.text, display.color, display.fill = Mock(), Mock(), Mock()
+        display.lib.SDL_RenderClear.return_value = 0
+        def output_size(_renderer, width, height):
+            width._obj.value, height._obj.value = 1920, 1080
+            return 0
+        display.lib.SDL_GetRendererOutputSize.side_effect = output_size
+        with patch.object(viewer.time, "time", return_value=10):
+            display.render(state, 10)
+        display.lib.SDL_UpdateTexture.assert_not_called()
+        texts = [c.args[0] for c in display.text.call_args_list]
+        self.assertTrue(any("ENCODE: N/A" in text for text in texts))
+        self.assertEqual(sum("OUTPUT BYTES 12" in text for text in texts), 2)
+
     def test_arbitrary_chunk_boundaries_keep_only_latest_complete_frame(self):
         buffer = viewer.FrameBuffer(6)
         buffer.feed(b"abc", 0, 0)

@@ -76,6 +76,7 @@ class DevicePage:
         self.launcher_status = "starting"
         self.returncode = None
         self.telemetry = None
+        self.live_status = None
         self.telemetry_max_age = 10.0
 
     def tpu_label(self, now: float) -> str:
@@ -154,6 +155,11 @@ class DevicePage:
 
     def poll_summary(self):
         try:
+            live_status = json.loads((self.output / "status.json").read_text(encoding="utf-8"))
+            self.live_status = live_status if isinstance(live_status, dict) else None
+        except (OSError, ValueError):
+            self.live_status = None
+        try:
             live = json.loads((self.output.parent / "telemetry-live.json").read_text(encoding="utf-8"))
             interval = live["interval_seconds"]
             if isinstance(interval, bool) or not isinstance(interval, (int, float)) or not math.isfinite(interval) or interval < 0:
@@ -195,14 +201,28 @@ class DevicePage:
 
 
 class ViewerState:
-    def __init__(self, pages: list[DevicePage], supervised_close: bool = False):
+    def __init__(self, pages: list[DevicePage], supervised_close: bool = False, control_path: Path | None = None):
         self.pages = pages
+        self.control_path = control_path
+        self.readback_enabled = True
         self.active_index = 0
         self.switches = 0
         self.supervised_close = supervised_close
         self.close_requested = False
         self.close_requested_at = None
         self.failure = ""
+
+    def toggle_readback(self) -> bool:
+        if self.control_path is None or self.close_requested:
+            return False
+        enabled = not self.readback_enabled
+        event = {"readback_enabled": enabled, "monotonic_s": time.monotonic(),
+                 "timestamp_unix_s": time.time(), "scope": "all_selected_devices"}
+        write_status(self.control_path, event)
+        with self.control_path.with_name("readback-events.jsonl").open("a", encoding="utf-8") as log:
+            log.write(json.dumps(event) + "\n")
+        self.readback_enabled = enabled
+        return True
 
     @property
     def active(self) -> DevicePage:
@@ -237,10 +257,13 @@ class ViewerState:
             "running": running, "pid": os.getpid(), "active_device": self.active.device,
             "switches": self.switches, "updated_unix_ms": unix_ms,
             "supervised_close": self.supervised_close, "close_requested": self.close_requested,
-            "failure": self.failure,
+            "failure": self.failure, "readback_enabled_requested": self.readback_enabled,
+            "readback_control_available": self.control_path is not None,
             "devices": [{
                 "device": page.device, "streams": page.streams, "pcie_link_label": page.pcie_link_label,
                 "frames_received": page.buffer.frames,
+                "readback_enabled": (page.live_status or {}).get("readback_enabled"),
+                "readback_inflight": (page.live_status or {}).get("readback_inflight"),
                 "latest_received_unix_ms": page.buffer.latest_unix_ms,
                 "view_age_ms": None if page.buffer.age(now) is None else round(page.buffer.age(now) * 1000, 3),
                 "partial_bytes": page.buffer.used, "state": page.state(now),
@@ -252,6 +275,13 @@ class ViewerState:
         }
 
     def poll_manifest(self, path: Path):
+        if self.control_path is not None:
+            try:
+                value = json.loads(self.control_path.read_text(encoding="utf-8"))["readback_enabled"]
+                if type(value) is bool:
+                    self.readback_enabled = value
+            except (OSError, ValueError, KeyError, TypeError):
+                pass
         try:
             with path.open(encoding="utf-8") as stream:
                 manifest = json.load(stream)
@@ -294,7 +324,9 @@ def read_manifest(path: Path):
                 or not re.fullmatch(r"PCIe [0-9]+(?:\.[0-9]+)?(?: GT/s)? x[1-9][0-9]*", label)):
             label = None
         pages.append(DevicePage(device, fifo, output, width * height * 3, streams, label))
-    return ViewerState(pages, supervised_close=manifest.get("supervised_close") is True), width, height, float(fps)
+    control = path.parent / "readback-control.json"
+    control = control if manifest.get("readback_control") == str(control) else None
+    return ViewerState(pages, supervised_close=manifest.get("supervised_close") is True, control_path=control), width, height, float(fps)
 
 
 def write_status(path: Path, value: dict):
@@ -432,6 +464,8 @@ class SDLViewer:
                 key = event.key.keysym.sym
                 if key == 27:
                     return True, changed
+                elif key == ord("r"):
+                    changed = state.toggle_readback() or changed
                 elif ord("1") <= key <= ord("4"):
                     changed = state.select(key - ord("1")) or changed
                 elif key in (1073741903, 1073741904):
@@ -448,6 +482,9 @@ class SDLViewer:
                 else:
                     x, y = event.touch.x * width.value, event.touch.y * height.value
                 x, y = to_logical(x, y, width.value, height.value)
+                if 18 <= x < 258 and 52 <= y < 88:
+                    changed = state.toggle_readback() or changed
+                    continue
                 index = hit_button(len(state.pages), x, y)
                 if index is not None:
                     changed = state.select(index) or changed
@@ -489,7 +526,11 @@ class SDLViewer:
         self.check(self.lib.SDL_RenderClear(self.renderer))
         self.fill((0, 0, 1920, 96), (18, 27, 40))
         self.text("HDMI WALL", 24, 24, 3)
-        self.text("DEVICE PAGES", 24, 57, 2, (129, 151, 178))
+        if state.control_path is not None:
+            self.fill((18, 52, 240, 36), (34, 95, 70) if state.readback_enabled else (131, 76, 31))
+            self.text("READBACK " + ("ON" if state.readback_enabled else "OFF") + " / R", 27, 63, 2)
+        else:
+            self.text("DEVICE PAGES", 24, 57, 2, (129, 151, 178))
         for index, (page, box) in enumerate(zip(state.pages, button_rects(len(state.pages)))):
             self.fill(box, (29, 83, 125) if index == state.active_index else (34, 45, 60))
             hardware = page.hardware_label()
@@ -506,7 +547,7 @@ class SDLViewer:
             self.text(state_text, box[0] + 18, 66 if hardware else 57, state_size,
                       (121, 225, 178) if page_state == "live" else (249, 189, 104))
         page = state.active
-        if page.buffer.frames:
+        if state.readback_enabled and page.buffer.frames:
             version = (page.device, page.buffer.frames)
             if version != self.uploaded:
                 pixels = (C.c_uint8 * len(page.buffer.latest)).from_buffer(page.buffer.latest)
@@ -516,8 +557,28 @@ class SDLViewer:
             destination = self.rectangle(((1920 - self.width * ratio) / 2, 100 + (942 - self.height * ratio) / 2,
                                           self.width * ratio, self.height * ratio))
             self.check(self.lib.SDL_RenderCopy(self.renderer, self.texture, None, C.byref(destination)))
+        if not state.readback_enabled:
+            self.text("DECODE / MODEL INFERENCE / ALL DEVICES", 70, 155, 3)
+            self.text("MODEL OUTPUT AND PIXEL PREVIEW READBACK: OFF", 70, 207, 2, (255, 194, 110))
+            self.text("ENCODE: N/A - THIS DEMO DOES NOT RUN AN ENCODER", 70, 240, 2)
+            for index, item in enumerate(state.pages):
+                top = 310 + index * 150
+                live = item.live_status or {}
+                stamp = live.get("timestamp_unix_ms")
+                fresh = (type(stamp) in (int, float) and math.isfinite(stamp)
+                         and 0 <= time.time()*1000-stamp < 3000)
+                self.fill((55, top-15, 1810, 135), (24, 32, 46))
+                self.text(f"DEVICE {item.device} | {item.streams or '--'} CH | {item.pcie_link_label or 'PCIE --'}", 80, top, 2)
+                def metric(key):
+                    value = live.get(key)
+                    return f"{value:.1f}" if fresh and type(value) in (int, float) and math.isfinite(value) else "--"
+                self.text("DEC " + metric("total_decode_fps") + " FPS    INF " + metric("total_infer_fps") + " FPS    " + item.tpu_label(now), 80, top+35, 3)
+                settled = fresh and live.get("readback_enabled") is False and live.get("readback_inflight") == 0
+                self.text(("READBACK OFF" if settled else "SWITCHING / WAITING") + " | OUTPUT BYTES " + str(live.get("output_readback_bytes", "--")) + " | PREVIEW BYTES " + str(live.get("preview_readback_bytes", "--")), 80, top+80, 2, (121, 225, 178) if settled else (255, 194, 110))
+            self.text("BYTE COUNTERS ARE CUMULATIVE. THEY SHOULD STOP GROWING AFTER SWITCHING.", 70, 970, 2)
+            self.text("INPUT UPLOAD AND SMALL STATUS QUERIES REMAIN. PRESS R TO RESTORE VIDEO.", 70, 1005, 2)
         status = page.state(now)
-        if status != "live" or state.close_requested:
+        if (state.readback_enabled and status != "live") or state.close_requested:
             messages = {"waiting": "WAITING FOR DEVICE", "stale": "STALE VIEW", "disconnected": "DEVICE DISCONNECTED",
                         "ended": "DEVICE FINISHED", "error": "DEVICE ERROR - CHECK LOGS"}
             message = "STOPPING DEVICES" if state.close_requested else messages[status]
@@ -525,7 +586,7 @@ class SDLViewer:
             self.text(message, (1920 - len(message) * 24) / 2, 504, 4, (255, 194, 110))
             self.text("DEVICE " + str(page.device), 848, 553, 2)
         self.fill((0, 1044, 1920, 36), (18, 27, 40))
-        self.text("1-4 / LEFT-RIGHT / CLICK: SWITCH DEVICE    ESC: CLOSE", 24, 1055, 2)
+        self.text("1-4 / ARROWS: SWITCH DEVICE    R: TOGGLE READBACK    ESC: CLOSE", 24, 1055, 2)
         age = page.buffer.age(now)
         self.text("VIEW UPDATE: " + ("--" if age is None else f"{age:.1f}S"), 1510, 1055, 2)
         self.lib.SDL_RenderPresent(self.renderer)

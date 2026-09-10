@@ -46,9 +46,17 @@ def normalize_device_overrides(value: object) -> dict:
     for key, options in value.items():
         if not isinstance(key, str) or not key.isdecimal() or str(int(key)) != key:
             raise ValueError(f"Invalid device configuration key: {key!r}")
-        if not isinstance(options, dict) or set(options) - {"streams", "gate_merge_budget_kib"}:
-            raise ValueError(f"Device {key} accepts only streams and gate_merge_budget_kib")
+        if not isinstance(options, dict) or set(options) - {"streams", "gate_merge_budget_kib", "preview_fps", "output_buffer"}:
+            raise ValueError(f"Device {key} accepts streams, gate_merge_budget_kib, preview_fps and output_buffer")
         for name, number in options.items():
+            if name == "output_buffer":
+                if number not in ("baseline", "reuse"):
+                    raise ValueError(f"Device {key}: output_buffer must be baseline or reuse")
+                continue
+            if name == "preview_fps":
+                if type(number) not in (int, float) or not math.isfinite(number) or not 0 < number <= 10:
+                    raise ValueError(f"Device {key}: preview_fps must be finite and in (0,10]")
+                continue
             low, high = (1, 32) if name == "streams" else (0, 1024)
             if not isinstance(number, int) or isinstance(number, bool) or not low <= number <= high:
                 raise ValueError(f"Device {key}: {name} must be an integer from {low} to {high}")
@@ -92,6 +100,8 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Per-channel detection start-rate cap; defaults: latest=5, all=0.")
     parser.add_argument("--max-frame-age-ms", type=single.nonnegative_finite, default=None,
                         help="Discard expired waiting frames; defaults: latest=250, all=0. Use 0 to disable.")
+    parser.add_argument("--preview-fps", type=single.observation_preview_fps, default=10.0)
+    parser.add_argument("--output-buffer", choices=("baseline", "reuse"), default="baseline")
     single.add_observation_arguments(parser)
     parser.add_argument("--fifo-timeout", type=single.positive, default=90,
                         help="Maximum wait for each worker's FIFO, seconds.")
@@ -178,6 +188,7 @@ def build_plan(args: argparse.Namespace) -> dict:
         device_output = output / f"device_{device}"
         worker["output"] = str(device_output)
         worker["worker_command"][-1] = str(device_output)
+        worker["worker_command"][-2:-2] = ["--readback-control", str(output / "readback-control.json")]
         # Reuse single-device file preflight without requiring its ffplay player.
         worker["player_command"] = [python]
         worker.pop("player_environment")
@@ -195,6 +206,7 @@ def build_plan(args: argparse.Namespace) -> dict:
                      **({"pcie_link_label": pcie_labels[item["device"]]} if item["device"] in pcie_labels else {})}
                     for item in workers],
         "width": 1920, "height": 1080, "fps": 10, "supervised_close": True,
+        "readback_control": str(output / "readback-control.json") if args.inference == "on" else None,
     }
     return {
         "output": str(output), "selected_devices": args.devices,
@@ -205,6 +217,8 @@ def build_plan(args: argparse.Namespace) -> dict:
         "gate_merge_budget_kib_by_device": {str(item["device"]): item["gate_merge_budget_kib"] for item in workers},
         "record_mode": args.record_mode,
         "prime_local_decoders": args.prime_local_decoders,
+        "preview_fps_by_device": {str(item["device"]): item["preview_fps"] for item in workers},
+        "output_buffer_by_device": {str(item["device"]): item["output_buffer"] for item in workers},
         "observe_decode": args.observe_decode, "inference": args.inference,
         "compare_streams": args.compare_streams, "compare_stream_ids": args.compare_stream_ids,
         "observe_preview_fps": args.observe_preview_fps,

@@ -143,6 +143,9 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Extra output-read budget for merging small score-gate ranges, 0..1024 KiB; nonzero requires score-gate on.")
     parser.add_argument("--image-path", choices=("auto", "bgr", "yuv"), default="auto",
                         help="auto uses direct YUV preprocessing when supported; bgr retains the reference conversion path.")
+    parser.add_argument("--preview-fps", type=observation_preview_fps, default=10.0,
+                        help="Per-stream detection preview readback cap, (0,10]; does not cap inference.")
+    parser.add_argument("--output-buffer", choices=("baseline", "reuse"), default="baseline")
     add_observation_arguments(parser)
     parser.add_argument("--fifo-timeout", type=positive, default=90, help="Maximum FIFO startup wait, seconds.")
     parser.add_argument("--dry-run", action="store_true", help="Print the plan without checking board files or launching anything.")
@@ -190,7 +193,7 @@ def build_plan(args: argparse.Namespace) -> dict:
         "--input", str(source), "--streams", str(args.streams), "--device", str(args.device),
         "--warmup", "3",
         "--duration", str(args.duration), "--window", str(min(10, args.duration)), "--local-eof", "loop",
-        "--output-buffer", "baseline", "--score-gate", args.score_gate,
+        "--output-buffer", args.output_buffer, "--preview-fps", str(args.preview_fps), "--score-gate", args.score_gate,
         "--record-mode", args.record_mode,
         "--prime-local-decoders", args.prime_local_decoders,
         "--gate-merge-budget-kib", str(args.gate_merge_budget_kib),
@@ -215,6 +218,7 @@ def build_plan(args: argparse.Namespace) -> dict:
         "player_environment": player_environment(), "input": str(source), "model": str(model),
         "classnames": str(classes), "score_gate_model": str(gate),
         "selected_device": args.device, "streams": args.streams,
+        "output_buffer": args.output_buffer, "preview_fps": args.preview_fps,
         "gate_merge_budget_kib": args.gate_merge_budget_kib,
         "record_mode": args.record_mode,
         "prime_local_decoders": args.prime_local_decoders,

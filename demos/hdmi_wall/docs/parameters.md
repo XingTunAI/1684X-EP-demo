@@ -34,12 +34,14 @@
 | `--infer-fps 5` | 每路检测启动速率上限，非负有限数；0 不限频，5 表示至多约每 200 ms 启动一次。它不是实际完成速率保证。 |
 | `--max-frame-age-ms 250` | 在解码后发布与取帧送检时淘汰超龄帧，0 关闭。latest 默认 250，all 默认 0；完成检测后的年龄仍可能超过此值。 |
 | `--record-mode full` | full 保存逐帧检测 JSONL；summary 仅保存汇总，适合减少长测记录开销。 |
+| `--preview-fps 3` | 每路检测缩略图回传上限，大于 0 且不超过 10，默认 10；不限制解码 / 模型推理。实际预览速率可能更低。 |
+| `--output-buffer reuse` | 复用模型输出设备内存；baseline 每次分配 / 释放，为默认值。不影响模型输出内容。 |
 | `--image-path auto` | 优先适用的设备 YUV 路径，不适用时回退 BGR；显式 yuv 不支持时会报错，bgr 用于对照。 |
 | `--prime-local-decoders on` | 源时钟开始前预取各本地解码器首帧；保留实际时间戳，直播不适用。默认 off。 |
 | `--gate-merge-budget-kib 64` | 每帧允许额外回读非候选行的合并预算，0–1024 KiB；非零要求 gate on。用于减少小块调用，不是总线带宽限额。 |
 | `--fifo-timeout 90` | 等待预览管道启动的最大秒数，正整数；不是运行时长。 |
 | `--telemetry-interval 5` | 仅多卡入口：每卡 TPU 采样间隔，秒；默认 0 关闭，启用后显示 TPU 并保存采样。 |
-| `--device-config PATH` | 仅多卡入口：逐卡覆盖路数和合并预算的 JSON，格式见 [每卡配置](showcase.md#每卡独立配置)。 |
+| `--device-config PATH` | 仅多卡入口：逐卡覆盖路数、合并预算、preview_fps、output_buffer 的 JSON，格式见 [每卡配置](showcase.md#每卡独立配置)。 |
 | `--root /userdata/1684X-EP-demo` | 板端仓库根目录；Linux 通常自动定位，Windows 只做计划预览时需指定 Linux 路径。 |
 | `--dry-run` | 打印计划，不启动任务。普通入口不因此确认设备或所需文件实际可用。 |
 | `--stop` | 停止对应运行管理器记录的任务；使用与启动一致的权限。 |

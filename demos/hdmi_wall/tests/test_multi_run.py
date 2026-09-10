@@ -20,6 +20,21 @@ with patch.object(sys, "path", [str(RUNNER_PATH.parent), *sys.path]):
 
 
 class PlanTests(unittest.TestCase):
+    def test_per_device_preview_cap_does_not_change_streams_or_inference(self):
+        args = self.parse("--devices", "0,1", "--infer-fps", "0")
+        args.device_overrides = runner.normalize_device_overrides({
+            "0": {"preview_fps": 3, "output_buffer": "reuse"},
+            "1": {"preview_fps": 5, "output_buffer": "reuse"}})
+        plan = runner.build_plan(args)
+        self.assertEqual(plan["total_streams"], 64)
+        self.assertEqual(plan["preview_fps_by_device"], {"0": 3, "1": 5})
+        for worker in plan["workers"]:
+            self.assertEqual(worker["infer_fps"], 0)
+            self.assertEqual(worker["output_buffer"], "reuse")
+        for value in (True, 0, 11, float("nan"), "3"):
+            with self.assertRaises(ValueError):
+                runner.normalize_device_overrides({"0": {"preview_fps": value}})
+
     def parse(self, *extra):
         return runner.arguments(["--root", "/board/repo", *extra])
 
@@ -30,10 +45,13 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(plan["shared_lock"], "/board/repo/data/results/hdmi-wall/launcher.lock")
         self.assertEqual(len(plan["viewer_manifest"]["devices"]), 4)
         self.assertIs(plan["viewer_manifest"]["supervised_close"], True)
+        control = plan["output"] + "/readback-control.json"
+        self.assertEqual(plan["viewer_manifest"]["readback_control"], control)
         for index, worker in enumerate(plan["workers"]):
             command = worker["worker_command"]
             self.assertEqual(command[command.index("--device") + 1], str(index))
             self.assertEqual(command[command.index("--streams") + 1], "32")
+            self.assertEqual(command[command.index("--readback-control") + 1], control)
             self.assertEqual(command[-1], worker["output"])
             self.assertEqual(worker["output"], plan["output"] + f"/device_{index}")
             self.assertEqual(worker["fifo"], worker["output"] + "/preview.bgr")
@@ -77,6 +95,7 @@ class PlanTests(unittest.TestCase):
                               "--observe-preview-fps", "10", "--device-config", str(config))
             plan = runner.build_plan(args)
         self.assertEqual(plan["inference"], "off")
+        self.assertIsNone(plan["viewer_manifest"]["readback_control"])
         self.assertEqual(plan["compare_stream_ids"], [1, 0])
         for worker in plan["workers"]:
             command = worker["worker_command"]
