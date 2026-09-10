@@ -1,5 +1,7 @@
 # 输出指标与状态
 
+本页定义 JSON / CSV 输出与统计口径。HDMI 页面读数见 [屏幕指标](../demos/hdmi_wall/docs/wall-indicators.md)，运行选项见 [命令参数](../demos/hdmi_wall/docs/parameters.md)。
+
 本页定义各 demo 共用的概念。具体文件树和参数以各 demo 的 README 为准，不同程序的计数位置和计时区间不能直接混用。
 
 ## 帧率

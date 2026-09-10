@@ -1,5 +1,7 @@
 # 实时调度实现与验证
 
+[仓库首页](../../../README.md) / [HDMI 文档导航](../README.md#文档导航) / [实测索引](results.md)
+
 运行入口和参数见 [HDMI 视频墙](../README.md)。实现位于 `main.cpp`、`realtime_policy.hpp` 和 `wall_renderer.hpp`。
 
 ## 数据流与计数

@@ -44,7 +44,7 @@ ssh -x linaro@BOARD_IP
 id
 ```
 
-普通用户安装系统包时需要相应的 `sudo` 权限。ADB 或 SSH 登录成功仅表示终端可用，不代表获得 HDMI 桌面的显示权限；板端桌面显示地址与认证文件的选择见 [通过 ADB 或 SSH 运行到 HDMI](../demos/hdmi_wall/README.md#通过-adb-或-ssh-运行到-hdmi)。
+普通用户安装系统包时需要相应的 `sudo` 权限。ADB 或 SSH 登录成功仅表示终端可用，不代表获得 HDMI 桌面的显示权限；板端桌面显示地址与认证文件的选择见 [通过 ADB 或 SSH 运行到 HDMI](../demos/hdmi_wall/docs/display.md)。
 
 ## 取得仓库
 
@@ -125,7 +125,7 @@ ls -ld /opt/sophon/sophon-ffmpeg-latest/lib/cmake \
 
 构建脚本默认查找以上 SOPHON FFmpeg/OpenCV 路径，libsophon 通过 CMake 的 `find_package(libsophon)` 查找。若 SDK 安装位置不同，构建时传入相应的 `FFMPEG_DIR`、`OpenCV_DIR`、`libsophon_DIR`；这些值应指向实际 SDK 的 CMake 配置目录。
 
-HDMI 还要求板子的图形显示服务和显示器可用、播放器具有访问该显示会话的权限，并安装系统播放器。可以在已登录的图形桌面运行；本次固件的 LightDM 登录界面也已通过显式指定对应显示地址和认证文件验证，操作见 [通过 ADB 或 SSH 运行到 HDMI](../demos/hdmi_wall/README.md#通过-adb-或-ssh-运行到-hdmi)。`prepare.sh` 不安装播放器；使用 apt 的系统缺少 `/usr/bin/ffplay` 时执行：
+HDMI 还要求板子的图形显示服务和显示器可用、播放器具有访问该显示会话的权限，并安装系统播放器。可以在已登录的图形桌面运行；本次固件的 LightDM 登录界面也已通过显式指定对应显示地址和认证文件验证，操作见 [通过 ADB 或 SSH 运行到 HDMI](../demos/hdmi_wall/docs/display.md)。`prepare.sh` 不安装播放器；使用 apt 的系统缺少 `/usr/bin/ffplay` 时执行：
 
 ```bash
 sudo apt update
@@ -139,7 +139,7 @@ test -x /usr/bin/ffplay && echo 'ffplay: OK'
 printf 'DISPLAY=%s\n' "$DISPLAY"
 ```
 
-应能看到 `ffplay: OK` 和有效的 `DISPLAY`。仅有 ADB、SSH 终端或只设置一个 `DISPLAY` 字符串，不代表播放器已获得桌面访问权限。SSH 中的 `DISPLAY=localhost:11.0` 一类地址表示 X11 转发；改为板端 `:0` 后仍需匹配的认证文件，当前用户的 `.Xauthority` 不一定适用于 LightDM 登录界面。具体启动和排查见 [通过 ADB 或 SSH 运行到 HDMI](../demos/hdmi_wall/README.md#通过-adb-或-ssh-运行到-hdmi)。
+应能看到 `ffplay: OK` 和有效的 `DISPLAY`。仅有 ADB、SSH 终端或只设置一个 `DISPLAY` 字符串，不代表播放器已获得桌面访问权限。SSH 中的 `DISPLAY=localhost:11.0` 一类地址表示 X11 转发；改为板端 `:0` 后仍需匹配的认证文件，当前用户的 `.Xauthority` 不一定适用于 LightDM 登录界面。具体启动和排查见 [通过 ADB 或 SSH 运行到 HDMI](../demos/hdmi_wall/docs/display.md)。
 
 ## 官方依赖与模型
 

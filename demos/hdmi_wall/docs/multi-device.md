@@ -1,22 +1,18 @@
 # 多设备分页视频墙
 
+[仓库首页](../../../README.md) / [HDMI 文档导航](../README.md#文档导航) / [实测索引](results.md)
+
 每张 BM1684X 对应一个页面，每卡支持 1–32 路，最多同时选择 4 张卡。2 张卡各 32 路是总计 64 路；4 张卡各 32 路是总计 128 路。顶部按实际配置生成设备按钮，点击切换当前页；所有选中的设备都在后台持续解码、推理和更新画面。
 
-分页改变显示目标，不减少后台设备的工作量。单卡 32 路的吞吐、帧年龄和显示持续性取决于输入规格、模型、PCIe 和主机负载，不能由页面数量推断性能达标。已有单卡抽帧测量见 [HDMI 实测](../README.md#上板实测的-hdmi-效果)。
+这是可自由设置路数、模型和抽帧参数的基础多卡入口。普通视频墙已显示每路 DEC / INF、LAG / AGE 和状态；需要顶部 TPU 数值时加 `--telemetry-interval 5`。字段含义见 [屏幕指标](wall-indicators.md)。
 
-此前通过短时低延时检查的是设备 1 单独运行 24 路 1080p25 输入、每路约 5 FPS 检测（n / gate on / latest）；尚不能据此认定所有设备同时各 24 路也能达到相同效果。
-
-设备 1 单卡 30 路、YOLOv8s 的 [300 秒长素材实测](performance-30.md)测得总检测 **270.27 FPS**、每路 **8.92–9.06 FPS**，TPU 利用率采样平均 **97.25%**，全部通道各 10 秒窗口都有结果。正式开始后首帧最长等待 1.91 秒；长素材只避开测量期间 EOF，短片循环恢复问题尚未修复。报告提供完整启动命令和同输入 60 秒 A/B，该数据不代表多卡同时各 30 路的性能。
-
-每次复跑 device 1 的 30 路基准可使用统一 [`benchmark.sh` 入口](performance-30.md#每次使用统一基准入口)，默认 300 秒并自动准备长素材。另有[设备 1 单卡 32 路扩展](performance-30.md#设备-1-单卡-32-路扩展测试)：全部 32 路能检测和显示，但启动有秒级等待与断档，尚不能把整场运行称为稳定实时；30 路基准保持不变。
-
-需要长期多卡展示时，使用[四小时 `showcase.sh` 入口](showcase.md)，统一准备长素材、检查磁盘余量、读取真实 PCIe 链路，并保存每卡独立参数、汇总统计和利用率采样。展示模式为每卡 32 路；需要更高 TPU 利用率时推荐压测模式，对 Gen2 ×1 选择 20 路、Gen3 ×2 选择 32 路。已有[两种模式双卡并发 120 秒对照](showcase.md#双卡展示与压测并发实测)：展示组 Gen2 ×1 TPU 平均 84.61%，压测组两卡分别为 97.59% / 100%，切页期间两卡都继续工作。默认四小时为运行配置，尚未完成四小时验收。
+需要自动按 PCIe 链路选择配置、准备长素材时，使用 [showcase / stress](showcase.md)。需要关闭 / 开启推理作解码对照，使用 [observe](decoder-observation.md)。历史单卡、多卡测试集中在 [实测索引](results.md)，不能直接相加单卡速度推断双卡性能。
 
 ## 准备
 
 按[环境说明](../../../docs/setup.md)准备 SDK、编译工具和官方资源，执行 `bash demos/hdmi_wall/build.sh` 构建每卡使用的检测程序。多设备入口为 `multi_run.sh` / `multi_run.py`，统一显示程序为 `viewer.py`，需要 Python 3.9+、系统 SDL2 运行库和可访问的本地 X11 桌面；本次板上系统 ffplay 已依赖并安装 `libSDL2-2.0.so.0`。
 
-先用 `bm-smi --noloop` 确认设备编号，再指定 `--devices`，不要根据 PCIe 插槽位置猜测编号。通过 ADB 或 SSH 进入设备的操作，以及 DISPLAY、LightDM 认证的适用条件见[连接与显示说明](../README.md#通过-adb-或-ssh-运行到-hdmi)。
+先用 `bm-smi --noloop` 确认设备编号，再指定 `--devices`，不要根据 PCIe 插槽位置猜测编号。通过 ADB 或 SSH 进入设备的操作，以及 DISPLAY、LightDM 认证的适用条件见[连接与显示说明](display.md)。
 
 如果原单设备入口还在运行，先以相同权限执行 `bash demos/hdmi_wall/run.sh --stop`；以 sudo 启动的任务用 `sudo bash demos/hdmi_wall/run.sh --stop`。单设备和多设备入口共用显示任务锁，避免两套程序同时抢占设备和 HDMI。
 
@@ -32,14 +28,17 @@ sudo env DISPLAY=:0 \
   PLAYER_LIB_PATH=/usr/lib/aarch64-linux-gnu \
   bash demos/hdmi_wall/multi_run.sh \
   --devices 0,1 --streams 1 --model s --score-gate off \
-  --duration 60 --policy latest --infer-fps 5 --max-frame-age-ms 250
+  --duration 60 --policy latest --infer-fps 5 --max-frame-age-ms 250 \
+  --telemetry-interval 5
 ```
 
 未提供 `--device-config` 时，全部设备使用同一个 `--streams` 参数；需要逐卡路数和回传预算时，使用[每卡配置](showcase.md#每卡独立配置)。页面只按 `--devices` 中的设备生成。仅使用设备 1 时可传 `--devices 1`，不会生成不存在的设备 0 页面。
 
 ### 每卡 32 路：优先完整显示的逐帧配置
 
-本次 32 路演示采用 `--policy all`，不做应用层抽帧或送检超龄淘汰。它可以保持全部通道有检测画面，但会累积源时间延迟；原因与对照数据见 [32 路抽帧限制说明](32-channel-realtime.md)。下面采用已验证的 YOLOv8n 和 score gate，需先准备对应模型：
+**本节为历史逐帧对照，不是当前默认展示方案。** 当前双卡各 32 路使用 [showcase / latest](showcase.md)，已完成全部通道出图与指标短测；旧命令用于复现积压现象。
+
+下面保留早期 32 路显示验证的 `--policy all` 复现命令，不做应用层抽帧或送检超龄淘汰。它可以保持全部通道有检测画面，但会累积源时间延迟；原因与对照数据见 [32 路抽帧限制说明](32-channel-realtime.md)。下面采用已验证的 YOLOv8n 和 score gate，需先准备对应模型：
 
 ```bash
 cd /userdata/1684X-EP-demo
@@ -70,7 +69,7 @@ bash demos/hdmi_wall/multi_run.sh \
 - 鼠标点击或触屏点击顶部的设备按钮，切换到该设备页面。
 - 键盘数字 `1`–`4` 按按钮顺序选择页面，左右方向键切换页面；数字表示页面位置，不是实际设备编号。
 - 当前页突出显示；其他页面的解码和推理继续运行，切换不会重启设备任务。
-- 各通道保留原来的帧号、检测 FPS、年龄和 `STALE` 状态；等待首帧、停止或错误不能当作实时更新成功。
+- 各通道显示 DEC / INF、LAG / AGE、解码状态和检测画面年龄；`STALE` 仍标记检测结果过旧；等待首帧、停止或错误不能当作实时更新成功。
 - 按 `Esc` 或关闭窗口结束整场多设备运行；启动终端的 `Ctrl+C` 同样会收尾全部设备。
 
 也可以从另一个板端终端停止，保持与启动时一致的权限：
@@ -91,6 +90,8 @@ sudo bash demos/hdmi_wall/multi_run.sh --stop
 多卡模式增加了主机搬运量：每卡 1920×1080 BGR24、10 FPS 的预览数据约 62 MB/s，4 卡合计约 249 MB/s。此数值是未压缩预览字节量，不是测得的主机余量；后台各卡解码、推理与显示应一起验证。
 
 ## 上板验证
+
+以下为 2026-09-09 早期分页功能与旧配置测试。新增指标的 2026-09-10 双卡验证见 [普通 32 路墙实测](wall-indicators.md#本次上板验证)。
 
 2026-09-09，在本次 RK3588 主机上用两张 BM1684X 验证。设备 0 为 PCIe Gen2 ×1，设备 1 为 Gen3 ×2；输入是官方 `test_car_person_1080P.mp4`，1920×1080 H.264、约 24 FPS，各通道独立重复读取。测试使用本地 X11 / LightDM 的同一 HDMI 桌面。
 
