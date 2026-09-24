@@ -7,6 +7,7 @@
 #include "realtime_policy.hpp"
 #include "local_catchup.hpp"
 #include "vpp_admission.hpp"
+#include "diagnostic_trace.hpp"
 #include "bounded_metrics.hpp"
 #include "../common/fair_admission.hpp"
 extern "C" {
@@ -533,6 +534,7 @@ public:
     }
     ~Thumbnail() { if (created_) bm_image_destroy(image_); if (handle_) bm_dev_free(handle_); }
     cv::Mat render(bm_image source, const YoloV8BoxVec& boxes, int csc, PreviewTiming& timing, const std::string& stage = "display") {
+        diagnostic_trace::Scope diagnostic_scope("thumbnail");
         const auto begin = Clock::now();
         vpp_admission::Lease vpp_lease;
         bm_status_t ret;
@@ -709,6 +711,7 @@ static void stream_thread(Shared& state, size_t id) {
     realtime::LatestSlot<Frame> latest;
     std::string decoder_error;
     try {
+        diagnostic_trace::session().register_thread(static_cast<int>(id), "infer");
         // No detector, BMRuntime, mutable timestamp or output cache is shared.
         std::unique_ptr<YoloV8_det> detector;
         if (state.config.inference_enabled) {
@@ -772,6 +775,7 @@ static void stream_thread(Shared& state, size_t id) {
             return !state.stopping() && !stop_decode.load();
         };
         auto read_next = [&]() -> std::unique_ptr<Frame> {
+            diagnostic_trace::Scope diagnostic_scope("decode_read");
             for (;;) {
                 if (!live && !primed_frame && !state.config.local_catchup_index.empty() &&
                     realtime::expired(add_seconds(state.start, sequence / stream.source_fps), Clock::now(), state.config.max_frame_age_ms)) {
@@ -849,6 +853,7 @@ static void stream_thread(Shared& state, size_t id) {
                 }
                 if (!state.config.local_catchup_index.empty()) frame->decoder_generation = decoder_generation;
                 ++sequence; ++source_frame; ++stream.decoded;
+                diagnostic_trace::session().count(static_cast<int>(id), diagnostic_trace::Session::Decoded);
                 if (state.measured(frame->after_decode)) {
                     ++stream.decoded_measured; ++stream.decode_windows.at(state.window_index(frame->after_decode));
                     if (state.config.observe_decode) {
@@ -887,12 +892,15 @@ static void stream_thread(Shared& state, size_t id) {
         if (realtime_mode) {
             decoder = std::thread([&]() {
                 try {
+                    diagnostic_trace::session().register_thread(static_cast<int>(id), "decode");
                     while (auto frame = read_next()) {
                         // For a local file, media time remains anchored to
                         // startup even across EOF loops and decoder stalls.
                         if (realtime::expired(frame->live ? frame->ready : frame->due,
-                                              Clock::now(), state.config.max_frame_age_ms))
+                                              Clock::now(), state.config.max_frame_age_ms)) {
+                            diagnostic_trace::session().count(static_cast<int>(id), diagnostic_trace::Session::StalePublish);
                             latest.discard_stale();
+                        }
                         else latest.publish(std::move(frame));
                     }
                 } catch (const std::exception& e) {
@@ -918,6 +926,7 @@ static void stream_thread(Shared& state, size_t id) {
             if (!frame) break;
             if (realtime_mode && realtime::expired(frame->live ? frame->ready : frame->due,
                                                    Clock::now(), state.config.max_frame_age_ms)) {
+                diagnostic_trace::session().count(static_cast<int>(id), diagnostic_trace::Session::StaleSelect);
                 latest.discard_stale(); continue;
             }
             if (slot.frames % 128 == 0) {
@@ -947,6 +956,7 @@ static void stream_thread(Shared& state, size_t id) {
             Shared::ReadbackLease readback(state);
             if (net.Detect(images, boxes, readback.enabled) != 0 || boxes.size() != 1) throw std::runtime_error("Detect failed");
             const Time after_detect = Clock::now();
+            diagnostic_trace::session().count(static_cast<int>(id), diagnostic_trace::Session::Inferred);
             state.wall.record_model_output(readback.enabled, net.score_gate_metrics.total_bytes());
             state.wall.observe_inference(id, frame->sequence, frame->live ? -1 : elapsed(state.start, frame->due), after_detect);
             stream.analysis_continuity.add(elapsed(state.measure_start, after_detect), state.config.duration);
@@ -1055,6 +1065,7 @@ int main(int argc, char** argv) {
     std::signal(SIGINT, on_signal); std::signal(SIGTERM, on_signal);
     try {
         const auto config = arguments(argc, argv); make_directory(config.output);
+        diagnostic_trace::session().start();
         Shared state(config);
         json sources = json::array();
         for (size_t i = 0; i < config.sources.size(); ++i) sources.push_back({{"stream_id", i}, {"source_id", stream_name(i)}, {"source", redacted(config.sources[i])},

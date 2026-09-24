@@ -10,6 +10,7 @@
 #include "yolov8_det.hpp"
 #include "score_gate_plan.hpp"
 #include "../vpp_admission.hpp"
+#include "../diagnostic_trace.hpp"
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -294,6 +295,7 @@ bm_status_t YoloV8_det::read_score_gated_output(bm_tensor_t* tensor, float* host
 }
 
 int YoloV8_det::Detect(const std::vector<bm_image>& input_images, std::vector<YoloV8BoxVec>& boxes, bool readback) {
+    diagnostic_trace::Scope diagnostic_scope("detect");
     if (input_images.empty() || input_images.size() > static_cast<size_t>(batch_size))
         throw std::runtime_error("Detect requires between 1 and model batch_size input images");
     prepare_output_buffers();
@@ -351,6 +353,7 @@ int YoloV8_det::pre_process(const std::vector<bm_image>& images,
                             bm_tensor_t& input_tensor,
                             std::vector<std::pair<int, int>>& txy_batch,
                             std::vector<std::pair<float, float>>& ratios_batch) {
+    diagnostic_trace::Scope diagnostic_scope("preprocess");
     int ret = 0;
     prepare_preprocess_buffers();
     if (batch_size != static_cast<int>(resized_images.size()))
