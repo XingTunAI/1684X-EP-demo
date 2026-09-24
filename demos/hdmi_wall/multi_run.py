@@ -46,18 +46,18 @@ def normalize_device_overrides(value: object) -> dict:
     for key, options in value.items():
         if not isinstance(key, str) or not key.isdecimal() or str(int(key)) != key:
             raise ValueError(f"Invalid device configuration key: {key!r}")
-        if not isinstance(options, dict) or set(options) - {"streams", "gate_merge_budget_kib", "preview_fps", "output_buffer"}:
-            raise ValueError(f"Device {key} accepts streams, gate_merge_budget_kib, preview_fps and output_buffer")
+        if not isinstance(options, dict) or set(options) - {"streams", "gate_merge_budget_kib", "preview_fps", "output_buffer", "active_limit"}:
+            raise ValueError(f"Device {key} accepts streams, gate_merge_budget_kib, preview_fps, output_buffer and active_limit")
         for name, number in options.items():
             if name == "output_buffer":
                 if number not in ("baseline", "reuse"):
                     raise ValueError(f"Device {key}: output_buffer must be baseline or reuse")
                 continue
             if name == "preview_fps":
-                if type(number) not in (int, float) or not math.isfinite(number) or not 0 < number <= 10:
-                    raise ValueError(f"Device {key}: preview_fps must be finite and in (0,10]")
+                if type(number) not in (int, float) or not math.isfinite(number) or not 0 <= number <= 10:
+                    raise ValueError(f"Device {key}: preview_fps must be finite and in [0,10]")
                 continue
-            low, high = (1, 32) if name == "streams" else (0, 1024)
+            low, high = (1, 32) if name == "streams" else (0, 32) if name == "active_limit" else (0, 1024)
             if not isinstance(number, int) or isinstance(number, bool) or not low <= number <= high:
                 raise ValueError(f"Device {key}: {name} must be an integer from {low} to {high}")
         result[key] = dict(options)
@@ -91,6 +91,8 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Per-frame JSONL (full) or bounded aggregate output (summary).")
     parser.add_argument("--prime-local-decoders", choices=("off", "on"), default="off",
                         help="Experimental local-file first-frame priming before playback clocks start.")
+    parser.add_argument("--local-catchup-index", default=None,
+                        help="Verified local keyframe segment index; latest policy with positive age limit only.")
     parser.add_argument("--gate-merge-budget-kib", type=single.gate_merge_budget_kib, default=0,
                         help="Extra score-gate output-read budget per detection, 0..1024 KiB; nonzero requires score-gate on.")
     parser.add_argument("--image-path", choices=("auto", "bgr", "yuv"), default="auto",
@@ -100,7 +102,8 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Per-channel detection start-rate cap; defaults: latest=5, all=0.")
     parser.add_argument("--max-frame-age-ms", type=single.nonnegative_finite, default=None,
                         help="Discard expired waiting frames; defaults: latest=250, all=0. Use 0 to disable.")
-    parser.add_argument("--preview-fps", type=single.observation_preview_fps, default=10.0)
+    parser.add_argument("--preview-fps", type=single.detection_preview_fps, default=10.0)
+    parser.add_argument("--active-limit", type=int, choices=range(33), default=0)
     parser.add_argument("--output-buffer", choices=("baseline", "reuse"), default="baseline")
     single.add_observation_arguments(parser)
     parser.add_argument("--fifo-timeout", type=single.positive, default=90,
@@ -140,6 +143,8 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--infer-fps must be 0 with --policy all")
     if args.policy == "all" and args.max_frame_age_ms != 0:
         parser.error("--max-frame-age-ms must be 0 with --policy all")
+    if args.local_catchup_index and (single.live_source(args.input) or args.policy != "latest" or args.max_frame_age_ms <= 0):
+        parser.error("--local-catchup-index requires local input, latest and positive max-frame-age-ms")
     effective_streams = sum(args.device_overrides.get(str(device), {}).get("streams", args.streams) for device in args.devices)
     if single.live_source(args.input) and effective_streams != 1:
         parser.error("RTSP --input requires one device and --streams 1; use hdmi_wall.pcie --inputs-file for distinct camera sources")

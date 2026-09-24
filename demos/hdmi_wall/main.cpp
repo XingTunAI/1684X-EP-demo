@@ -5,7 +5,10 @@
 #include "score_gate_plan.hpp"
 #include "wall_renderer.hpp"
 #include "realtime_policy.hpp"
+#include "local_catchup.hpp"
+#include "vpp_admission.hpp"
 #include "bounded_metrics.hpp"
+#include "../common/fair_admission.hpp"
 extern "C" {
 #include <libavutil/frame.h>
 }
@@ -66,7 +69,7 @@ static void json_file(const std::string& p, const json& value) {
 }
 
 struct Config {
-    int device = 0, slots = 2;
+    int device = 0, slots = 2, active_limit = 0;
     int gate_merge_budget_kib = 0;
     double warmup = 5, duration = 30, window = 10;
     float conf = 0.25f, nms = 0.7f;
@@ -75,17 +78,24 @@ struct Config {
     std::string score_gate = "off", score_gate_model, cpu_post = "dense";
     std::string policy = "latest";
     std::string image_path = "auto";
+    std::string preview_mode = "sync";
+    std::string preview_stage = "display"; // Diagnostic ablation; default preserves normal path.
     std::string record_mode = "full";
     std::string prime_local_decoders = "off";
+    std::string local_catchup_index;
+    std::vector<uint64_t> catchup_starts, catchup_counts;
+    std::vector<std::string> catchup_paths;
+    uint64_t catchup_frames = 0;
+    double catchup_fps = 0;
     bool observe_decode = false, inference_enabled = true;
-    double observe_preview_fps = 5, preview_fps = 10;
+    double observe_preview_fps = 5, preview_fps = 10, wall_fps = 10;
     std::vector<size_t> compare_streams;
     double infer_fps = 0, max_frame_age_ms = 250;
     std::vector<std::string> sources;
 };
 static Config arguments(int argc, char** argv) {
     std::map<std::string, std::string> opts;
-    const std::vector<std::string> accepted = {"input", "inputs-file", "streams", "slots", "device", "bmodel", "classnames", "output", "warmup", "duration", "window", "conf", "nms", "local-eof", "output-buffer", "policy", "infer-fps", "max-frame-age-ms", "score-gate", "score-gate-model", "cpu-post", "image-path", "gate-merge-budget-kib", "record-mode", "prime-local-decoders", "observe-decode", "inference", "compare-streams", "observe-preview-fps", "preview-fps", "readback-control"};
+    const std::vector<std::string> accepted = {"input", "inputs-file", "streams", "slots", "device", "bmodel", "classnames", "output", "warmup", "duration", "window", "conf", "nms", "local-eof", "output-buffer", "policy", "infer-fps", "max-frame-age-ms", "score-gate", "score-gate-model", "cpu-post", "image-path", "gate-merge-budget-kib", "record-mode", "prime-local-decoders", "observe-decode", "inference", "compare-streams", "observe-preview-fps", "preview-fps", "readback-control", "active-limit", "local-catchup-index", "preview-stage", "preview-mode", "wall-fps"};
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--help") {
@@ -94,8 +104,11 @@ static Config arguments(int argc, char** argv) {
                       << "  [--device 0 --warmup 5 --duration 30 --window 10]\n"
                       << "  [--local-eof stop|loop|fail --output-buffer baseline|reuse --policy latest|all]\n"
                       << "  [--infer-fps 0 --max-frame-age-ms 250] (latest only; 0 disables each limit)\n"
+                      << "  [--active-limit 0] (0 unrestricted; 1..32 bounds concurrent processing fairly)\n"
+                      << "  [--local-catchup-index JSON] (verified keyframe segments; local latest loop only)\n"
                       << "  [--readback-control JSON] (runtime output/preview toggle; decoded frames still inferred)\n"
-                      << "  [--preview-fps 10] (per-stream preview readback cap, 0 < FPS <= 10)\n"
+                      << "  [--preview-fps 10] (-1 previews every detection; 0 disables; otherwise FPS <= 10)\n"
+                      << "  [--wall-fps 10] (0 disables wall renderer pacing; maximum 120)\n"
                       << "  [--image-path auto|bgr|yuv] (auto selects direct YUV for supported layouts)\n"
                       << "  [--score-gate off|on --score-gate-model AUXILIARY_BMODEL]\n"
                       << "  [--gate-merge-budget-kib 0..1024] (extra row-read budget; nonzero requires gate on)\n"
@@ -133,6 +146,8 @@ static Config arguments(int argc, char** argv) {
     };
     Config c;
     c.device = integer("device", 0); c.slots = integer("slots", 2);
+    c.active_limit = integer("active-limit", 0);
+    if (c.active_limit < 0 || c.active_limit > 32) throw std::runtime_error("active-limit must be 0..32");
     c.warmup = number("warmup", 5); c.duration = number("duration", 30); c.window = number("window", 10);
     c.conf = static_cast<float>(number("conf", .25)); c.nms = static_cast<float>(number("nms", .7));
     c.model = get("bmodel", ""); c.names = get("classnames", ""); c.output = get("output", "");
@@ -141,9 +156,20 @@ static Config arguments(int argc, char** argv) {
         throw std::runtime_error("observe-decode and inference must be on or off");
     c.observe_decode = observe == "on"; c.inference_enabled = inference == "on";
     c.readback_control = get("readback-control", "");
+    c.preview_mode = get("preview-mode", "sync");
+    if (c.preview_mode != "sync" && c.preview_mode != "async") throw std::runtime_error("Invalid preview-mode");
+    if (c.preview_mode == "async" && (get("observe-decode", "off") != "off" || get("preview-stage", "display") != "display" || get("image-path", "auto") == "bgr" || !get("local-catchup-index", "").empty()))
+        throw std::runtime_error("Async preview requires normal display, auto/yuv and no catchup/observation");
+    c.preview_stage = get("preview-stage", "display");
+    if (c.preview_stage != "display" && c.preview_stage != "vpp" && c.preview_stage != "readback")
+        throw std::runtime_error("preview-stage must be display, vpp or readback");
+    if (get("observe-decode", "off") == "on" && c.preview_stage != "display")
+        throw std::runtime_error("preview-stage ablation requires observe-decode off");
+    c.wall_fps = number("wall-fps", 10);
+    if (!std::isfinite(c.wall_fps) || c.wall_fps < 0 || c.wall_fps > 120) throw std::runtime_error("wall-fps must be in [0,120]; 0 disables pacing");
     c.preview_fps = number("preview-fps", 10);
-    if (c.preview_fps <= 0 || c.preview_fps > 10)
-        throw std::runtime_error("preview-fps must be in (0,10]");
+    if (c.preview_fps != -1 && (c.preview_fps < 0 || c.preview_fps > 10))
+        throw std::runtime_error("preview-fps must be -1 (unlimited) or in [0,10]");
     c.observe_preview_fps = number("observe-preview-fps", 5);
     if (c.observe_preview_fps <= 0 || c.observe_preview_fps > 10)
         throw std::runtime_error("observe-preview-fps must be in (0,10]");
@@ -162,6 +188,7 @@ static Config arguments(int argc, char** argv) {
     if (c.device < 0 || c.slots < 1 || c.warmup < 0 || c.duration <= 0 || c.window <= 0 || c.window > c.duration || c.conf < 0 || c.conf > 1 || c.nms < 0 || c.nms > 1)
         throw std::runtime_error("Invalid device/slots/timing/threshold value");
     c.policy = get("policy", "latest");
+    c.local_catchup_index = get("local-catchup-index", "");
     c.image_path = get("image-path", "auto");
     c.record_mode = get("record-mode", "full");
     if (c.record_mode != "full" && c.record_mode != "summary")
@@ -214,6 +241,31 @@ static Config arguments(int argc, char** argv) {
     if (opts.count("slots") && static_cast<size_t>(c.slots) != c.sources.size())
         throw std::runtime_error("One thread per stream: slots, when supplied, must equal streams");
     c.slots = static_cast<int>(c.sources.size());
+    if (!c.local_catchup_index.empty()) {
+        if (input.empty() || live_source(input) || c.policy != "latest" || c.eof != "loop" || c.max_frame_age_ms <= 0)
+            throw std::runtime_error("local-catchup-index requires one replicated local input, latest, loop and positive max-frame-age-ms");
+        std::ifstream index_file(c.local_catchup_index);
+        if (!index_file) throw std::runtime_error("Cannot read local catchup index");
+        json index; index_file >> index;
+        if (index.at("version") != 1 || index.at("source") != input ||
+            index.at("verified") != "all_frames_software_decode_md5_identical")
+            throw std::runtime_error("Unverified/mismatched local catchup source");
+        struct stat source_stat;
+        if (stat(input.c_str(), &source_stat) || index.at("source_bytes").get<uint64_t>() != static_cast<uint64_t>(source_stat.st_size) ||
+            index.at("source_mtime").get<int64_t>() != static_cast<int64_t>(source_stat.st_mtime))
+            throw std::runtime_error("Catchup source changed since verification");
+        c.catchup_frames = index.at("frames").get<uint64_t>(); c.catchup_fps = index.at("fps").get<double>();
+        uint64_t expected = 0;
+        for (const auto& entry : index.at("segments")) {
+            const auto first = entry.at("first_frame").get<uint64_t>(), count = entry.at("frames").get<uint64_t>();
+            const auto path = entry.at("path").get<std::string>();
+            if (first != expected || count == 0 || expected > c.catchup_frames || count > c.catchup_frames - expected || access(path.c_str(), R_OK))
+                throw std::runtime_error("Invalid/incomplete catchup segments");
+            c.catchup_starts.push_back(first); c.catchup_counts.push_back(count); c.catchup_paths.push_back(path); expected += count;
+        }
+        if (expected != c.catchup_frames) throw std::runtime_error("Catchup index frame count mismatch");
+        local_catchup::plan(c.catchup_starts,c.catchup_frames,c.catchup_fps,0,0,0);
+    }
     if (c.observe_decode) {
         const std::string chosen_text = get("compare-streams", c.sources.size() == 1 ? "0" : "0,1");
         std::istringstream chosen(chosen_text);
@@ -232,6 +284,8 @@ static Config arguments(int argc, char** argv) {
 }
 
 struct Frame {
+    // Declared before Mat so the surface is released before this lease.
+    std::shared_ptr<int> decoder_generation;
     cv::Mat mat;
     size_t stream = 0;
     uint64_t sequence = 0, source_frame = 0, source_loop = 0;
@@ -316,6 +370,8 @@ struct Stream {
     uint64_t previews_submitted = 0, previews_submitted_measured = 0;
     uint64_t baseline_consumed = 0;
     uint64_t decoded_previews_measured = 0;
+    uint64_t catchups = 0, catchups_measured = 0, source_skipped = 0, source_skipped_measured = 0;
+    Metric catchup_cost;
     Metric all_decode_read, decode_source_lag;
     Metric decoded_preview_cost, decoded_preview_vpp, decoded_preview_readback;
     hdmi_metrics::CompletionContinuity decode_continuity;
@@ -338,6 +394,7 @@ struct Stream {
                 &infer_submit, &infer_sync, &input_release, &output_alloc, &preview, &preview_vpp,
                 &preview_readback, &preview_draw, &preview_submit}) metric->set_capacity(capacity);
         gate.configure_metrics(capacity);
+        catchup_cost.set_capacity(capacity);
         all_decode_read.set_capacity(capacity); decode_source_lag.set_capacity(capacity);
         decoded_preview_cost.set_capacity(capacity); decoded_preview_vpp.set_capacity(capacity); decoded_preview_readback.set_capacity(capacity);
     }
@@ -384,8 +441,10 @@ struct Shared {
     Time start, measure_start, end;
     std::vector<std::unique_ptr<Stream>> streams;
     std::vector<SlotInfo> slots;
+    FairAdmission admission;
     explicit Shared(const Config& c) : config(c),
-        wall(c.sources.size(), c.output, c.device, c.model.substr(c.model.find_last_of('/') + 1), c.policy), slots(c.slots) {
+        wall(c.sources.size(), c.output, c.device, c.model.substr(c.model.find_last_of('/') + 1), c.policy), slots(c.slots), admission(c.active_limit) {
+        wall.configure_wall_fps(c.wall_fps);
         wall.configure_observation(c.observe_decode, c.inference_enabled, c.compare_streams);
         const size_t windows = static_cast<size_t>(std::ceil(c.duration / c.window));
         const std::size_t capacity = c.record_mode == "summary" ? hdmi_metrics::summary_sample_capacity : 0;
@@ -473,8 +532,9 @@ public:
         }
     }
     ~Thumbnail() { if (created_) bm_image_destroy(image_); if (handle_) bm_dev_free(handle_); }
-    cv::Mat render(bm_image source, const YoloV8BoxVec& boxes, int csc, PreviewTiming& timing) {
+    cv::Mat render(bm_image source, const YoloV8BoxVec& boxes, int csc, PreviewTiming& timing, const std::string& stage = "display") {
         const auto begin = Clock::now();
+        vpp_admission::Lease vpp_lease;
         bm_status_t ret;
         if (csc >= 0) {
             int count = 1;
@@ -482,14 +542,17 @@ public:
             ret = bmcv_image_vpp_basic(handle_, 1, &source, &image_, &count, &crop, nullptr,
                 BMCV_INTER_LINEAR, static_cast<csc_type_t>(csc), nullptr);
         } else ret = bmcv_image_vpp_convert(handle_, 1, source, &image_);
+        vpp_lease.release();
         if (ret != BM_SUCCESS)
             throw std::runtime_error("Preview VPP resize failed");
         const auto resized = Clock::now(); timing.vpp = millis(begin, resized);
+        if (stage == "vpp") return cv::Mat();
         void* buffers[] = {pixels_.data()};
         if (bm_image_copy_device_to_host(image_, buffers) != BM_SUCCESS)
             throw std::runtime_error("Preview thumbnail readback failed");
         const auto copied = Clock::now(); timing.readback = millis(resized, copied);
         cv::Mat host(height_, width_, CV_8UC3, pixels_.data());
+        if (stage == "readback") return host;
         const double sx = static_cast<double>(width_) / source.width, sy = static_cast<double>(height_) / source.height;
         for (const auto& box : boxes) {
             if (!std::isfinite(box.x1) || !std::isfinite(box.y1) || !std::isfinite(box.x2) || !std::isfinite(box.y2)) continue;
@@ -582,6 +645,65 @@ public:
     }
 };
 
+
+// Experimental: one pending matched image/result pair per stream, plus one active.
+// The retained Frame owns the decoded surface until rendering completes.
+class InferredPreview {
+    struct Item { Frame frame; YoloV8BoxVec boxes; double fps; uint64_t drops; };
+    Shared& state_; size_t id_; std::mutex mutex_; std::condition_variable changed_;
+    std::unique_ptr<Item> pending_; bool stop_ = false; std::thread thread_;
+    void run() {
+        try {
+            Thumbnail thumbnail(state_.config.device);
+            Time next = Time::min();
+            for (;;) {
+                std::unique_ptr<Item> item;
+                {
+                    std::unique_lock<std::mutex> guard(mutex_);
+                    while (!stop_ && !state_.stopping() && (!pending_ || Clock::now() < next))
+                        changed_.wait_for(guard,std::chrono::milliseconds(10));
+                    if (stop_ || state_.stopping()) break;
+                    item = std::move(pending_);
+                }
+                Shared::ReadbackLease lease(state_); if (!lease.enabled) continue;
+                const auto begun=Clock::now();
+                auto& frame=item->frame;
+                int csc=-1; bm_image image{};
+                if (!direct_yuv_csc(frame.mat,csc)) throw std::runtime_error("Async preview requires direct decoded YUV");
+                if (cv::bmcv::toBMI(frame.mat,&image,false)!=BM_SUCCESS) throw std::runtime_error("Async bridge failed");
+                struct Cleanup { bm_image& image; ~Cleanup(){bm_image_destroy(image);} } cleanup{image};
+                PreviewTiming timing;
+                auto host=thumbnail.render(image,item->boxes,csc,timing);
+                state_.wall.record_preview_bytes(256*144*3);
+                const auto submitted=Clock::now();
+                state_.wall.submit(id_,host,frame.sequence+1,item->boxes.size(),item->fps,
+                    millis(frame.after_decode,submitted),frame.live?-1:millis(frame.due,submitted),
+                    item->drops,frame.live?-1:elapsed(state_.start,frame.due));
+                const auto completed=Clock::now();
+                next=state_.config.preview_fps < 0 ? completed : add_seconds(completed,1.0/state_.config.preview_fps);
+                auto& metrics=*state_.streams[id_];
+                ++metrics.previews_submitted;
+                if (state_.measured(completed)) {
+                    ++metrics.previews_submitted_measured;
+                    metrics.preview.add(millis(begun,completed));metrics.preview_vpp.add(timing.vpp);
+                    metrics.preview_readback.add(timing.readback);metrics.preview_draw.add(timing.draw);
+                    metrics.preview_submit.add(millis(submitted,completed));
+                }
+            }
+        } catch (const std::exception& e) { state_.fail("async preview " + std::to_string(id_) + ": " + e.what()); }
+    }
+public:
+    InferredPreview(Shared& s,size_t id):state_(s),id_(id),thread_([this](){run();}){}
+    ~InferredPreview(){
+        {std::lock_guard<std::mutex> guard(mutex_);stop_=true;pending_.reset();}
+        changed_.notify_all();if(thread_.joinable())thread_.join();
+    }
+    void publish(const Frame& f,const YoloV8BoxVec& boxes,double fps,uint64_t drops){
+        std::unique_ptr<Item> item(new Item{f,boxes,fps,drops});
+        {std::lock_guard<std::mutex> guard(mutex_);pending_.swap(item);}changed_.notify_one();
+    }
+};
+
 static void stream_thread(Shared& state, size_t id) {
     auto& stream = *state.streams[id];
     realtime::LatestSlot<Frame> latest;
@@ -611,6 +733,8 @@ static void stream_thread(Shared& state, size_t id) {
         stream.source_fps = cap.get(cv::CAP_PROP_FPS);
         if (!live && (!std::isfinite(stream.source_fps) || stream.source_fps <= 0))
             throw std::runtime_error("Local source has unknown FPS; pacing is required");
+        if (!state.config.local_catchup_index.empty() && std::abs(stream.source_fps-state.config.catchup_fps) > 0.001)
+            throw std::runtime_error("Catchup index FPS mismatch");
         state.wall.configure_source(id, stream.source_fps, live);
         std::unique_ptr<Frame> primed_frame;
         if (!live && state.config.prime_local_decoders == "on") {
@@ -632,11 +756,53 @@ static void stream_thread(Shared& state, size_t id) {
         if (compare) decoded_preview.reset(new DecodedPreview(state, id));
         auto& slot = state.slots[id];
         uint64_t sequence = 0, source_frame = 0, source_loop = 0;
+        int segment_cursor = -1;
+        double catchup_lead_seconds = 0.25;
         const bool realtime_mode = state.config.policy == "latest";
         std::atomic<bool> stop_decode(false);
         std::thread decoder;
+        auto decoder_generation = std::make_shared<int>(0);
+        auto drain_decoder = [&]() {
+            // A hardware decoder must outlive every surface borrowed by its
+            // inference/preview consumers. Let the latest slot drain normally.
+            while (decoder_generation.use_count() > 1) {
+                if (state.stopping() || stop_decode.load()) return false;
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            return !state.stopping() && !stop_decode.load();
+        };
         auto read_next = [&]() -> std::unique_ptr<Frame> {
             for (;;) {
+                if (!live && !primed_frame && !state.config.local_catchup_index.empty() &&
+                    realtime::expired(add_seconds(state.start, sequence / stream.source_fps), Clock::now(), state.config.max_frame_age_ms)) {
+                    const auto target = local_catchup::plan(state.config.catchup_starts,state.config.catchup_frames,
+                        stream.source_fps,sequence,std::max(0.0,elapsed(state.start,Clock::now())),catchup_lead_seconds);
+                    const auto target_due = add_seconds(state.start,target.sequence / stream.source_fps);
+                    if (target.available && target_due < state.end && !state.stopping() && !stop_decode.load()) {
+                        const auto begun = Clock::now();
+                        if (!drain_decoder()) return nullptr;
+                        // Open a verified independent keyframe segment. The SDK's
+                        // POS_FRAMES seek can mislabel delayed decoder output.
+                        cap.release(); configure_capture(cap,state.config.catchup_paths[target.segment],state.config.device);
+                        primed_frame.reset(new Frame);
+                        primed_frame->before_decode = Clock::now(); cap >> primed_frame->mat;
+                        primed_frame->after_decode = Clock::now(); primed_frame->ready = primed_frame->after_decode;
+                        if (primed_frame->mat.empty()) throw std::runtime_error("Catchup segment returned no first frame");
+                        // Opening hardware decoders can take seconds under load.
+                        // Reserve observed preparation time on subsequent jumps;
+                        // this is a future source position, never a clock reset.
+                        catchup_lead_seconds = std::max(catchup_lead_seconds,
+                            elapsed(begun,primed_frame->after_decode)*1.25+0.25);
+                        const auto skipped = target.sequence-sequence;
+                        ++stream.catchups; stream.source_skipped += skipped;
+                        if (state.measured(primed_frame->after_decode)) {
+                            ++stream.catchups_measured; stream.source_skipped_measured += skipped;
+                            stream.catchup_cost.add(millis(begun,primed_frame->after_decode));
+                        }
+                        sequence=target.sequence; source_frame=state.config.catchup_starts[target.segment];
+                        source_loop=target.loop; segment_cursor=static_cast<int>(target.segment);
+                    }
+                }
                 const Time due = live ? Clock::now() : add_seconds(state.start, sequence / stream.source_fps);
                 {
                     std::unique_lock<std::mutex> guard(state.lock);
@@ -654,19 +820,34 @@ static void stream_thread(Shared& state, size_t id) {
                 frame->stream = id; frame->sequence = sequence;
                 frame->source_frame = source_frame; frame->source_loop = source_loop;
                 frame->live = live; frame->due = due;
-                if (from_priming) stream.priming_consumed = true;
-                else {
+                if (from_priming) {
+                    if (sequence == 0) stream.priming_consumed = true;
+                } else {
                     frame->before_decode = Clock::now();
                     cap >> frame->mat; frame->after_decode = Clock::now();
                 }
                 if (frame->mat.empty()) {
                     if (live) throw std::runtime_error("RTSP returned no frame; reconnect is not implemented");
+                    if (segment_cursor >= 0) {
+                        const auto cursor=static_cast<size_t>(segment_cursor);
+                        if (source_frame != state.config.catchup_starts[cursor]+state.config.catchup_counts[cursor])
+                            throw std::runtime_error("Catchup segment decoded frame count changed");
+                        ++segment_cursor;
+                        if (static_cast<size_t>(segment_cursor) == state.config.catchup_paths.size()) {
+                            segment_cursor=0; ++source_loop; source_frame=0;
+                        }
+                        if (!drain_decoder()) return nullptr;
+                        cap.release(); configure_capture(cap,state.config.catchup_paths[segment_cursor],state.config.device);
+                        continue;
+                    }
                     if (!source_frame) throw std::runtime_error("Local source returned no frames");
                     if (state.config.eof == "fail") throw std::runtime_error("Local EOF before test deadline");
                     if (state.config.eof == "stop") { stream.eof_seen = true; return nullptr; }
+                    if (!state.config.local_catchup_index.empty() && !drain_decoder()) return nullptr;
                     cap.release(); configure_capture(cap, source, state.config.device);
                     ++source_loop; source_frame = 0; continue;
                 }
+                if (!state.config.local_catchup_index.empty()) frame->decoder_generation = decoder_generation;
                 ++sequence; ++source_frame; ++stream.decoded;
                 if (state.measured(frame->after_decode)) {
                     ++stream.decoded_measured; ++stream.decode_windows.at(state.window_index(frame->after_decode));
@@ -721,6 +902,9 @@ static void stream_thread(Shared& state, size_t id) {
                 latest.finish();
             });
         }
+        std::unique_ptr<InferredPreview> async_preview;
+        if (state.config.preview_mode == "async" && state.config.preview_fps != 0)
+            async_preview.reset(new InferredPreview(state,id));
         Time last_preview = Time::min(), rate_start = Clock::now();
         Time next_infer = Time::min();
         uint64_t rate_count = 0;
@@ -728,6 +912,7 @@ static void stream_thread(Shared& state, size_t id) {
         double process_fps = 0;
         while (!interrupted) {
             if (state.wall.failed()) throw std::runtime_error("HDMI renderer: " + state.wall.error());
+            AdmissionLease admission(state.admission);
             auto frame = realtime_mode
                 ? latest.take(next_infer, state.end, [&]() { return state.stopping(); }) : read_next();
             if (!frame) break;
@@ -773,12 +958,13 @@ static void stream_thread(Shared& state, size_t id) {
             double preview_ms = 0;
             PreviewTiming preview_timing;
             bool preview_submitted = false;
-            if (readback.enabled && (last_preview == Time::min() || elapsed(last_preview, after_detect) >= (compare ? 1.0 / state.config.observe_preview_fps : 1.0 / state.config.preview_fps))) {
+            if (readback.enabled && async_preview) async_preview->publish(*frame,boxes[0],process_fps,latest.counters().drops());
+            if (!async_preview && readback.enabled && (compare || state.config.preview_fps != 0) && ((!compare && state.config.preview_fps < 0) || last_preview == Time::min() || elapsed(last_preview, after_detect) >= (compare ? 1.0 / state.config.observe_preview_fps : 1.0 / state.config.preview_fps))) {
                 const auto preview_start = Clock::now();
-                const auto host = thumbnail->render(image, boxes[0], net.preprocess_csc, preview_timing);
-                state.wall.record_preview_bytes(compare ? 640 * 360 * 3 : 256 * 144 * 3);
+                const auto host = thumbnail->render(image, boxes[0], net.preprocess_csc, preview_timing, state.config.preview_stage);
+                if (state.config.preview_stage != "vpp") state.wall.record_preview_bytes(compare ? 640 * 360 * 3 : 256 * 144 * 3);
                 const auto submitted = Clock::now();
-                state.wall.submit(id, host, frame->sequence + 1, boxes[0].size(), process_fps,
+                if (state.config.preview_stage == "display") state.wall.submit(id, host, frame->sequence + 1, boxes[0].size(), process_fps,
                     millis(frame->after_decode, submitted), frame->live ? -1 : millis(frame->due, submitted),
                     latest.counters().drops(), frame->live ? -1 : elapsed(state.start, frame->due));
                 last_preview = Clock::now(); preview_ms = millis(preview_start, last_preview);
@@ -810,7 +996,7 @@ static void stream_thread(Shared& state, size_t id) {
                     {"preview_ms", preview_ms},
                     {"preview_submitted", preview_submitted}, {"preview_vpp_ms", preview_timing.vpp},
                     {"preview_readback_ms", preview_timing.readback}, {"preview_draw_ms", preview_timing.draw},
-                    {"preview_submit_ms", preview_timing.submit}, {"preview_readback_bytes", preview_submitted ? (compare ? 640 * 360 * 3 : 256 * 144 * 3) : 0},
+                    {"preview_submit_ms", preview_timing.submit}, {"preview_readback_bytes", preview_submitted && state.config.preview_stage != "vpp" ? (compare ? 640 * 360 * 3 : 256 * 144 * 3) : 0},
                     {"image_path", direct_yuv ? "yuv" : "bgr"}, {"preprocess_csc", net.preprocess_csc},
                     {"source_colorspace", frame->mat.u && frame->mat.u->frame ? static_cast<int>(frame->mat.u->frame->colorspace) : -1},
                     {"source_color_range", frame->mat.u && frame->mat.u->frame ? static_cast<int>(frame->mat.u->frame->color_range) : -1},
@@ -874,9 +1060,11 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < config.sources.size(); ++i) sources.push_back({{"stream_id", i}, {"source_id", stream_name(i)}, {"source", redacted(config.sources[i])},
             {"live", live_source(config.sources[i])}, {"decoder_priming", live_source(config.sources[i]) ? "not_applicable_rtsp" : config.prime_local_decoders}});
         json_file(config.output + "/config.json", {{"device", config.device}, {"streams", config.sources.size()}, {"slots", config.slots},
+            {"active_limit", config.active_limit}, {"preview_mode", config.preview_mode},
             {"warmup_s", config.warmup}, {"duration_s", config.duration}, {"window_s", config.window}, {"model", config.model},
             {"conf", config.conf}, {"nms", config.nms}, {"sources", sources}, {"policy", config.policy}, {"local_eof", config.eof},
             {"infer_fps_cap", config.infer_fps}, {"max_frame_age_ms", config.max_frame_age_ms},
+            {"local_catchup_index", config.local_catchup_index}, {"local_catchup_lead", "initial 0.25s; grows to observed reopen cost * 1.25 + 0.25s"},
             {"image_path", config.image_path}, {"preprocess_buffer", "resident_per_detector"}, {"output_buffer", config.output_buffer}, {"readback_control", config.readback_control},
             {"pending_queue_capacity", config.policy == "latest" ? 1 : 0},
             {"max_outstanding_per_stream", (config.inference_enabled && config.policy == "latest" ? 3 : 1) + (config.observe_decode ? 2 : 0)},
@@ -898,7 +1086,7 @@ int main(int argc, char** argv) {
             {"business_threads", config.sources.size() * (config.inference_enabled && config.policy == "latest" ? 2 : 1)},
             {"decoded_preview_threads", config.compare_streams.size()},
             {"model_instances", config.inference_enabled ? config.slots : 0}, {"draw", config.inference_enabled}, {"encode", false},
-            {"display", "HDMI via system ffplay or multi-device viewer"}, {"preview_max_fps", 10}, {"per_stream_preview_fps", config.preview_fps}, {"preview_thumbnail", {256, 144}},
+            {"display", "HDMI via system ffplay or multi-device viewer"}, {"preview_max_fps", config.wall_fps}, {"per_stream_preview_fps", config.preview_fps}, {"preview_thumbnail", {256, 144}},
             {"selected_comparison_thumbnail", config.observe_decode ? json({640, 360}) : json(nullptr)},
             {"wall_resolution", {1920, 1080}}});
         std::thread display([&]() { state.wall.run(); if (state.wall.failed()) state.fail("HDMI renderer: " + state.wall.error()); });
@@ -957,6 +1145,9 @@ int main(int argc, char** argv) {
                 {"decoded_measured", s.decoded_measured}, {"completed_measured", s.completed_measured}, {"decoded_fps", decode_fps}, {"results_readback_measured", s.results_readback_measured}, {"model_only_measured", s.model_only_measured}, {"completed_fps", fps},
                 {"source_width", s.width}, {"source_height", s.height}, {"source_fps", std::isfinite(s.source_fps) ? json(s.source_fps) : json(nullptr)},
                 {"source_ended", s.eof_seen}, {"error", s.error},
+                {"local_catchup", {{"events", s.catchups}, {"events_measured", s.catchups_measured},
+                    {"source_frames_skipped", s.source_skipped}, {"source_frames_skipped_measured", s.source_skipped_measured},
+                    {"cost_ms", s.catchup_cost.summary()}, {"note", "Source frames skipped before decode; not decoder outputs or policy drops. Source clock is never rebased."}}},
                 {"record_mode", config.record_mode}, {"records_written", s.records_written}, {"records_written_measured", s.records_written_measured},
                 {"baseline_consumed", s.baseline_consumed},
                 {"decode_observation", {{"enabled", config.observe_decode},
@@ -990,9 +1181,10 @@ int main(int argc, char** argv) {
                 {"postprocess_ms", s.post.summary()}, {"output_transfer_ms", s.transfer.summary()}, {"transfer_wait_ms", s.transfer_wait.summary()},
                 {"inference_submit_ms", s.infer_submit.summary()}, {"inference_sync_ms", s.infer_sync.summary()},
                 {"input_release_ms", s.input_release.summary()}, {"output_allocation_ms", s.output_alloc.summary()},
-                {"preview_metric_population", "measured_completion_accounting_events_with_preview_submitted"},
+                {"preview_metric_population", "sync: analysis-accounted preview attempts; async: preview completions in formal window"},
                 {"previews_submitted", s.previews_submitted}, {"previews_submitted_measured", s.previews_submitted_measured},
-                {"preview_readback_bytes_measured", s.previews_submitted_measured *
+                {"preview_mode", config.preview_mode}, {"preview_stage", config.preview_stage},
+                {"preview_readback_bytes_measured", (config.preview_stage == "vpp" ? 0 : s.previews_submitted_measured) *
                     (config.observe_decode && std::find(config.compare_streams.begin(), config.compare_streams.end(), i) != config.compare_streams.end() ? 640 * 360 * 3 : 256 * 144 * 3)},
                 {"preview_ms", s.preview.summary()}, {"preview_vpp_ms", s.preview_vpp.summary()},
                 {"preview_readback_ms", s.preview_readback.summary()}, {"preview_draw_ms", s.preview_draw.summary()}, {"preview_submit_ms", s.preview_submit.summary()},

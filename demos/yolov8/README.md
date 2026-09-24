@@ -4,6 +4,22 @@
 
 用同一入口选择设备、每卡路数和运行时长。每张卡启动独立后端进程，每路完成硬件解码、预处理、YOLOv8 推理与检测记录写出。
 
+## 可选回传优化
+
+YOLOv8 入口现在复用 HDMI 的检测器实现，保留独立的运行、记录和可选编码流程。默认仍完整读取输出；可显式启用已有 ReduceMax 辅助模型、稀疏候选后处理和相邻读取合并：
+
+```bash
+bash demos/yolov8/run.sh --devices 1 --streams 8 --duration 60 \
+  --input data/inputs/highway_1080p25.mp4 --classnames data/models/coco.names \
+  --output-buffer reuse --score-gate on \
+  --score-gate-model data/models/score_gate/score_gate_reducemax_f32.bmodel \
+  --gate-merge-budget-kib 64
+```
+
+辅助模型必须已经存在并匹配静态 FP32 `[1,8400,84]` 输出契约，不能用于任意 YOLO 模型。合并预算是允许多读的间隙字节，减少零散 SDK 调用，保留通过阈值的全部候选及多标签 NMS 语义；必要时回退完整读取。`reuse` 复用输出缓冲，检测器同时复用预处理缓冲。逐帧记录包含 gate 状态、读取字节数和候选行调用数。
+
+通过 `--score-gate off` 可对照完整读取。先核对同一输入源帧的检测结果，再比较 FPS；不能把换模型或抽帧的差异当成等价加速。模型与辅助文件不随 Git 分发。
+
 ## 依赖与数据
 
 先完成[环境准备](../../docs/setup.md)。需要 Linux、匹配的 libsophon 与 SOPHON FFmpeg/OpenCV、C++11、CMake 3.13+ 和 Python 3.9+。以下一键流程会安装基础工具、准备官方源码并下载 YOLOv8 模型和示例数据；已按环境准备页获取资源时，只需执行构建。从仓库根目录执行：

@@ -60,6 +60,11 @@ def arguments(model, argv=None):
     if model not in ('yolov8', 'yolo26'):
         raise ValueError('Unsupported model family: ' + model)
     parser.set_defaults(model=model)
+    if model == 'yolov8':
+        parser.add_argument('--output-buffer', choices=('baseline', 'reuse'), default='baseline')
+        parser.add_argument('--score-gate', choices=('off', 'on'), default='off')
+        parser.add_argument('--score-gate-model', type=repo_path, default=ROOT / 'data/models/score_gate/score_gate_reducemax_f32.bmodel')
+        parser.add_argument('--gate-merge-budget-kib', type=int, choices=range(1025), default=64)
     parser.add_argument('--devices', type=devices, default=[0], help='Unique device IDs in 0..3, e.g. 0 or 0,1,2,3 (default: 0)')
     parser.add_argument('--duration', type=finite_seconds, default=60.0, help='Measured seconds per card (default: 60)')
     parser.add_argument('--warmup', type=lambda value: finite_seconds(value, zero=True), default=5.0,
@@ -133,7 +138,10 @@ def build_plan(args, run_id=None):
                   '--window', str(timing['window_seconds']), '--output', str(output)]
         if args.model == 'yolov8':
             command = [sys.executable, str(runner), '--mode', 'analysis', '--measure-only',
-                       '--steps', str(args.streams), '--app', str(executable)] + common
+                       '--steps', str(args.streams), '--app', str(executable),
+                       '--output-buffer', args.output_buffer, '--score-gate', args.score_gate,
+                       '--score-gate-model', str(args.score_gate_model),
+                       '--gate-merge-budget-kib', str(args.gate_merge_budget_kib)] + common
         else:
             command = [str(executable), '--streams', str(args.streams), '--image-path', 'bgr',
                        '--pace-fps', '0', '--local-eof', 'loop'] + common

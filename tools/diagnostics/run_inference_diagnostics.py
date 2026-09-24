@@ -161,7 +161,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--steps', type=steps, default=[1, 2, 4, 8])
-    parser.add_argument('--modes', nargs='+', choices=('compute', 'copy', 'compute-copy'),
+    parser.add_argument('--modes', nargs='+', choices=('compute', 'copy', 'compute-copy', 'overlap'),
                         default=['compute', 'copy', 'compute-copy'])
     parser.add_argument('--warmup', type=positive, default=3)
     parser.add_argument('--duration', type=positive, default=10)

@@ -20,6 +20,15 @@ with patch.object(sys, "path", [str(RUNNER_PATH.parent), *sys.path]):
 
 
 class PlanTests(unittest.TestCase):
+    def test_catchup_index_reaches_both_workers(self):
+        args = self.parse('--devices', '0,1', '--local-catchup-index', 'data/segments/index.json')
+        plan = runner.build_plan(args)
+        for worker in plan['workers']:
+            self.assertEqual(worker['local_catchup_index'], '/board/repo/data/segments/index.json')
+            command = worker['worker_command']
+            self.assertEqual(command[command.index('--local-catchup-index')+1], worker['local_catchup_index'])
+        self.assertIn('/board/repo/data/segments/index.json', runner.required_files(args, plan))
+
     def test_per_device_preview_cap_does_not_change_streams_or_inference(self):
         args = self.parse("--devices", "0,1", "--infer-fps", "0")
         args.device_overrides = runner.normalize_device_overrides({
@@ -31,7 +40,8 @@ class PlanTests(unittest.TestCase):
         for worker in plan["workers"]:
             self.assertEqual(worker["infer_fps"], 0)
             self.assertEqual(worker["output_buffer"], "reuse")
-        for value in (True, 0, 11, float("nan"), "3"):
+        self.assertEqual(runner.normalize_device_overrides({"0": {"preview_fps": 0}})["0"]["preview_fps"], 0)
+        for value in (True, -1, 11, float("nan"), "3"):
             with self.assertRaises(ValueError):
                 runner.normalize_device_overrides({"0": {"preview_fps": value}})
 

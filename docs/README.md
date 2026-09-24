@@ -1,5 +1,9 @@
 # 文档索引
 
+**[PCIe性能调查：阅读顺序、文档目的与结论边界](pcie-reading-guide.md)**
+
+新增实测：[PCIe 2.0 ×1 回传影响、双向传输与各 Demo 对照](readback-performance.md)。
+
 [仓库首页](../README.md)
 
 从运行指南找到可执行命令，从指标文档确认口径，再阅读对应测试报告。所有运行命令除另有标注外，均在板端仓库根目录 `/userdata/1684X-EP-demo` 执行。

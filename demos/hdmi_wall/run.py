@@ -74,6 +74,13 @@ def observation_preview_fps(value: str) -> float:
     return number
 
 
+def detection_preview_fps(value: str) -> float:
+    number = nonnegative_finite(value)
+    if number > 10:
+        raise argparse.ArgumentTypeError("must be between 0 and 10 FPS; 0 disables detection previews")
+    return number
+
+
 def add_observation_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--observe-decode", choices=("off", "on"), default="off",
                         help="Observe all decoder completions and selected decoded-image comparisons.")
@@ -135,15 +142,19 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-frame-age-ms", type=nonnegative_finite, default=None,
                         help="Discard stale frames before detection: age since local frame due time or RTSP decode completion. 0 disables; defaults: latest=250, all=0.")
     parser.add_argument("--score-gate", choices=("off", "on"), default="off")
+    parser.add_argument("--active-limit", type=int, choices=range(33), default=0,
+                        help="Bound concurrent processing fairly; 0 preserves unrestricted execution.")
     parser.add_argument("--record-mode", choices=("full", "summary"), default="full",
                         help="full writes per-frame JSONL; summary retains bounded aggregate measurement output.")
     parser.add_argument("--prime-local-decoders", choices=("off", "on"), default="off",
                         help="Experimental: wait for each local file's first decoded frame before starting its playback clock.")
+    parser.add_argument("--local-catchup-index", default=None,
+                        help="Opt-in verified local keyframe segments for catching up without rebasing the source clock.")
     parser.add_argument("--gate-merge-budget-kib", type=gate_merge_budget_kib, default=0,
                         help="Extra output-read budget for merging small score-gate ranges, 0..1024 KiB; nonzero requires score-gate on.")
     parser.add_argument("--image-path", choices=("auto", "bgr", "yuv"), default="auto",
                         help="auto uses direct YUV preprocessing when supported; bgr retains the reference conversion path.")
-    parser.add_argument("--preview-fps", type=observation_preview_fps, default=10.0,
+    parser.add_argument("--preview-fps", type=detection_preview_fps, default=10.0,
                         help="Per-stream detection preview readback cap, (0,10]; does not cap inference.")
     parser.add_argument("--output-buffer", choices=("baseline", "reuse"), default="baseline")
     add_observation_arguments(parser)
@@ -163,6 +174,8 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--infer-fps must be 0 with --policy all")
     if args.policy == "all" and args.max_frame_age_ms != 0:
         parser.error("--max-frame-age-ms must be 0 with --policy all")
+    if args.local_catchup_index and (live_source(args.input) or args.policy != "latest" or args.max_frame_age_ms <= 0):
+        parser.error("--local-catchup-index requires local input, latest and positive max-frame-age-ms")
     if live_source(args.input) and args.streams > 1:
         parser.error("RTSP --input requires --streams 1; use hdmi_wall.pcie --inputs-file for distinct camera sources")
     if args.root is None:
@@ -194,6 +207,7 @@ def build_plan(args: argparse.Namespace) -> dict:
         "--warmup", "3",
         "--duration", str(args.duration), "--window", str(min(10, args.duration)), "--local-eof", "loop",
         "--output-buffer", args.output_buffer, "--preview-fps", str(args.preview_fps), "--score-gate", args.score_gate,
+        "--active-limit", str(args.active_limit),
         "--record-mode", args.record_mode,
         "--prime-local-decoders", args.prime_local_decoders,
         "--gate-merge-budget-kib", str(args.gate_merge_budget_kib),
@@ -208,6 +222,10 @@ def build_plan(args: argparse.Namespace) -> dict:
         worker.extend(["--bmodel", str(model), "--classnames", str(classes)])
     if args.inference == "on" and args.score_gate == "on":
         worker.extend(["--score-gate-model", str(gate)])
+    catchup_index = getattr(args, "local_catchup_index", None)
+    if catchup_index:
+        catchup_index = str(root / PurePosixPath(catchup_index))
+        worker.extend(["--local-catchup-index", catchup_index])
     worker.extend(["--output", str(output)])
     player = [
         "/usr/bin/ffplay", "-fs", "-f", "rawvideo", "-pixel_format", "bgr24",
@@ -222,6 +240,7 @@ def build_plan(args: argparse.Namespace) -> dict:
         "gate_merge_budget_kib": args.gate_merge_budget_kib,
         "record_mode": args.record_mode,
         "prime_local_decoders": args.prime_local_decoders,
+        "local_catchup_index": catchup_index,
         "policy": args.policy, "infer_fps": args.infer_fps, "max_frame_age_ms": args.max_frame_age_ms,
         "image_path": args.image_path,
         "observe_decode": args.observe_decode, "inference": args.inference,
@@ -236,6 +255,8 @@ def required_files(args: argparse.Namespace, plan: dict) -> list[str]:
         required.extend([plan["model"], plan["classnames"]])
     if not live_source(plan["input"]):
         required.append(plan["input"])
+    if plan.get("local_catchup_index"):
+        required.append(plan["local_catchup_index"])
     if plan.get("inference", "on") == "on" and args.score_gate == "on":
         required.append(plan["score_gate_model"])
     return required

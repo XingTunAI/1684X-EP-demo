@@ -33,6 +33,12 @@ class FakeProcess:
 
 
 class PlanTests(unittest.TestCase):
+    def test_yolov8_readback_options_reach_backend(self):
+        args=runner.arguments('yolov8',['--score-gate','on','--output-buffer','reuse','--gate-merge-budget-kib','128'])
+        command=runner.build_plan(args,'example')['cards'][0]['command']
+        for key,value in [('--score-gate','on'),('--output-buffer','reuse'),('--gate-merge-budget-kib','128')]:
+            self.assertEqual(command[command.index(key)+1],value)
+
     def test_single_card_defaults(self):
         for family in ('yolov8', 'yolo26'):
             with self.subTest(family=family):

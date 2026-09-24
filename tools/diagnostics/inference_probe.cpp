@@ -11,18 +11,57 @@
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
+#include <exception>
+#include <condition_variable>
+#include <functional>
 
 using Clock = std::chrono::steady_clock;
 using json = nlohmann::json;
 static double now() { return std::chrono::duration<double>(Clock::now().time_since_epoch()).count(); }
 static void check(bool ok, const char* message) { if (!ok) throw std::runtime_error(message); }
 
+// Persistent worker: do not include thread creation on every frame.
+class CopyWorker {
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool stop = false, pending = false, done = true;
+    std::function<double()> job;
+    double elapsed = 0;
+    std::exception_ptr error;
+    std::thread worker;
+public:
+    CopyWorker() : worker([this]() {
+        std::unique_lock<std::mutex> lock(mutex);
+        for (;;) {
+            cv.wait(lock, [this] { return stop || pending; });
+            if (stop) return;
+            auto task = job; pending = false;
+            lock.unlock();
+            double result = 0; std::exception_ptr failure;
+            try { result = task(); } catch (...) { failure = std::current_exception(); }
+            lock.lock(); elapsed = result; error = failure; done = true; cv.notify_all();
+        }
+    }) {}
+    ~CopyWorker() { { std::lock_guard<std::mutex> lock(mutex); stop = true; cv.notify_all(); } worker.join(); }
+    void submit(std::function<double()> task) {
+        std::lock_guard<std::mutex> lock(mutex);
+        check(done, "Previous copy still running"); job = task; done = false; pending = true; cv.notify_all();
+    }
+    double wait() {
+        std::unique_lock<std::mutex> lock(mutex); cv.wait(lock, [this] { return done; });
+        if (error) std::rethrow_exception(error); return elapsed;
+    }
+};
+
 struct Runtime {
     bm_handle_t handle = nullptr;
     void* runtime = nullptr;
-    bm_tensor_t input{}, output{};
-    bool input_allocated = false, output_allocated = false;
+    bm_tensor_t input{}, output{}, alternate{};
+    bm_handle_t copy_handle = nullptr;
+    bool input_allocated = false, output_allocated = false, alternate_allocated = false;
     ~Runtime() {
+        if (alternate_allocated) bm_free_device(handle, alternate.device_mem);
+        if (copy_handle) bm_dev_free(copy_handle);
         if (output_allocated) bm_free_device(handle, output.device_mem);
         if (input_allocated) bm_free_device(handle, input.device_mem);
         if (runtime) bmrt_destroy(runtime);
@@ -40,7 +79,7 @@ int main(int argc, char** argv) {
         const double warmup = std::stod(argv[4]), duration = std::stod(argv[5]);
         check(device >= 0 && std::isfinite(warmup) && warmup >= 0 &&
               std::isfinite(duration) && duration > 0, "Invalid timing/device");
-        check(mode == "compute" || mode == "copy" || mode == "compute-copy", "Invalid mode");
+        check(mode == "compute" || mode == "copy" || mode == "compute-copy" || mode == "overlap", "Invalid mode");
         Runtime r;
         check(bm_dev_request(&r.handle, device) == BM_SUCCESS, "Device open failed");
         r.runtime = bmrt_create(r.handle);
@@ -58,6 +97,10 @@ int main(int argc, char** argv) {
         r.input_allocated = bmrt_tensor(&r.input, r.runtime, net->input_dtypes[0], net->stages[0].input_shapes[0]);
         r.output_allocated = bmrt_tensor(&r.output, r.runtime, net->output_dtypes[0], net->stages[0].output_shapes[0]);
         check(r.input_allocated && r.output_allocated, "Tensor allocation failed");
+        if (mode == "overlap") {
+            r.alternate_allocated = bmrt_tensor(&r.alternate, r.runtime, net->output_dtypes[0], net->stages[0].output_shapes[0]);
+            check(r.alternate_allocated && bm_dev_request(&r.copy_handle, device) == BM_SUCCESS, "Overlap buffer/handle failed");
+        }
         const size_t input_bytes = bmrt_tensor_bytesize(&r.input);
         const size_t output_bytes = bmrt_tensor_bytesize(&r.output);
         std::vector<unsigned char> zero(input_bytes, 0), host(output_bytes), reference(output_bytes);
@@ -76,6 +119,10 @@ int main(int argc, char** argv) {
               "Baseline reference copy failed");
         copy();
         check(host == reference, "Selected copy differs from unchunked reference");
+        if (mode == "overlap") {
+            check(bmrt_launch_tensor_ex(r.runtime, network.c_str(), &r.input, 1, &r.alternate, 1, true, false), "Alternate launch failed");
+            sync();
+        }
         { std::ofstream ready(out + ".ready"); ready << "ready\n"; check(bool(ready), "Cannot write ready file"); }
         const double wait_begin = now();
         double start = 0;
@@ -89,14 +136,25 @@ int main(int argc, char** argv) {
         while (now() < start) std::this_thread::sleep_for(std::chrono::milliseconds(1));
         const double measure_begin = start + warmup, measure_end = measure_begin + duration;
         size_t iterations = 0;
+        CopyWorker copy_worker;
         double submit_sum = 0, sync_sum = 0, copy_sum = 0, measured_start = 0, measured_end = 0;
         while (now() < measure_end) {
             const double begin = now();
+            if (mode == "overlap") {
+                // Read the previous output while computing the next into separate memory.
+                copy_worker.submit([&]() {
+                    const double t = now();
+                    check(read_output(r.copy_handle, host.data(), r.alternate.device_mem, output_bytes, chunk) == BM_SUCCESS, "Overlap copy failed");
+                    return now() - t;
+                });
+            }
             if (mode != "copy") launch();
             const double submitted = now();
             if (mode != "copy") sync();
             const double synced = now();
-            if (mode != "compute") copy();
+            double overlap_copy = 0;
+            if (mode == "overlap") { overlap_copy = copy_worker.wait(); std::swap(r.output, r.alternate); }
+            else if (mode != "compute") copy();
             const double copied = now();
             // Ignore an iteration crossing the warmup boundary; include final overshoot in elapsed time.
             if (begin >= measure_begin) {
@@ -104,7 +162,7 @@ int main(int argc, char** argv) {
                 ++iterations;
                 submit_sum += submitted - begin;
                 sync_sum += synced - submitted;
-                copy_sum += copied - synced;
+                copy_sum += mode == "overlap" ? overlap_copy : copied - synced;
                 measured_end = copied;
             }
         }
@@ -121,7 +179,8 @@ int main(int argc, char** argv) {
             {"sync_mean_ms", mode == "copy" ? json(nullptr) : json(sync_sum * 1000 / iterations)},
             {"copy_mean_ms", mode == "compute" ? json(nullptr) : json(copy_sum * 1000 / iterations)},
             {"output_matches_reference", true}, {"input_kind", "resident_zero_tensor"},
-            {"buffers", "resident_input_and_output"}};
+            {"buffers", mode == "overlap" ? "resident_input_double_output_separate_copy_handle" : "resident_input_and_output"},
+            {"overlap_scope", mode == "overlap" ? "Previous fixed-input output read overlaps next compute; not PCIe bidirectional traffic" : "none"}};
         std::ofstream file(out);
         file << result.dump(2) << '\n';
         check(bool(file), "Cannot write results");

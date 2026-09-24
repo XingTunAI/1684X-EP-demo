@@ -9,6 +9,7 @@
 
 #include "yolov8_det.hpp"
 #include "score_gate_plan.hpp"
+#include "../vpp_admission.hpp"
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -384,6 +385,7 @@ int YoloV8_det::pre_process(const std::vector<bm_image>& images,
             if (bmcv_image_copy_to(handle, copyToAttr, image1, image_aligned) != BM_SUCCESS)
                 throw std::runtime_error("Cannot copy source image to aligned image");
         }
+        vpp_admission::Lease vpp_lease;
 #if USE_ASPECT_RATIO
         bool isAlignWidth = false;
         float ratio = get_aspect_scaled_ratio(images[i].width, images[i].height, m_net_w, m_net_h, &isAlignWidth);
@@ -434,6 +436,7 @@ int YoloV8_det::pre_process(const std::vector<bm_image>& images,
         txy_batch.push_back(std::make_pair(0, 0));
         ratios_batch.push_back(std::make_pair((float)m_net_w/images[i].width,(float)m_net_h/images[i].height));
 #endif
+        vpp_lease.release();
         if (ret != BM_SUCCESS) {
             throw std::runtime_error("BMRuntime 操作失败");
         }

@@ -58,6 +58,11 @@ public:
     WallRenderer& operator=(const WallRenderer&) = delete;
 
     std::string fifo_path() const { return output_dir_ + "/preview.bgr"; }
+    void configure_wall_fps(double fps) {
+        if (started_.load()) throw std::logic_error("Configure wall FPS before starting renderer");
+        if (!std::isfinite(fps) || fps < 0 || fps > 120) throw std::invalid_argument("wall-fps must be in [0,120]");
+        wall_fps_ = fps;
+    }
     bool failed() const { return failed_.load(); }
     std::string error() const {
         std::lock_guard<std::mutex> guard(error_lock_);
@@ -193,7 +198,8 @@ public:
                 }
                 if (!write_frame(descriptor, canvas)) break;
                 ++published_;
-                next_frame = std::max(next_frame + std::chrono::milliseconds(readback_enabled_.load() ? 100 : 1000), Clock::now());
+                const double interval = readback_enabled_.load() ? (wall_fps_ > 0 ? 1.0 / wall_fps_ : 0) : 1.0;
+                next_frame = std::max(next_frame + std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(interval)), Clock::now());
                 wait_until(next_frame);
             }
         } catch (const std::exception& exception) {
@@ -260,6 +266,7 @@ private:
         }
     };
     Time last_bitmap_ = Time::min();
+    double wall_fps_ = 10;
     std::atomic<bool> readback_enabled_{true};
     std::atomic<unsigned> readback_inflight_{0};
     std::atomic<uint64_t> output_bytes_{0}, preview_bytes_{0}, model_only_{0}, results_readback_{0};
@@ -651,7 +658,7 @@ private:
             file.exceptions(std::ios::failbit | std::ios::badbit);
             file << "{\n  \"timestamp_unix_ms\": " << unix_millis()
                  << ",\n  \"width\": 1920, \"height\": 1080, \"columns\": 6, \"rows\": 6,"
-                 << "\n  \"preview_fps_cap\": 10, \"channels\": " << count_
+                 << "\n  \"preview_fps_cap\": " << wall_fps_ << ", \"channels\": " << count_
                  << ", \"device\": " << device_ << ", \"model\": " << quote(model_name_)
                  << ", \"policy\": " << quote(policy_)
                  << ",\n  \"age_note\": \"frame_age_ms starts at decode completion; source_age_ms starts at local frame due time and is null for RTSP. Both include time since submission; neither is camera-to-display latency.\""

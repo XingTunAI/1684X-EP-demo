@@ -98,6 +98,9 @@ def main(argv=None):
     parser.add_argument('--classnames', type=Path, default=ROOT / 'third_party/sophon-demo/sample/YOLOv8_plus_det/datasets/coco.names')
     parser.add_argument('--app', type=Path, default=ROOT / 'demos/yolov8/build/pipeline_worker.pcie')
     parser.add_argument('--output-buffer', choices=('baseline', 'reuse'), default='baseline', help='Reuse host and device output buffers (experimental)')
+    parser.add_argument('--score-gate', choices=('off', 'on'), default='off')
+    parser.add_argument('--score-gate-model', type=Path, default=ROOT / 'data/models/score_gate/score_gate_reducemax_f32.bmodel')
+    parser.add_argument('--gate-merge-budget-kib', type=int, default=64)
     parser.add_argument('--transfer-slots', type=int, default=0, help='Experimental concurrent output transfers; 0 disables gate')
     parser.add_argument('--bitrate', type=int, default=4000, help='H264 output kbps per stream')
     parser.add_argument('--mode', choices=('analysis', 'encode'), default='encode')
@@ -121,6 +124,10 @@ def main(argv=None):
         parser.error('First full-pipeline baseline uses paced local video only')
     if extra.transfer_slots < 0:
         parser.error('transfer-slots must be non-negative')
+    if not 0 <= extra.gate_merge_budget_kib <= 1024:
+        parser.error('gate-merge-budget-kib must be in 0..1024')
+    if extra.score_gate == 'on' and not a.dry_run and not extra.score_gate_model.is_file():
+        parser.error('Missing score gate model: ' + str(extra.score_gate_model))
     if extra.bitrate < 1:
         parser.error('bitrate must be positive')
     if a.output == ROOT / 'data/results/decode':
@@ -129,7 +136,9 @@ def main(argv=None):
         return [str(extra.app.resolve()), f'--input={source}', f'--bmodel={extra.bmodel.resolve()}',
                 f'--classnames={extra.classnames.resolve()}', f'--device={a.device}',
                 f'--output={stream.resolve()}', f'--fps={a.target_fps}', f'--bitrate={extra.bitrate}',
-                f'--mode={a.mode}', f'--image_path={extra.image_path}', f'--output_buffer={extra.output_buffer}'] + ([
+                f'--mode={a.mode}', f'--image_path={extra.image_path}', f'--output_buffer={extra.output_buffer}',
+                f'--score_gate={extra.score_gate}', f'--score_gate_model={extra.score_gate_model.resolve()}',
+                f'--gate_merge_budget_kib={extra.gate_merge_budget_kib}'] + ([
                 '--transfer_lock=' + str((stream.parent / ('transfer_%02d.lock' % (int(stream.name.rsplit('_', 1)[1]) % extra.transfer_slots))).resolve())
                 ] if extra.transfer_slots else [])
     if a.dry_run:

@@ -2,7 +2,7 @@
 
 [仓库首页](../../README.md) / [文档索引](../../docs/README.md)
 
-本目录包含独立模型执行、输出回传、PCIe 传输和 YOLOv8 图像结果检查。所有命令从仓库根目录执行，运行依赖对应 SOPHON SDK；这些工具不启动视频演示。
+本目录包含独立模型执行、输出回传、PCIe 传输和 YOLOv8 图像结果检查，以及文末的多路业务对照。所有命令从仓库根目录执行，运行依赖对应 SOPHON SDK；多路业务对照会按配置启动视频墙和编码。
 
 ## 构建与入口
 
@@ -44,6 +44,29 @@ python3 tools/diagnostics/run_inference_diagnostics.py \
 | `compute` | 模型提交与同步等待 |
 | `copy` | 重复读取已经生成的输出张量 |
 | `compute-copy` | 模型执行、同步及完整结果读取 |
+| `overlap` | 常驻回传线程读取前一次输出，同时计算下一次，使用两块独立输出缓冲 |
+
+`overlap` 测计算与 D2H 重叠；输入为固定驻留张量，**不是双向 PCIe 传输，也不是视频 FPS**。首末逐字节一致不等于逐帧检测精度验收。
+
+### Gen2 ×1 单卡回传对照
+
+`run_readback_study.py` 核验 device/BDF 和当前 `5.0 GT/s ×1`；发现其他媒体或推理任务时拒绝开始。输出目录必须是新目录。示例编号需现场确认。
+
+```bash
+python3 tools/diagnostics/run_readback_study.py --device 1 --bdf 0004:41:00.0 \
+  --suite inference --duration 15 --repeats 2 --output data/results/NEW-inference
+python3 tools/diagnostics/run_readback_study.py --device 1 --bdf 0004:41:00.0 \
+  --suite transfer --duration 10 --repeats 2 --output data/results/NEW-transfer
+python3 tools/diagnostics/run_readback_study.py --device 1 --bdf 0004:41:00.0 \
+  --suite wall --duration 30 --repeats 2 --streams 16 --output data/results/NEW-wall
+python3 tools/diagnostics/analyze_readback_study.py data/results/NEW-inference
+```
+
+- `transfer`：33,600 B / 2,822,400 B，单独上传/下载、串行上传再下载、双线程双向并发。两方向有独立 handle 和缓冲，首尾核验数据。只统计完整落在公共区间的调用；分别报告两方向 MB/s，不能把相加值当单向带宽。等量收发业务取两方向较低完成率。
+- `inference`：计算、输出读取、串行组合、双缓冲重叠，以及 256 KiB 分块对照。`--bmodel` 可指定另一份兼容模型；反转顺序重复测量。
+- `wall`：保持素材、模型和路数一致，分别控制结果消费、gate 合并预算、预览和输出内存复用。实验文件为 `data/inputs/highway_1080p25.mp4`、`data/models/coco.names`、`data/models/score_gate_reducemax_f32.bmodel`，需自行准备。不会改变各 Demo 的默认素材位置。实验播放器使用 `:0` 和 LightDM，其他桌面环境需调整脚本。
+
+保存命令、日志、每秒 TPU 采样和正式窗口；分析器只纳入完成的阶段及正式窗口的有效 TPU 样本。SDK 调用计时包括等待，不能直接当核心执行时间。短测不代表长稳验收。
 
 `--modes` 选择其中一种或多种；`--steps` 指定递增进程数。`--copy-chunk-bytes` 可配置读取分块，0 表示完整读取。使用自定义构建目录时通过 `--app` 指定对应探针。
 
@@ -123,3 +146,8 @@ test -f "$diagnostic_image" && tools/diagnostics/build/detector_check.pcie \
 固定输入结果首末一致不代表真实视频检测准确。有效回传速度包含 SDK、内存和调用等待，不等于 PCIe 理论带宽。批量模型的图像数量与模型调用次数需分开计算；独立模型速度不能当作完整视频 FPS。共享定义见[指标说明](../../docs/metrics.md)。
 
 源码检查位于 `tests/`；所有运行日志、结果及图像留在本地 `data/results/`。
+## 32 路分析、编码与预览对照
+
+针对本地视频落后后推理断供的可选追赶方案，准备、双卡对照和验收边界见[本地追赶实验](../../docs/local-catchup.md)。入口为 `prepare_catchup_segments.py`、`run_catchup_comparison.py`、`summarize_catchup.py`。
+
+两张 PCIe 2.0 ×1 卡同时运行并交换角色的实测，见 [结果与视频](../../docs/pipeline32-results.md) 和 [实验设计](../../docs/pipeline32-comparison.md)。入口为 `run_dual_pipeline32.py`；单卡入口为 `run_pipeline32_comparison.py`，均支持 `--dry-run`。实际编码使用 BM1684X VPU；不要把当前逐帧离线分析吞吐当成实时 25 FPS 验收。

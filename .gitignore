@@ -51,6 +51,15 @@ Thumbs.db
 /local/
 /docs/hardware/
 /docs/*-20[0-9][0-9][0-9][0-9][0-9][0-9].md
+# Reviewed PCIe investigation reports linked from the public reading guide.
+!/docs/dma-vpp-link-20260924.md
+!/docs/pcie-link-card-comparison-20260923.md
+!/docs/pcie-transfer-cost-20260924.md
+!/docs/pcie2-direct-bandwidth-20260924.md
+!/docs/pcie3-wall24-1h-20260924.md
+!/docs/pipeline-timing-20260923.md
+!/docs/preview-root-cause-20260923.md
+!/docs/same-card-link-20260923.md
 /docs/operation-log.md
 /docs/board-status.md
 /docs/stress-test-record.csv

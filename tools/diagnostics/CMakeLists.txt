@@ -18,6 +18,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${DETECTOR_DIR} ${YOLO_DIR}
 link_directories(${FFMPEG_LIB_DIRS} ${OpenCV_LIB_DIRS} ${LIBSOPHON_LIB_DIRS})
 
 add_executable(inference_probe.pcie inference_probe.cpp)
+add_executable(duplex_probe.pcie duplex_probe.cpp)
+target_compile_options(duplex_probe.pcie PRIVATE -O2 -UNDEBUG)
+target_link_libraries(duplex_probe.pcie ${the_libbmlib.so} Threads::Threads)
 target_compile_options(inference_probe.pcie PRIVATE -O2 -UNDEBUG)
 target_link_libraries(inference_probe.pcie
   ${the_libbmlib.so} ${the_libbmrt.so} Threads::Threads)
@@ -26,3 +29,11 @@ add_executable(detector_check.pcie detector_check.cpp ${DETECTOR_DIR}/yolov8_det
 target_compile_options(detector_check.pcie PRIVATE -O2 -UNDEBUG)
 target_link_libraries(detector_check.pcie ${FFMPEG_LIBS} ${OpenCV_LIBS}
   ${the_libbmlib.so} ${the_libbmrt.so} ${the_libbmcv.so} Threads::Threads)
+
+add_executable(vpp_fixed_probe.pcie vpp_fixed_probe.cpp)
+target_compile_options(vpp_fixed_probe.pcie PRIVATE -O2 -UNDEBUG)
+target_link_libraries(vpp_fixed_probe.pcie ${the_libbmlib.so} ${the_libbmcv.so} Threads::Threads)
+
+add_executable(dma_vpp_probe.pcie dma_vpp_probe.cpp)
+target_compile_options(dma_vpp_probe.pcie PRIVATE -O2 -UNDEBUG)
+target_link_libraries(dma_vpp_probe.pcie ${the_libbmlib.so} ${the_libbmcv.so} Threads::Threads)

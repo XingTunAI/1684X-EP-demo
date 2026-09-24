@@ -1,5 +1,7 @@
 # 检测器适配代码
 
+视频 YOLOv8 后端现在使用 `demos/hdmi_wall/detector/` 的共享实现，以复用预处理缓冲和 score gate。此目录保留原实现供 `tools/diagnostics/detector_check` 和历史正确性对照使用；修改本目录不会改变视频后端。
+
 [YOLOv8 运行说明](../README.md) / [文档索引](../../../docs/README.md)
 
 基于 [SOPHON-DEMO YOLOv8 BMCV](https://github.com/sophgo/sophon-demo/tree/485e8a0dd21e3bba6cfa3c4c0241c8e28f76541b/sample/YOLOv8_plus_det/cpp/yolov8_bmcv)，保留原版权声明和本目录 LICENSE。来源为本工程已部署的官方示例适配版本，包含原有运行错误检查。

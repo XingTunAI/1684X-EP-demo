@@ -1,8 +1,12 @@
 # RK3588 + BM1684X EP Demo
 
+**[PCIe性能调查：阅读顺序、文档目的与结论边界](docs/pcie-reading-guide.md)**
+
 在 RK3588 Linux ARM64 主机上通过 PCIe 使用 BM1684X，提供视频检测、HDMI 多路视频墙、硬件解码和模型 / 传输诊断。代码用于开发、演示和性能验证；每份实测报告单独注明输入、配置及验证范围。
 
 **[完整文档索引](docs/README.md)** · **[当前性能数据总览](demos/hdmi_wall/docs/current-data.md)** · [参数与读数](docs/metrics.md)
+
+本轮专项：[PCIe 2.0 ×1 回传、TPU 与双向传输实测](docs/readback-performance.md)（2026-09-22，同卡分阶段对照及 YOLOv8 优化验证）。
 
 ## 从哪里开始
 
