@@ -1,5 +1,7 @@
 # BM1684X：PCIe、推理、解码和抽帧指标的计算流程
 
+> 更新索引（2026-09-24）：本页09-10硬件表及算例按历史条件保留，设备编号不代表当前拓扑。最新[同卡速率对照](same-card-link-20260923.md)、[实际DMA带宽](dma-vpp-link-20260924.md)、[传输成本计算](pcie-transfer-cost-20260924.md)及[24路一小时结果](pcie3-wall24-1h-20260924.md)见对应报告。理论带宽、SDK有效吞吐和视频墙回传载荷不是同一指标。
+
 [文档索引](README.md) / [当前数据总览](../demos/hdmi_wall/docs/current-data.md) / [统计字段](metrics.md)
 
 日期：2026-09-10。原始实测和运行目录见 [TPU 满载解码测试](../demos/hdmi_wall/docs/capacity-validation.md)；页面字段见 [视频墙指标](../demos/hdmi_wall/docs/wall-indicators.md)。本页复算既有数据，没有启动新的硬件测试。

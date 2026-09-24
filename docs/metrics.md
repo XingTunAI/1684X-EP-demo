@@ -1,5 +1,7 @@
 # 输出指标与状态
 
+新增不限频口径：底层 `--preview-fps -1` 表示单路预览不主动限频、0关闭预览；`--wall-fps 0` 表示整墙不主动限频。`status.json.preview_fps_cap`为整墙配置，不是单路实际新图FPS。用预览完成数或小图字节增量计算有效预览率；整墙发布可能包含重复画面。详见[参数说明](../demos/hdmi_wall/docs/parameters.md#单路预览不限频2026-09-24)。
+
 [仓库首页](../README.md) / [文档索引](../docs/README.md)
 
 本页定义 JSON / CSV 输出与统计口径。HDMI 页面读数见 [屏幕指标](../demos/hdmi_wall/docs/wall-indicators.md)，运行选项见 [命令参数](../demos/hdmi_wall/docs/parameters.md)。
