@@ -1,0 +1,3473 @@
+{
+  "runs": [
+    {
+      "stage": "before_device0",
+      "fps": 222.67777777777778,
+      "tpu": 81.31111111111112,
+      "zero_streams": 0,
+      "stale_lifetime": 20,
+      "max_gap_s": 0.8972290100000038,
+      "api": {
+        "pre_convert": {
+          "api_ms": {
+            "count": 20048,
+            "mean": 32.778795505187176,
+            "min": 0.5270480005492573,
+            "p50": 33.965912999974535,
+            "p95": 41.23901000002661,
+            "max": 139.0521940002145
+          },
+          "driver_ms": {
+            "count": 20048,
+            "mean": 32.76122782103124,
+            "min": 0.5212149999351823,
+            "p50": 33.94943350031099,
+            "p95": 41.22471899972879,
+            "max": 139.0358600001491
+          },
+          "driver_counts": {
+            "1": 20048
+          },
+          "descriptor_counts": {
+            "1": 20048
+          }
+        },
+        "thumbnail": {
+          "api_ms": {
+            "count": 13705,
+            "mean": 29.66528196731247,
+            "min": 0.6165919994600699,
+            "p50": 30.775035999795364,
+            "p95": 39.44844399939029,
+            "max": 128.20321500021237
+          },
+          "driver_ms": {
+            "count": 13705,
+            "mean": 29.647066840492787,
+            "min": 0.599383000007947,
+            "p50": 30.74907800055371,
+            "p95": 39.42627700052981,
+            "max": 128.1862980004007
+          },
+          "driver_counts": {
+            "1": 13705
+          },
+          "descriptor_counts": {
+            "1": 13705
+          }
+        },
+        "pre_vpp": {
+          "api_ms": {
+            "count": 20030,
+            "mean": 32.109112300250956,
+            "min": 0.6110499998612795,
+            "p50": 33.34640449975268,
+            "p95": 40.39816600015911,
+            "max": 134.01037599942356
+          },
+          "driver_ms": {
+            "count": 20030,
+            "mean": 32.09181582605979,
+            "min": 0.5976330003250041,
+            "p50": 33.32802899967646,
+            "p95": 40.38499699981912,
+            "max": 134.00046000060684
+          },
+          "driver_counts": {
+            "1": 20030
+          },
+          "descriptor_counts": {
+            "1": 20030
+          }
+        }
+      }
+    },
+    {
+      "stage": "before_device2",
+      "fps": 271.9222222222222,
+      "tpu": 99.4,
+      "zero_streams": 0,
+      "stale_lifetime": 0,
+      "max_gap_s": 0.21861875700000155,
+      "api": {
+        "thumbnail": {
+          "api_ms": {
+            "count": 17621,
+            "mean": 9.62182065699837,
+            "min": 0.5372569994506193,
+            "p50": 7.03742699988652,
+            "p95": 25.00929300003918,
+            "max": 43.535623000025225
+          },
+          "driver_ms": {
+            "count": 17621,
+            "mean": 9.60352674939068,
+            "min": 0.524132999998983,
+            "p50": 7.015260999651218,
+            "p95": 24.993541999720037,
+            "max": 43.50587299995823
+          },
+          "driver_counts": {
+            "1": 17621
+          },
+          "descriptor_counts": {
+            "1": 17621
+          }
+        },
+        "pre_vpp": {
+          "api_ms": {
+            "count": 24471,
+            "mean": 9.484753233297361,
+            "min": 0.599383000007947,
+            "p50": 5.483282000568579,
+            "p95": 27.8857479997896,
+            "max": 45.62340200027393
+          },
+          "driver_ms": {
+            "count": 24471,
+            "mean": 9.468304356423616,
+            "min": 0.5804239999633864,
+            "p50": 5.468530999678478,
+            "p95": 27.874663999682525,
+            "max": 45.61260999980732
+          },
+          "driver_counts": {
+            "1": 24471
+          },
+          "descriptor_counts": {
+            "1": 24471
+          }
+        },
+        "pre_convert": {
+          "api_ms": {
+            "count": 24467,
+            "mean": 11.305221930111456,
+            "min": 0.4908820001219283,
+            "p50": 8.392821000597905,
+            "p95": 29.828564999661467,
+            "max": 45.74327799946332
+          },
+          "driver_ms": {
+            "count": 24467,
+            "mean": 11.288435252336772,
+            "min": 0.48008999965531984,
+            "p50": 8.377362000828725,
+            "p95": 29.813690999617393,
+            "max": 45.72723599994788
+          },
+          "driver_counts": {
+            "1": 24467
+          },
+          "descriptor_counts": {
+            "1": 24467
+          }
+        }
+      }
+    },
+    {
+      "stage": "traced_device0",
+      "fps": 215.53333333333333,
+      "tpu": 78.23333333333333,
+      "zero_streams": 0,
+      "stale_lifetime": 0,
+      "max_gap_s": 0.29461452500000007,
+      "api": {
+        "pre_vpp": {
+          "api_ms": {
+            "count": 25845,
+            "mean": 33.623817247628,
+            "min": 0.6317589995887829,
+            "p50": 34.84327299975121,
+            "p95": 41.61294999994425,
+            "max": 59.495280000192
+          },
+          "driver_ms": {
+            "count": 25845,
+            "mean": 33.60711434660554,
+            "min": 0.6215499997779261,
+            "p50": 34.82752400032041,
+            "p95": 41.60186600074667,
+            "max": 59.47982099951332
+          },
+          "driver_counts": {
+            "1": 25845
+          },
+          "descriptor_counts": {
+            "1": 25845
+          }
+        },
+        "pre_convert": {
+          "api_ms": {
+            "count": 25857,
+            "mean": 34.50714416869806,
+            "min": 0.5506749994310667,
+            "p50": 35.68182600065484,
+            "p95": 42.773507000674726,
+            "max": 61.33018000036827
+          },
+          "driver_ms": {
+            "count": 25857,
+            "mean": 34.49018945055136,
+            "min": 0.5390070000430569,
+            "p50": 35.665200999574154,
+            "p95": 42.76184100035607,
+            "max": 61.32026300019788
+          },
+          "driver_counts": {
+            "1": 25857
+          },
+          "descriptor_counts": {
+            "1": 25857
+          }
+        },
+        "thumbnail": {
+          "api_ms": {
+            "count": 18334,
+            "mean": 31.73594567650053,
+            "min": 0.6746340004610829,
+            "p50": 33.045414999833156,
+            "p95": 40.942397999970126,
+            "max": 59.52298800002609
+          },
+          "driver_ms": {
+            "count": 18334,
+            "mean": 31.718270088246705,
+            "min": 0.6617999997615698,
+            "p50": 33.03010199942946,
+            "p95": 40.92431499975646,
+            "max": 59.507529999791586
+          },
+          "driver_counts": {
+            "1": 18334
+          },
+          "descriptor_counts": {
+            "1": 18334
+          }
+        }
+      }
+    },
+    {
+      "stage": "traced_device2",
+      "fps": 269.675,
+      "tpu": 98.75,
+      "zero_streams": 0,
+      "stale_lifetime": 0,
+      "max_gap_s": 0.22499302399999976,
+      "api": {
+        "pre_convert": {
+          "api_ms": {
+            "count": 32362,
+            "mean": 14.052477601353937,
+            "min": 0.5048819994044607,
+            "p50": 11.162528999648202,
+            "p95": 34.32964100011304,
+            "max": 52.18542999955389
+          },
+          "driver_ms": {
+            "count": 32362,
+            "mean": 14.034257004975007,
+            "min": 0.49029799993149936,
+            "p50": 11.14284149980449,
+            "p95": 34.31797400025971,
+            "max": 52.16326299978391
+          },
+          "driver_counts": {
+            "1": 32362
+          },
+          "descriptor_counts": {
+            "1": 32362
+          }
+        },
+        "thumbnail": {
+          "api_ms": {
+            "count": 22970,
+            "mean": 11.639597856857446,
+            "min": 0.5395910002334858,
+            "p50": 9.753030999945622,
+            "p95": 28.148264000265044,
+            "max": 44.517989000269154
+          },
+          "driver_ms": {
+            "count": 22970,
+            "mean": 11.62144482555507,
+            "min": 0.5305489994498203,
+            "p50": 9.73217599948839,
+            "p95": 28.13426300053834,
+            "max": 44.5010720004575
+          },
+          "driver_counts": {
+            "1": 22970
+          },
+          "descriptor_counts": {
+            "1": 22970
+          }
+        },
+        "pre_vpp": {
+          "api_ms": {
+            "count": 32350,
+            "mean": 11.922866462563963,
+            "min": 0.5952999999863096,
+            "p50": 7.679689500037057,
+            "p95": 31.92014999967796,
+            "max": 48.19683299956523
+          },
+          "driver_ms": {
+            "count": 32350,
+            "mean": 11.90498529490032,
+            "min": 0.5815919994347496,
+            "p50": 7.654605500192702,
+            "p95": 31.905273999655037,
+            "max": 48.18866599998728
+          },
+          "driver_counts": {
+            "1": 32350
+          },
+          "descriptor_counts": {
+            "1": 32350
+          }
+        }
+      }
+    },
+    {
+      "stage": "after_device0",
+      "fps": 224.92222222222222,
+      "tpu": 82.6,
+      "zero_streams": 0,
+      "stale_lifetime": 63,
+      "max_gap_s": 0.34828292199999566,
+      "api": {
+        "thumbnail": {
+          "api_ms": {
+            "count": 13688,
+            "mean": 29.17503627740046,
+            "min": 0.563215999136446,
+            "p50": 30.25427149987081,
+            "p95": 39.02495399961481,
+            "max": 218.3595080005034
+          },
+          "driver_ms": {
+            "count": 13688,
+            "mean": 29.157156655759334,
+            "min": 0.5521329994735424,
+            "p50": 30.238520999773755,
+            "p95": 38.997537000796,
+            "max": 218.332967000606
+          },
+          "driver_counts": {
+            "1": 13688
+          },
+          "descriptor_counts": {
+            "1": 13688
+          }
+        },
+        "pre_vpp": {
+          "api_ms": {
+            "count": 20238,
+            "mean": 31.44522518524732,
+            "min": 0.6638419999944745,
+            "p50": 32.60295000018232,
+            "p95": 39.672171999882266,
+            "max": 222.28393699970184
+          },
+          "driver_ms": {
+            "count": 20238,
+            "mean": 31.428753474606008,
+            "min": 0.6518840000353521,
+            "p50": 32.58617849996881,
+            "p95": 39.658172000599734,
+            "max": 222.27081199980603
+          },
+          "driver_counts": {
+            "1": 20238
+          },
+          "descriptor_counts": {
+            "1": 20238
+          }
+        },
+        "pre_convert": {
+          "api_ms": {
+            "count": 20232,
+            "mean": 32.24188591953472,
+            "min": 0.5827579998367582,
+            "p50": 33.40781450015129,
+            "p95": 40.66735200012772,
+            "max": 217.23482599918498
+          },
+          "driver_ms": {
+            "count": 20232,
+            "mean": 32.224242020661876,
+            "min": 0.562340999749722,
+            "p50": 33.39046050041361,
+            "p95": 40.65218499999901,
+            "max": 217.2202420006215
+          },
+          "driver_counts": {
+            "1": 20232
+          },
+          "descriptor_counts": {
+            "1": 20232
+          }
+        }
+      }
+    },
+    {
+      "stage": "after_device2",
+      "fps": 271.96666666666664,
+      "tpu": 99.62222222222222,
+      "zero_streams": 0,
+      "stale_lifetime": 0,
+      "max_gap_s": 0.20666268200000104,
+      "api": {
+        "pre_vpp": {
+          "api_ms": {
+            "count": 24476,
+            "mean": 8.26292250257173,
+            "min": 0.5880079997950816,
+            "p50": 4.93171349990007,
+            "p95": 25.396641999577696,
+            "max": 41.24398600015411
+          },
+          "driver_ms": {
+            "count": 24476,
+            "mean": 8.246449317578351,
+            "min": 0.5734240003221203,
+            "p50": 4.917859000215685,
+            "p95": 25.377683999977307,
+            "max": 41.23406899998372
+          },
+          "driver_counts": {
+            "1": 24476
+          },
+          "descriptor_counts": {
+            "1": 24476
+          }
+        },
+        "pre_convert": {
+          "api_ms": {
+            "count": 24473,
+            "mean": 9.9716492483143,
+            "min": 0.4888399998890236,
+            "p50": 6.512422999549017,
+            "p95": 27.363668999896618,
+            "max": 41.763450999496854
+          },
+          "driver_ms": {
+            "count": 24473,
+            "mean": 9.954873471051595,
+            "min": 0.4792140007339185,
+            "p50": 6.496963999779837,
+            "p95": 27.348210000127438,
+            "max": 41.750325999601046
+          },
+          "driver_counts": {
+            "1": 24473
+          },
+          "descriptor_counts": {
+            "1": 24473
+          }
+        },
+        "thumbnail": {
+          "api_ms": {
+            "count": 18118,
+            "mean": 8.721433050892177,
+            "min": 0.5252989994914969,
+            "p50": 6.086291999963578,
+            "p95": 22.79756399912003,
+            "max": 38.49032299967803
+          },
+          "driver_ms": {
+            "count": 18118,
+            "mean": 8.703460014736157,
+            "min": 0.5142159998285933,
+            "p50": 6.062896000003093,
+            "p95": 22.77977300036582,
+            "max": 38.48040499997296
+          },
+          "driver_counts": {
+            "1": 18118
+          },
+          "descriptor_counts": {
+            "1": 18118
+          }
+        }
+      }
+    }
+  ],
+  "captures": [
+    {
+      "name": "vpp0",
+      "capture": {
+        "before_enable_monotonic": 6811.329499496,
+        "after_enable_monotonic": 6811.329786208,
+        "before_disable_monotonic": 6819.329966604,
+        "after_disable_monotonic": 6819.330357443,
+        "cpu_stats": {
+          "cpu7": "entries: 46992\noverrun: 0\ncommit overrun: 0\nbytes: 1696272\noldest event ts:  6811.330673\nnow ts:  6819.331477\ndropped events: 0\nread events: 0\n",
+          "cpu6": "entries: 93359\noverrun: 0\ncommit overrun: 0\nbytes: 3363888\noldest event ts:  6811.334862\nnow ts:  6819.331669\ndropped events: 0\nread events: 0\n",
+          "cpu5": "entries: 86243\noverrun: 0\ncommit overrun: 0\nbytes: 3122664\noldest event ts:  6811.341594\nnow ts:  6819.331822\ndropped events: 0\nread events: 0\n",
+          "cpu4": "entries: 69141\noverrun: 0\ncommit overrun: 0\nbytes: 2485272\noldest event ts:  6811.329805\nnow ts:  6819.331974\ndropped events: 0\nread events: 0\n",
+          "cpu3": "entries: 52897\noverrun: 0\ncommit overrun: 0\nbytes: 1913328\noldest event ts:  6811.343851\nnow ts:  6819.332127\ndropped events: 0\nread events: 0\n",
+          "cpu2": "entries: 61578\noverrun: 0\ncommit overrun: 0\nbytes: 2213520\noldest event ts:  6811.330540\nnow ts:  6819.332281\ndropped events: 0\nread events: 0\n",
+          "cpu1": "entries: 66307\noverrun: 0\ncommit overrun: 0\nbytes: 2389320\noldest event ts:  6811.329813\nnow ts:  6819.332434\ndropped events: 0\nread events: 0\n",
+          "cpu0": "entries: 80185\noverrun: 0\ncommit overrun: 0\nbytes: 2895336\noldest event ts:  6811.329769\nnow ts:  6819.332584\ndropped events: 0\nread events: 0\n"
+        },
+        "after_export_monotonic": 6821.615608159
+      },
+      "entries": {
+        "bm1686_trigger_vpp": 22597
+      },
+      "parser_diagnostics": {
+        "function_records": 417457,
+        "mismatched_returns": 7,
+        "discarded_incomplete_roots": 62,
+        "orphan_returns": 7,
+        "stack_discontinuities": 1,
+        "unclosed_functions": 166,
+        "complete_roots": 22535,
+        "issues": [
+          {
+            "kind": "mismatched_returns",
+            "line": 18428,
+            "tid": 13972,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 18428,
+            "tid": 13972,
+            "detail": "bm1686_trigger_vpp started at line 18130: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 18430,
+            "tid": 13972,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 18596,
+            "tid": 13972,
+            "detail": "} /* down_interruptible */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 18596,
+            "tid": 13972,
+            "detail": "bm1686_trigger_vpp started at line 18442: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 18649,
+            "tid": 13972,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 18911,
+            "tid": 14266,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 18911,
+            "tid": 14266,
+            "detail": "bm1686_trigger_vpp started at line 16407: return does not match open function"
+          },
+          {
+            "kind": "stack_discontinuities",
+            "line": 18922,
+            "tid": 14266,
+            "detail": "mutex_lock();"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 18944,
+            "tid": 14266,
+            "detail": "} /* bmdev_memcpy_s2d_internal [bmsophon] */"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 18983,
+            "tid": 14266,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 630643,
+            "tid": 13974,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 630643,
+            "tid": 13974,
+            "detail": "bm1686_trigger_vpp started at line 630630: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 630644,
+            "tid": 13974,
+            "detail": "} /* down_interruptible */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 630723,
+            "tid": 13974,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 663314,
+            "tid": 13967,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 663314,
+            "tid": 13967,
+            "detail": "bm1686_trigger_vpp started at line 662925: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 663315,
+            "tid": 13967,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 663355,
+            "tid": 13967,
+            "detail": "} /* down_interruptible */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 663355,
+            "tid": 13967,
+            "detail": "bm1686_trigger_vpp started at line 663333: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 663450,
+            "tid": 13967,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13936,
+            "detail": "bm1686_trigger_vpp started at line 682728: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14252,
+            "detail": "bm1686_trigger_vpp started at line 683153: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14274,
+            "detail": "bm1686_trigger_vpp started at line 680853: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14265,
+            "detail": "bm1686_trigger_vpp started at line 683234: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14258,
+            "detail": "bm1686_trigger_vpp started at line 682176: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13952,
+            "detail": "bm1686_trigger_vpp started at line 681821: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13943,
+            "detail": "bm1686_trigger_vpp started at line 683391: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14251,
+            "detail": "bm1686_trigger_vpp started at line 681043: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14261,
+            "detail": "bm1686_trigger_vpp started at line 681378: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13930,
+            "detail": "bm1686_trigger_vpp started at line 682900: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14248,
+            "detail": "bm1686_trigger_vpp started at line 682962: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14263,
+            "detail": "bm1686_trigger_vpp started at line 680823: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13954,
+            "detail": "bm1686_trigger_vpp started at line 683283: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13937,
+            "detail": "bm1686_trigger_vpp started at line 683323: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13960,
+            "detail": "bm1686_trigger_vpp started at line 683020: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14259,
+            "detail": "bm1686_trigger_vpp started at line 681364: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14270,
+            "detail": "bm1686_trigger_vpp started at line 682639: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13933,
+            "detail": "bm1686_trigger_vpp started at line 681542: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14278,
+            "detail": "bm1686_trigger_vpp started at line 680869: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14279,
+            "detail": "bm1686_trigger_vpp started at line 683062: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14276,
+            "detail": "bm1686_trigger_vpp started at line 682844: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14267,
+            "detail": "bm1686_trigger_vpp started at line 681630: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14264,
+            "detail": "bm1686_trigger_vpp started at line 683337: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14268,
+            "detail": "bm1686_trigger_vpp started at line 681968: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14277,
+            "detail": "bm1686_trigger_vpp started at line 681279: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14273,
+            "detail": "bm1686_trigger_vpp started at line 681690: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14262,
+            "detail": "bm1686_trigger_vpp started at line 681021: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14253,
+            "detail": "bm1686_trigger_vpp started at line 681774: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14271,
+            "detail": "bm1686_trigger_vpp started at line 680830: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14254,
+            "detail": "bm1686_trigger_vpp started at line 682710: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14257,
+            "detail": "bm1686_trigger_vpp started at line 682061: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14255,
+            "detail": "bm1686_trigger_vpp started at line 681233: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14260,
+            "detail": "bm1686_trigger_vpp started at line 680893: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14250,
+            "detail": "bm1686_trigger_vpp started at line 680912: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13958,
+            "detail": "bm1686_trigger_vpp started at line 683190: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13934,
+            "detail": "bm1686_trigger_vpp started at line 682811: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13961,
+            "detail": "bm1686_trigger_vpp started at line 682313: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13935,
+            "detail": "bm1686_trigger_vpp started at line 682080: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13941,
+            "detail": "bm1686_trigger_vpp started at line 682832: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13957,
+            "detail": "bm1686_trigger_vpp started at line 683091: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13944,
+            "detail": "bm1686_trigger_vpp started at line 682513: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13938,
+            "detail": "bm1686_trigger_vpp started at line 681634: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13955,
+            "detail": "bm1686_trigger_vpp started at line 682500: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13962,
+            "detail": "bm1686_trigger_vpp started at line 683447: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13946,
+            "detail": "bm1686_trigger_vpp started at line 681765: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13956,
+            "detail": "bm1686_trigger_vpp started at line 681987: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13963,
+            "detail": "bm1686_trigger_vpp started at line 682994: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13964,
+            "detail": "bm1686_trigger_vpp started at line 681699: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13940,
+            "detail": "bm1686_trigger_vpp started at line 681147: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13945,
+            "detail": "bm1686_trigger_vpp started at line 683460: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13966,
+            "detail": "bm1686_trigger_vpp started at line 680982: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13939,
+            "detail": "bm1686_trigger_vpp started at line 683363: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13953,
+            "detail": "bm1686_trigger_vpp started at line 681881: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13932,
+            "detail": "bm1686_trigger_vpp started at line 683088: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 13965,
+            "detail": "bm1686_trigger_vpp started at line 683309: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 683521,
+            "tid": 14266,
+            "detail": "bm1686_trigger_vpp started at line 682540: end of trace"
+          }
+        ]
+      },
+      "devices": {
+        "0": {
+          "windows": {
+            "capture": {
+              "throughput": {
+                "seconds": 6.499915999999757,
+                "fps": 209.6950175971583,
+                "min_stream_fps": 6.153925681501344,
+                "begin": 6811.916183,
+                "end": 6818.416099,
+                "samples": 7
+              },
+              "api": {
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1238,
+                    "mean": 33.559757357018384,
+                    "min": 0.8096780002233572,
+                    "p50": 35.12006949995339,
+                    "p95": 42.308293000132835,
+                    "max": 48.313208999388735
+                  },
+                  "driver_ms": {
+                    "count": 1238,
+                    "mean": 33.54182573102089,
+                    "min": 0.7878030000938452,
+                    "p50": 35.09965200009901,
+                    "p95": 42.28846000023623,
+                    "max": 48.29366700050741
+                  },
+                  "driver_counts": {
+                    "1": 1238
+                  },
+                  "descriptor_counts": {
+                    "1": 1238
+                  }
+                },
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 1695,
+                    "mean": 35.38373977226699,
+                    "min": 0.7105099994078046,
+                    "p50": 36.60321500046848,
+                    "p95": 42.51858699990407,
+                    "max": 51.42650300058449
+                  },
+                  "driver_ms": {
+                    "count": 1695,
+                    "mean": 35.367519595876146,
+                    "min": 0.6950509996386245,
+                    "p50": 36.58833900044556,
+                    "p95": 42.483588000322925,
+                    "max": 51.41191899929254
+                  },
+                  "driver_counts": {
+                    "1": 1695
+                  },
+                  "descriptor_counts": {
+                    "1": 1695
+                  }
+                },
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 1673,
+                    "mean": 35.7231155074774,
+                    "min": 0.9321800007455749,
+                    "p50": 36.93338599987328,
+                    "p95": 42.79654999936611,
+                    "max": 51.891133999561134
+                  },
+                  "driver_ms": {
+                    "count": 1673,
+                    "mean": 35.706223904359376,
+                    "min": 0.917596000363119,
+                    "p50": 36.89167599986831,
+                    "p95": 42.77963299955445,
+                    "max": 51.878883999961545
+                  },
+                  "driver_counts": {
+                    "1": 1673
+                  },
+                  "descriptor_counts": {
+                    "1": 1673
+                  }
+                }
+              }
+            },
+            "before": {
+              "throughput": {
+                "seconds": 8.599519999999757,
+                "fps": 223.03570431838688,
+                "min_stream_fps": 6.62827692708449,
+                "begin": 6800.116266,
+                "end": 6808.715786,
+                "samples": 9
+              },
+              "api": {
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1500,
+                    "mean": 31.11265549867312,
+                    "min": 4.847275000429363,
+                    "p50": 32.67280650015891,
+                    "p95": 39.641840000513184,
+                    "max": 47.81503699996392
+                  },
+                  "driver_ms": {
+                    "count": 1500,
+                    "mean": 31.094866103993507,
+                    "min": 4.823649999707413,
+                    "p50": 32.66143099972396,
+                    "p95": 39.62258999945334,
+                    "max": 47.805119000258856
+                  },
+                  "driver_counts": {
+                    "1": 1500
+                  },
+                  "descriptor_counts": {
+                    "1": 1500
+                  }
+                },
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 2227,
+                    "mean": 32.91711499729532,
+                    "min": 0.9855549997155322,
+                    "p50": 33.84167600052024,
+                    "p95": 40.05484599929332,
+                    "max": 47.91216300054657
+                  },
+                  "driver_ms": {
+                    "count": 2227,
+                    "mean": 32.899724778187576,
+                    "min": 0.9698050007500569,
+                    "p50": 33.82825900007447,
+                    "p95": 40.03646999990451,
+                    "max": 47.899913000037486
+                  },
+                  "driver_counts": {
+                    "1": 2227
+                  },
+                  "descriptor_counts": {
+                    "1": 2227
+                  }
+                },
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 2223,
+                    "mean": 33.933030477280354,
+                    "min": 0.5506749994310667,
+                    "p50": 34.92173299946444,
+                    "p95": 41.859412000121665,
+                    "max": 49.5580599999812
+                  },
+                  "driver_ms": {
+                    "count": 2223,
+                    "mean": 33.91611176384567,
+                    "min": 0.5390070000430569,
+                    "p50": 34.90802499982237,
+                    "p95": 41.84862100009923,
+                    "max": 49.543185000402445
+                  },
+                  "driver_counts": {
+                    "1": 2223
+                  },
+                  "descriptor_counts": {
+                    "1": 2223
+                  }
+                }
+              }
+            },
+            "after": {
+              "throughput": {
+                "seconds": 9.499826999999641,
+                "fps": 218.74082549083036,
+                "min_stream_fps": 6.421169564456521,
+                "begin": 6821.616145,
+                "end": 6831.115972,
+                "samples": 10
+              },
+              "api": {
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 2167,
+                    "mean": 33.2506310932208,
+                    "min": 0.606675000199175,
+                    "p50": 34.63414500038198,
+                    "p95": 40.61747800005833,
+                    "max": 44.809660999817424
+                  },
+                  "driver_ms": {
+                    "count": 2167,
+                    "mean": 33.2333604674582,
+                    "min": 0.6005499999446329,
+                    "p50": 34.61926999989373,
+                    "p95": 40.605811000204994,
+                    "max": 44.79974500009121
+                  },
+                  "driver_counts": {
+                    "1": 2167
+                  },
+                  "descriptor_counts": {
+                    "1": 2167
+                  }
+                },
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1500,
+                    "mean": 30.386308472001474,
+                    "min": 4.100889999790525,
+                    "p50": 31.63941650018387,
+                    "p95": 38.69303499959642,
+                    "max": 45.71588199996768
+                  },
+                  "driver_ms": {
+                    "count": 1500,
+                    "mean": 30.36882672666191,
+                    "min": 4.087473000254249,
+                    "p50": 31.62352050003392,
+                    "p95": 38.67320199969981,
+                    "max": 45.70684000009351
+                  },
+                  "driver_counts": {
+                    "1": 1500
+                  },
+                  "descriptor_counts": {
+                    "1": 1500
+                  }
+                },
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 2178,
+                    "mean": 32.73196158080207,
+                    "min": 1.6811900004540803,
+                    "p50": 34.3910374999723,
+                    "p95": 39.707758000076865,
+                    "max": 44.38469699925918
+                  },
+                  "driver_ms": {
+                    "count": 2178,
+                    "mean": 32.71383019559597,
+                    "min": 1.6703979999874718,
+                    "p50": 34.37222499997006,
+                    "p95": 39.691715000117256,
+                    "max": 44.37536299974454
+                  },
+                  "driver_counts": {
+                    "1": 2178
+                  },
+                  "descriptor_counts": {
+                    "1": 2178
+                  }
+                }
+              }
+            }
+          },
+          "roles": {
+            "pre_vpp": {
+              "paired_roots": 1695,
+              "complete_wrapper_calls_in_capture": 1695,
+              "graph_us": {
+                "count": 1695,
+                "mean": 35359.54527846608,
+                "min": 691.541,
+                "p50": 36582.58,
+                "p95": 42465.5,
+                "max": 51404.5
+              },
+              "wrapper_minus_graph_us": {
+                "count": 1695,
+                "mean": 7.974317410066635,
+                "min": 2.5330001239926787,
+                "p50": 5.773999982877285,
+                "p95": 9.866999995909282,
+                "max": 1681.4660000875956
+              },
+              "timestamp_minus_graph_us": {
+                "count": 1695,
+                "mean": -0.023744548133437727,
+                "min": -3.619999260004988,
+                "p50": 0.04999984627647791,
+                "p95": 1.0000000176369213,
+                "max": 6.419999316291069
+              },
+              "partition_mean_us": {
+                "admission_us": 34025.5718,
+                "cdma_mutex_us": 234.33373156342182,
+                "cdma_other_us": 51.958314454277286,
+                "descriptor_other_us": 116.601601179941,
+                "completion_us": 898.8326943952802,
+                "other_us": 32.24713687315642
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 1695,
+                "descriptor_upload": 1695,
+                "vpp_completion_wait": 1695
+              }
+            },
+            "pre_convert": {
+              "paired_roots": 1673,
+              "complete_wrapper_calls_in_capture": 1673,
+              "graph_us": {
+                "count": 1673,
+                "mean": 35699.26415481172,
+                "min": 912.625,
+                "p50": 36886.79,
+                "p95": 42770.58,
+                "max": 51872.91
+              },
+              "wrapper_minus_graph_us": {
+                "count": 1673,
+                "mean": 6.959749547657587,
+                "min": 2.0919993335628533,
+                "p50": 5.718999690288911,
+                "p95": 9.327999660585192,
+                "max": 298.24200045677935
+              },
+              "timestamp_minus_graph_us": {
+                "count": 1673,
+                "mean": 0.33178062392740193,
+                "min": -2.5800003374315565,
+                "p50": 0.33999949196368107,
+                "p95": 1.1700002704310464,
+                "max": 3.74999962374568
+              },
+              "partition_mean_us": {
+                "admission_us": 34323.14874775852,
+                "cdma_mutex_us": 240.68776569037658,
+                "cdma_other_us": 52.16195277943813,
+                "descriptor_other_us": 100.73072922893007,
+                "completion_us": 951.0471267184698,
+                "other_us": 31.487832635983278
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 1673,
+                "descriptor_upload": 1673,
+                "vpp_completion_wait": 1673
+              }
+            },
+            "thumbnail": {
+              "paired_roots": 1238,
+              "complete_wrapper_calls_in_capture": 1238,
+              "graph_us": {
+                "count": 1238,
+                "mean": 33534.94280129241,
+                "min": 781.959,
+                "p50": 35094.055,
+                "p95": 42283.79,
+                "max": 48286.87
+              },
+              "wrapper_minus_graph_us": {
+                "count": 1238,
+                "mean": 6.882929728481847,
+                "min": 2.485000416265393,
+                "p50": 5.723500303978653,
+                "p95": 9.771999770578986,
+                "max": 382.34799945680425
+              },
+              "timestamp_minus_graph_us": {
+                "count": 1238,
+                "mean": 0.04104361798504948,
+                "min": -2.869999651044054,
+                "p50": 0.08999918407243968,
+                "p95": 1.0899997210071888,
+                "max": 2.799999813505565
+              },
+              "partition_mean_us": {
+                "admission_us": 32025.98317285945,
+                "cdma_mutex_us": 385.69121647819065,
+                "cdma_other_us": 53.772662358642975,
+                "descriptor_other_us": 230.58039337641358,
+                "completion_us": 806.47646365105,
+                "other_us": 32.43889256865906
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 1238,
+                "descriptor_upload": 1238,
+                "vpp_completion_wait": 1238
+              }
+            },
+            "unclassified": {
+              "paired_roots": 6116,
+              "complete_wrapper_calls_in_capture": 6117,
+              "graph_us": {
+                "count": 6116,
+                "mean": 33164.57505395683,
+                "min": 9756.25,
+                "p50": 34476.16,
+                "p95": 42097.41,
+                "max": 52035.08
+              },
+              "wrapper_minus_graph_us": {
+                "count": 6116,
+                "mean": 6.6949228258517195,
+                "min": 2.034000024679699,
+                "p50": 5.6479999844286795,
+                "p95": 9.916999591740023,
+                "max": 893.2929993813304
+              },
+              "timestamp_minus_graph_us": {
+                "count": 6116,
+                "mean": -0.008507194567478017,
+                "min": -5.61999975611252,
+                "p50": 0.010000578409744776,
+                "p95": 0.9600004508756683,
+                "max": 10.959999229271489
+              },
+              "partition_mean_us": {
+                "admission_us": 31660.443685905822,
+                "cdma_mutex_us": 263.30852419882274,
+                "cdma_other_us": 53.066118541530415,
+                "descriptor_other_us": 104.62437949640288,
+                "completion_us": 1050.7067220405493,
+                "other_us": 32.425623773708324
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 6116,
+                "descriptor_upload": 6116,
+                "vpp_completion_wait": 6116
+              }
+            }
+          }
+        },
+        "2": {
+          "windows": {
+            "capture": {
+              "throughput": {
+                "seconds": 6.20020999999997,
+                "fps": 265.6361639363841,
+                "min_stream_fps": 8.064242985318279,
+                "begin": 6812.121276,
+                "end": 6818.321486,
+                "samples": 7
+              },
+              "api": {
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1415,
+                    "mean": 16.009293742761066,
+                    "min": 0.5719660002796445,
+                    "p50": 15.439589000379783,
+                    "p95": 33.29275200030679,
+                    "max": 39.09262400065927
+                  },
+                  "driver_ms": {
+                    "count": 1415,
+                    "mean": 15.990828602102882,
+                    "min": 0.554465999812237,
+                    "p50": 15.424129999701108,
+                    "p95": 33.27700199952233,
+                    "max": 39.07628999968438
+                  },
+                  "driver_counts": {
+                    "1": 1415
+                  },
+                  "descriptor_counts": {
+                    "1": 1415
+                  }
+                },
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 2130,
+                    "mean": 17.667054621587095,
+                    "min": 0.6609259999095229,
+                    "p50": 17.212071500125603,
+                    "p95": 35.856536999745,
+                    "max": 42.59850600010395
+                  },
+                  "driver_ms": {
+                    "count": 2130,
+                    "mean": 17.649174255879224,
+                    "min": 0.6343840004774393,
+                    "p50": 17.1929669995734,
+                    "p95": 35.83816199989087,
+                    "max": 42.58537999976397
+                  },
+                  "driver_counts": {
+                    "1": 2130
+                  },
+                  "descriptor_counts": {
+                    "1": 2130
+                  }
+                },
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 2130,
+                    "mean": 19.902391839893763,
+                    "min": 0.5162570005268208,
+                    "p50": 21.02770750025229,
+                    "p95": 38.02277600061643,
+                    "max": 43.049136999798066
+                  },
+                  "driver_ms": {
+                    "count": 2130,
+                    "mean": 19.883875952581775,
+                    "min": 0.5060479998064693,
+                    "p50": 21.000290000301902,
+                    "p95": 38.01256699989608,
+                    "max": 43.03221999998641
+                  },
+                  "driver_counts": {
+                    "1": 2130
+                  },
+                  "descriptor_counts": {
+                    "1": 2130
+                  }
+                }
+              }
+            },
+            "before": {
+              "throughput": {
+                "seconds": 9.500539000000572,
+                "fps": 271.66879689666496,
+                "min_stream_fps": 8.210060502882552,
+                "begin": 6799.421318,
+                "end": 6808.921857,
+                "samples": 10
+              },
+              "api": {
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 2702,
+                    "mean": 9.909763640246629,
+                    "min": 0.622716999714612,
+                    "p50": 6.355213000006188,
+                    "p95": 27.943803000198386,
+                    "max": 39.932635999321064
+                  },
+                  "driver_ms": {
+                    "count": 2702,
+                    "mean": 9.892234057368075,
+                    "min": 0.6014250002408517,
+                    "p50": 6.331879000299523,
+                    "p95": 27.91696900021634,
+                    "max": 39.91542699986894
+                  },
+                  "driver_counts": {
+                    "1": 2702
+                  },
+                  "descriptor_counts": {
+                    "1": 2702
+                  }
+                },
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 2703,
+                    "mean": 12.051530640760054,
+                    "min": 0.5296740000630962,
+                    "p50": 10.000512999795319,
+                    "p95": 30.94101100032276,
+                    "max": 40.22780600007536
+                  },
+                  "driver_ms": {
+                    "count": 2703,
+                    "mean": 12.034204995939128,
+                    "min": 0.522672999977658,
+                    "p50": 9.97601300059614,
+                    "p95": 30.922926999664924,
+                    "max": 40.212930999587115
+                  },
+                  "driver_counts": {
+                    "1": 2703
+                  },
+                  "descriptor_counts": {
+                    "1": 2703
+                  }
+                },
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1926,
+                    "mean": 9.885610620987652,
+                    "min": 0.5395910002334858,
+                    "p50": 8.083798999905412,
+                    "p95": 24.3358369998532,
+                    "max": 39.78884200023458
+                  },
+                  "driver_ms": {
+                    "count": 1926,
+                    "mean": 9.867989539475015,
+                    "min": 0.5305489994498203,
+                    "p50": 8.066006999797537,
+                    "p95": 24.324461999640334,
+                    "max": 39.77396599930216
+                  },
+                  "driver_counts": {
+                    "1": 1926
+                  },
+                  "descriptor_counts": {
+                    "1": 1926
+                  }
+                }
+              }
+            },
+            "after": {
+              "throughput": {
+                "seconds": 9.500267000000349,
+                "fps": 272.3081361818468,
+                "min_stream_fps": 8.315555762800887,
+                "begin": 6821.521287,
+                "end": 6831.021554,
+                "samples": 10
+              },
+              "api": {
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1909,
+                    "mean": 11.343216659508277,
+                    "min": 0.5570909997913986,
+                    "p50": 9.88297000003513,
+                    "p95": 26.1573200004932,
+                    "max": 41.04273400025704
+                  },
+                  "driver_ms": {
+                    "count": 1909,
+                    "mean": 11.325173711890992,
+                    "min": 0.5390070000430569,
+                    "p50": 9.868969999843102,
+                    "p95": 26.142153000364488,
+                    "max": 41.02406700076244
+                  },
+                  "driver_counts": {
+                    "1": 1909
+                  },
+                  "descriptor_counts": {
+                    "1": 1909
+                  }
+                },
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 2710,
+                    "mean": 11.908837721775216,
+                    "min": 0.6209670000316692,
+                    "p50": 7.661606000056054,
+                    "p95": 31.68943800028501,
+                    "max": 44.23711199979152
+                  },
+                  "driver_ms": {
+                    "count": 2710,
+                    "mean": 11.890700211810111,
+                    "min": 0.6060919995434233,
+                    "p50": 7.641772500392108,
+                    "p95": 31.6786459998184,
+                    "max": 44.22165300002234
+                  },
+                  "driver_counts": {
+                    "1": 2710
+                  },
+                  "descriptor_counts": {
+                    "1": 2710
+                  }
+                },
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 2699,
+                    "mean": 13.784080178955723,
+                    "min": 0.5124649997014785,
+                    "p50": 11.211529999854974,
+                    "p95": 34.16747200026293,
+                    "max": 43.85268999976688
+                  },
+                  "driver_ms": {
+                    "count": 2699,
+                    "mean": 13.766371705071803,
+                    "min": 0.492922999910661,
+                    "p50": 11.19344699964131,
+                    "p95": 34.15318000043044,
+                    "max": 43.838396999490215
+                  },
+                  "driver_counts": {
+                    "1": 2699
+                  },
+                  "descriptor_counts": {
+                    "1": 2699
+                  }
+                }
+              }
+            }
+          },
+          "roles": {
+            "pre_vpp": {
+              "paired_roots": 2127,
+              "complete_wrapper_calls_in_capture": 2130,
+              "graph_us": {
+                "count": 2127,
+                "mean": 17661.60817771509,
+                "min": 627.667,
+                "p50": 17199.0,
+                "p95": 35814.91,
+                "max": 42579.25
+              },
+              "wrapper_minus_graph_us": {
+                "count": 2127,
+                "mean": 8.088732027584614,
+                "min": 0.8860007749171928,
+                "p50": 5.6670002454884525,
+                "p95": 10.654999639442394,
+                "max": 1683.8810006688946
+              },
+              "timestamp_minus_graph_us": {
+                "count": 2127,
+                "mean": -0.3651123561652382,
+                "min": -6.539999598833674,
+                "p50": -0.329999705818409,
+                "p95": 0.7500004247995093,
+                "max": 3.1300003757896775
+              },
+              "partition_mean_us": {
+                "admission_us": 16279.359512458863,
+                "cdma_mutex_us": 127.77029948283968,
+                "cdma_other_us": 34.83914104372355,
+                "descriptor_other_us": 229.08709637987775,
+                "completion_us": 961.1381184767278,
+                "other_us": 29.414009873060692
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 2127,
+                "descriptor_upload": 2127,
+                "vpp_completion_wait": 2127
+              }
+            },
+            "pre_convert": {
+              "paired_roots": 2128,
+              "complete_wrapper_calls_in_capture": 2130,
+              "graph_us": {
+                "count": 2128,
+                "mean": 19893.40446099624,
+                "min": 501.958,
+                "p50": 20991.975,
+                "p95": 38007.37,
+                "max": 43024.91
+              },
+              "wrapper_minus_graph_us": {
+                "count": 2128,
+                "mean": 6.886697837817913,
+                "min": 0.8840007074601317,
+                "p50": 5.634000431198274,
+                "p95": 10.727999498612917,
+                "max": 303.50800007711223
+              },
+              "timestamp_minus_graph_us": {
+                "count": 2128,
+                "mean": 0.08050141347498666,
+                "min": -2.410000144242076,
+                "p50": 0.083000100321442,
+                "p95": 0.999999540799763,
+                "max": 3.0500005599024007
+              },
+              "partition_mean_us": {
+                "admission_us": 18483.108774436092,
+                "cdma_mutex_us": 140.3475892857143,
+                "cdma_other_us": 34.68104652255639,
+                "descriptor_other_us": 246.06344830827067,
+                "completion_us": 960.6571677631579,
+                "other_us": 28.54643468045117
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 2128,
+                "descriptor_upload": 2128,
+                "vpp_completion_wait": 2128
+              }
+            },
+            "thumbnail": {
+              "paired_roots": 1415,
+              "complete_wrapper_calls_in_capture": 1415,
+              "graph_us": {
+                "count": 1415,
+                "mean": 15983.933015547704,
+                "min": 551.542,
+                "p50": 15417.79,
+                "p95": 33270.41,
+                "max": 39071.95
+              },
+              "wrapper_minus_graph_us": {
+                "count": 1415,
+                "mean": 6.895586555179124,
+                "min": 1.180999809135301,
+                "p50": 5.625999691081233,
+                "p95": 10.152999790225294,
+                "max": 371.9010000190199
+              },
+              "timestamp_minus_graph_us": {
+                "count": 1415,
+                "mean": -0.23478233648209645,
+                "min": -5.999999960069545,
+                "p50": -0.2079996787520031,
+                "p95": 0.8000008837116184,
+                "max": 3.300000522936898
+              },
+              "partition_mean_us": {
+                "admission_us": 14665.658204946996,
+                "cdma_mutex_us": 172.59863886925794,
+                "cdma_other_us": 35.83294416961131,
+                "descriptor_other_us": 219.51701837455832,
+                "completion_us": 860.2643279151944,
+                "other_us": 30.06188127208484
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 1415,
+                "descriptor_upload": 1415,
+                "vpp_completion_wait": 1415
+              }
+            },
+            "unclassified": {
+              "paired_roots": 6143,
+              "complete_wrapper_calls_in_capture": 6143,
+              "graph_us": {
+                "count": 6143,
+                "mean": 18994.557826143577,
+                "min": 924.0,
+                "p50": 19110.87,
+                "p95": 29171.04,
+                "max": 42819.87
+              },
+              "wrapper_minus_graph_us": {
+                "count": 6143,
+                "mean": 6.3927983086513605,
+                "min": 1.1800001948140562,
+                "p50": 5.548999904494849,
+                "p95": 9.296000004254893,
+                "max": 623.1930005532504
+              },
+              "timestamp_minus_graph_us": {
+                "count": 6143,
+                "mean": -0.2766931454859397,
+                "min": -8.539999889988394,
+                "p50": -0.20000027677815524,
+                "p95": 0.7500000296859071,
+                "max": 4.420000282014371
+              },
+              "partition_mean_us": {
+                "admission_us": 17775.071619892562,
+                "cdma_mutex_us": 57.23288214227576,
+                "cdma_other_us": 38.640728308643986,
+                "descriptor_other_us": 47.085614846166365,
+                "completion_us": 1047.0425038254925,
+                "other_us": 29.484477128438883
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 6143,
+                "descriptor_upload": 6143,
+                "vpp_completion_wait": 6143
+              }
+            }
+          }
+        }
+      },
+      "unmatched": [],
+      "negative_roots": []
+    },
+    {
+      "name": "vpp1",
+      "capture": {
+        "before_enable_monotonic": 6861.330194563,
+        "after_enable_monotonic": 6861.330482734,
+        "before_disable_monotonic": 6869.330654953,
+        "after_disable_monotonic": 6869.330990374,
+        "cpu_stats": {
+          "cpu7": "entries: 87033\noverrun: 0\ncommit overrun: 0\nbytes: 3144408\noldest event ts:  6861.330496\nnow ts:  6869.331341\ndropped events: 0\nread events: 0\n",
+          "cpu6": "entries: 75633\noverrun: 0\ncommit overrun: 0\nbytes: 2725416\noldest event ts:  6861.331933\nnow ts:  6869.331496\ndropped events: 0\nread events: 0\n",
+          "cpu5": "entries: 77044\noverrun: 0\ncommit overrun: 0\nbytes: 2790312\noldest event ts:  6861.353985\nnow ts:  6869.331618\ndropped events: 0\nread events: 0\n",
+          "cpu4": "entries: 59133\noverrun: 0\ncommit overrun: 0\nbytes: 2122992\noldest event ts:  6861.330536\nnow ts:  6869.331733\ndropped events: 0\nread events: 0\n",
+          "cpu3": "entries: 57560\noverrun: 0\ncommit overrun: 0\nbytes: 2079168\noldest event ts:  6861.330528\nnow ts:  6869.331846\ndropped events: 0\nread events: 0\n",
+          "cpu2": "entries: 61467\noverrun: 0\ncommit overrun: 0\nbytes: 2203464\noldest event ts:  6861.330565\nnow ts:  6869.331961\ndropped events: 0\nread events: 0\n",
+          "cpu1": "entries: 64952\noverrun: 0\ncommit overrun: 0\nbytes: 2341032\noldest event ts:  6861.330463\nnow ts:  6869.332083\ndropped events: 0\nread events: 0\n",
+          "cpu0": "entries: 75718\noverrun: 0\ncommit overrun: 0\nbytes: 2736528\noldest event ts:  6861.330567\nnow ts:  6869.332198\ndropped events: 0\nread events: 0\n"
+        },
+        "after_export_monotonic": 6871.639863473
+      },
+      "entries": {
+        "bm1686_trigger_vpp": 22659
+      },
+      "parser_diagnostics": {
+        "function_records": 418684,
+        "mismatched_returns": 18,
+        "discarded_incomplete_roots": 95,
+        "orphan_returns": 12,
+        "unclosed_functions": 244,
+        "complete_roots": 22564,
+        "issues": [
+          {
+            "kind": "mismatched_returns",
+            "line": 33698,
+            "tid": 13986,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 33698,
+            "tid": 13986,
+            "detail": "bm1686_trigger_vpp started at line 33533: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 33699,
+            "tid": 13986,
+            "detail": "} /* down_interruptible */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 33754,
+            "tid": 13986,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 54164,
+            "tid": 13978,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 54164,
+            "tid": 13978,
+            "detail": "bm1686_trigger_vpp started at line 54134: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 54165,
+            "tid": 13978,
+            "detail": "} /* down_interruptible */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 54213,
+            "tid": 13978,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 311737,
+            "tid": 13925,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 311737,
+            "tid": 13925,
+            "detail": "bm1686_trigger_vpp started at line 311626: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 311738,
+            "tid": 13925,
+            "detail": "} /* down_interruptible */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 311810,
+            "tid": 13925,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 433836,
+            "tid": 13986,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 433836,
+            "tid": 13986,
+            "detail": "bm1686_trigger_vpp started at line 433813: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 433837,
+            "tid": 13986,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 433926,
+            "tid": 13986,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 433926,
+            "tid": 13986,
+            "detail": "bm1686_trigger_vpp started at line 433838: return does not match open function"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 500943,
+            "tid": 13986,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 500943,
+            "tid": 13986,
+            "detail": "bm1686_trigger_vpp started at line 500875: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 500950,
+            "tid": 13986,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 501276,
+            "tid": 13986,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 501276,
+            "tid": 13986,
+            "detail": "bm1686_trigger_vpp started at line 501097: return does not match open function"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 513075,
+            "tid": 13945,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 513075,
+            "tid": 13945,
+            "detail": "bm1686_trigger_vpp started at line 509873: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 513179,
+            "tid": 13945,
+            "detail": "} /* bmdev_memcpy_s2d_internal [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 513250,
+            "tid": 13945,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 565275,
+            "tid": 13925,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 565275,
+            "tid": 13925,
+            "detail": "bm1686_trigger_vpp started at line 565185: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 565276,
+            "tid": 13925,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 565344,
+            "tid": 13925,
+            "detail": "} /* down_interruptible */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 565344,
+            "tid": 13925,
+            "detail": "bm1686_trigger_vpp started at line 565310: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 565454,
+            "tid": 13925,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 583165,
+            "tid": 13951,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 583165,
+            "tid": 13951,
+            "detail": "bm1686_trigger_vpp started at line 583036: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 583166,
+            "tid": 13951,
+            "detail": "} /* down_interruptible */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 583227,
+            "tid": 13951,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 664690,
+            "tid": 13989,
+            "detail": "} /* schedule_timeout */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 664690,
+            "tid": 13989,
+            "detail": "bm1686_trigger_vpp started at line 664360: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 664691,
+            "tid": 13989,
+            "detail": "} /* down_interruptible */"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 664785,
+            "tid": 13989,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "mismatched_returns",
+            "line": 665201,
+            "tid": 13989,
+            "detail": "} /* down_interruptible */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 665201,
+            "tid": 13989,
+            "detail": "bm1686_trigger_vpp started at line 664797: return does not match open function"
+          },
+          {
+            "kind": "orphan_returns",
+            "line": 665274,
+            "tid": 13989,
+            "detail": "} /* bm1686_trigger_vpp [bmsophon] */"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13984,
+            "detail": "bm1686_trigger_vpp started at line 684160: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13983,
+            "detail": "bm1686_trigger_vpp started at line 684527: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14250,
+            "detail": "bm1686_trigger_vpp started at line 682580: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14269,
+            "detail": "bm1686_trigger_vpp started at line 683376: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13967,
+            "detail": "bm1686_trigger_vpp started at line 684214: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13982,
+            "detail": "bm1686_trigger_vpp started at line 683055: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14248,
+            "detail": "bm1686_trigger_vpp started at line 682610: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14259,
+            "detail": "bm1686_trigger_vpp started at line 684021: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14278,
+            "detail": "bm1686_trigger_vpp started at line 683840: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14273,
+            "detail": "bm1686_trigger_vpp started at line 683425: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14277,
+            "detail": "bm1686_trigger_vpp started at line 682909: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14256,
+            "detail": "bm1686_trigger_vpp started at line 683421: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14268,
+            "detail": "bm1686_trigger_vpp started at line 684227: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14257,
+            "detail": "bm1686_trigger_vpp started at line 684717: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14190,
+            "detail": "bm1686_trigger_vpp started at line 684960: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14272,
+            "detail": "bm1686_trigger_vpp started at line 684963: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14200,
+            "detail": "bm1686_trigger_vpp started at line 683182: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13930,
+            "detail": "bm1686_trigger_vpp started at line 684151: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14271,
+            "detail": "bm1686_trigger_vpp started at line 682971: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14260,
+            "detail": "bm1686_trigger_vpp started at line 684624: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14208,
+            "detail": "bm1686_trigger_vpp started at line 683152: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14262,
+            "detail": "bm1686_trigger_vpp started at line 685371: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13939,
+            "detail": "bm1686_trigger_vpp started at line 681881: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14266,
+            "detail": "bm1686_trigger_vpp started at line 682808: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13958,
+            "detail": "bm1686_trigger_vpp started at line 682108: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13938,
+            "detail": "bm1686_trigger_vpp started at line 683295: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13928,
+            "detail": "bm1686_trigger_vpp started at line 683652: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14252,
+            "detail": "bm1686_trigger_vpp started at line 685289: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13946,
+            "detail": "bm1686_trigger_vpp started at line 683054: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13977,
+            "detail": "bm1686_trigger_vpp started at line 683407: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13990,
+            "detail": "bm1686_trigger_vpp started at line 683442: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13988,
+            "detail": "bm1686_trigger_vpp started at line 683474: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13927,
+            "detail": "bm1686_trigger_vpp started at line 684416: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14275,
+            "detail": "bm1686_trigger_vpp started at line 685443: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13963,
+            "detail": "bm1686_trigger_vpp started at line 683704: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14274,
+            "detail": "bm1686_trigger_vpp started at line 681894: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14193,
+            "detail": "bm1686_trigger_vpp started at line 683267: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14195,
+            "detail": "bm1686_trigger_vpp started at line 683112: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13970,
+            "detail": "bm1686_trigger_vpp started at line 684321: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14202,
+            "detail": "bm1686_trigger_vpp started at line 683087: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14209,
+            "detail": "bm1686_trigger_vpp started at line 683206: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14201,
+            "detail": "bm1686_trigger_vpp started at line 683458: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14214,
+            "detail": "bm1686_trigger_vpp started at line 683080: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14261,
+            "detail": "bm1686_trigger_vpp started at line 682034: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14191,
+            "detail": "bm1686_trigger_vpp started at line 683230: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14219,
+            "detail": "bm1686_trigger_vpp started at line 683237: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14203,
+            "detail": "bm1686_trigger_vpp started at line 683175: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14192,
+            "detail": "bm1686_trigger_vpp started at line 683094: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14270,
+            "detail": "bm1686_trigger_vpp started at line 684041: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13932,
+            "detail": "bm1686_trigger_vpp started at line 682720: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13955,
+            "detail": "bm1686_trigger_vpp started at line 682237: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13933,
+            "detail": "bm1686_trigger_vpp started at line 684280: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13954,
+            "detail": "bm1686_trigger_vpp started at line 682448: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13937,
+            "detail": "bm1686_trigger_vpp started at line 682833: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14267,
+            "detail": "bm1686_trigger_vpp started at line 684383: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14249,
+            "detail": "bm1686_trigger_vpp started at line 685181: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14251,
+            "detail": "bm1686_trigger_vpp started at line 685079: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14254,
+            "detail": "bm1686_trigger_vpp started at line 684412: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13968,
+            "detail": "bm1686_trigger_vpp started at line 683282: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14264,
+            "detail": "bm1686_trigger_vpp started at line 682065: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13975,
+            "detail": "bm1686_trigger_vpp started at line 683487: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13969,
+            "detail": "bm1686_trigger_vpp started at line 683317: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14265,
+            "detail": "bm1686_trigger_vpp started at line 684724: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13972,
+            "detail": "bm1686_trigger_vpp started at line 684501: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13956,
+            "detail": "bm1686_trigger_vpp started at line 685143: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13943,
+            "detail": "bm1686_trigger_vpp started at line 681901: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13960,
+            "detail": "bm1686_trigger_vpp started at line 684268: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14258,
+            "detail": "bm1686_trigger_vpp started at line 684524: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14276,
+            "detail": "bm1686_trigger_vpp started at line 684617: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13941,
+            "detail": "bm1686_trigger_vpp started at line 685355: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14253,
+            "detail": "bm1686_trigger_vpp started at line 685364: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14279,
+            "detail": "bm1686_trigger_vpp started at line 685178: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13957,
+            "detail": "bm1686_trigger_vpp started at line 683311: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13940,
+            "detail": "bm1686_trigger_vpp started at line 682334: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 14255,
+            "detail": "bm1686_trigger_vpp started at line 683827: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13931,
+            "detail": "bm1686_trigger_vpp started at line 685496: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13942,
+            "detail": "bm1686_trigger_vpp started at line 682919: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13935,
+            "detail": "bm1686_trigger_vpp started at line 684814: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13986,
+            "detail": "bm1686_trigger_vpp started at line 683389: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13925,
+            "detail": "bm1686_trigger_vpp started at line 683717: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13951,
+            "detail": "bm1686_trigger_vpp started at line 683502: end of trace"
+          },
+          {
+            "kind": "discarded_incomplete_roots",
+            "line": 685500,
+            "tid": 13989,
+            "detail": "bm1686_trigger_vpp started at line 684295: end of trace"
+          }
+        ]
+      },
+      "devices": {
+        "0": {
+          "windows": {
+            "capture": {
+              "throughput": {
+                "seconds": 6.400218999999197,
+                "fps": 208.11787846637233,
+                "min_stream_fps": 6.093541486628019,
+                "begin": 6862.015962,
+                "end": 6868.416181,
+                "samples": 7
+              },
+              "api": {
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1251,
+                    "mean": 33.97858826776368,
+                    "min": 9.878887000013492,
+                    "p50": 34.861939999245806,
+                    "p95": 42.56204600005731,
+                    "max": 50.229193999257404
+                  },
+                  "driver_ms": {
+                    "count": 1251,
+                    "mean": 33.960423081539666,
+                    "min": 9.859636000328464,
+                    "p50": 34.83918900019489,
+                    "p95": 42.53842100024485,
+                    "max": 50.17815199971665
+                  },
+                  "driver_counts": {
+                    "1": 1251
+                  },
+                  "descriptor_counts": {
+                    "1": 1251
+                  }
+                },
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 1658,
+                    "mean": 35.38996167612104,
+                    "min": 8.506283999849984,
+                    "p50": 35.98414299995056,
+                    "p95": 43.540310000025784,
+                    "max": 48.25166599948716
+                  },
+                  "driver_ms": {
+                    "count": 1658,
+                    "mean": 35.373558982497336,
+                    "min": 8.47303299997293,
+                    "p50": 35.95410099978835,
+                    "p95": 43.52251700038323,
+                    "max": 48.23562399997172
+                  },
+                  "driver_counts": {
+                    "1": 1658
+                  },
+                  "descriptor_counts": {
+                    "1": 1658
+                  }
+                },
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 1661,
+                    "mean": 36.214310854905065,
+                    "min": 5.866372999662417,
+                    "p50": 36.99317799964774,
+                    "p95": 43.7156039997717,
+                    "max": 50.79474299964204
+                  },
+                  "driver_ms": {
+                    "count": 1661,
+                    "mean": 36.19733338651518,
+                    "min": 5.851496999639494,
+                    "p50": 36.97567800008983,
+                    "p95": 43.7013120008487,
+                    "max": 50.776368999322585
+                  },
+                  "driver_counts": {
+                    "1": 1661
+                  },
+                  "descriptor_counts": {
+                    "1": 1661
+                  }
+                }
+              }
+            },
+            "before": {
+              "throughput": {
+                "seconds": 8.700073999999404,
+                "fps": 214.36599274904188,
+                "min_stream_fps": 6.43672686002485,
+                "begin": 6850.115877,
+                "end": 6858.815951,
+                "samples": 9
+              },
+              "api": {
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 2134,
+                    "mean": 34.85388522962164,
+                    "min": 1.100765000046522,
+                    "p50": 36.07747699970787,
+                    "p95": 42.1204989997932,
+                    "max": 45.8287579995158
+                  },
+                  "driver_ms": {
+                    "count": 2134,
+                    "mean": 34.83682083973164,
+                    "min": 1.0914309996223892,
+                    "p50": 36.060186000213434,
+                    "p95": 42.105331999664486,
+                    "max": 45.812716000000364
+                  },
+                  "driver_counts": {
+                    "1": 2134
+                  },
+                  "descriptor_counts": {
+                    "1": 2134
+                  }
+                },
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 2138,
+                    "mean": 34.160849160896376,
+                    "min": 2.905332000409544,
+                    "p50": 35.32292600039,
+                    "p95": 41.000150000400026,
+                    "max": 46.78193800009467
+                  },
+                  "driver_ms": {
+                    "count": 2138,
+                    "mean": 34.14407521516051,
+                    "min": 2.877330999581318,
+                    "p50": 35.305424999933166,
+                    "p95": 40.98789899944677,
+                    "max": 46.767646000262175
+                  },
+                  "driver_counts": {
+                    "1": 2138
+                  },
+                  "descriptor_counts": {
+                    "1": 2138
+                  }
+                },
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1560,
+                    "mean": 32.44133450128303,
+                    "min": 0.8893040003385977,
+                    "p50": 33.53396349984905,
+                    "p95": 40.651894999427896,
+                    "max": 47.03277499993419
+                  },
+                  "driver_ms": {
+                    "count": 1560,
+                    "mean": 32.42377688011577,
+                    "min": 0.8709280000402941,
+                    "p50": 33.50581700033217,
+                    "p95": 40.63468699951045,
+                    "max": 47.021399999721325
+                  },
+                  "driver_counts": {
+                    "1": 1560
+                  },
+                  "descriptor_counts": {
+                    "1": 1560
+                  }
+                }
+              }
+            },
+            "after": {
+              "throughput": {
+                "seconds": 8.599763000000166,
+                "fps": 212.33143285459897,
+                "min_stream_fps": 6.046678263110157,
+                "begin": 6871.716151,
+                "end": 6880.315914,
+                "samples": 9
+              },
+              "api": {
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1546,
+                    "mean": 32.81559773739739,
+                    "min": 9.821428000577725,
+                    "p50": 33.464837500105205,
+                    "p95": 42.45208700012881,
+                    "max": 51.86954999953741
+                  },
+                  "driver_ms": {
+                    "count": 1546,
+                    "mean": 32.797349632618385,
+                    "min": 9.81267699989985,
+                    "p50": 33.446024500335625,
+                    "p95": 42.431377999491815,
+                    "max": 51.84213200027443
+                  },
+                  "driver_counts": {
+                    "1": 1546
+                  },
+                  "descriptor_counts": {
+                    "1": 1546
+                  }
+                },
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 2127,
+                    "mean": 34.224643122228585,
+                    "min": 7.420101999741746,
+                    "p50": 35.46453200033284,
+                    "p95": 42.22837500037713,
+                    "max": 53.45536400000128
+                  },
+                  "driver_ms": {
+                    "count": 2127,
+                    "mean": 34.208492209213205,
+                    "min": 7.398519000162196,
+                    "p50": 35.4441150002458,
+                    "p95": 42.21466600029089,
+                    "max": 53.43523900046421
+                  },
+                  "driver_counts": {
+                    "1": 2127
+                  },
+                  "descriptor_counts": {
+                    "1": 2127
+                  }
+                },
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 2127,
+                    "mean": 35.333931317810176,
+                    "min": 4.050430999996024,
+                    "p50": 36.44746200006921,
+                    "p95": 43.28713900031289,
+                    "max": 52.3653899999772
+                  },
+                  "driver_ms": {
+                    "count": 2127,
+                    "mean": 35.3169964644901,
+                    "min": 4.023014000267722,
+                    "p50": 36.437254000702524,
+                    "p95": 43.26380599923141,
+                    "max": 52.33680599940271
+                  },
+                  "driver_counts": {
+                    "1": 2127
+                  },
+                  "descriptor_counts": {
+                    "1": 2127
+                  }
+                }
+              }
+            }
+          },
+          "roles": {
+            "pre_vpp": {
+              "paired_roots": 1659,
+              "complete_wrapper_calls_in_capture": 1658,
+              "graph_us": {
+                "count": 1659,
+                "mean": 35369.028493670885,
+                "min": 8465.041,
+                "p50": 35921.95,
+                "p95": 43515.79,
+                "max": 48215.12
+              },
+              "wrapper_minus_graph_us": {
+                "count": 1659,
+                "mean": 6.758350199358165,
+                "min": 2.5199994654540205,
+                "p50": 5.819000041628897,
+                "p95": 9.705999889869418,
+                "max": 294.2899997624081
+              },
+              "timestamp_minus_graph_us": {
+                "count": 1659,
+                "mean": -0.01704099382712831,
+                "min": -12.909999557276024,
+                "p50": 6.740447133779526e-08,
+                "p95": 0.9200002704310464,
+                "max": 26.96000040134095
+              },
+              "partition_mean_us": {
+                "admission_us": 33992.431009644366,
+                "cdma_mutex_us": 231.1269216395419,
+                "cdma_other_us": 51.90453224834238,
+                "descriptor_other_us": 166.5198577456299,
+                "completion_us": 893.6480204942736,
+                "other_us": 33.398151898734206
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 1659,
+                "descriptor_upload": 1659,
+                "vpp_completion_wait": 1658
+              }
+            },
+            "pre_convert": {
+              "paired_roots": 1660,
+              "complete_wrapper_calls_in_capture": 1661,
+              "graph_us": {
+                "count": 1660,
+                "mean": 36190.56339397591,
+                "min": 5847.625,
+                "p50": 36971.805,
+                "p95": 43699.54,
+                "max": 50768.66
+              },
+              "wrapper_minus_graph_us": {
+                "count": 1660,
+                "mean": 6.621421085493842,
+                "min": 2.0730005464611168,
+                "p50": 5.783499605106044,
+                "p95": 9.295000267484284,
+                "max": 310.3059998783647
+              },
+              "timestamp_minus_graph_us": {
+                "count": 1660,
+                "mean": 0.31973855825404024,
+                "min": -3.6200001423203503,
+                "p50": 0.3000001933378371,
+                "p95": 1.1699998742114985,
+                "max": 3.630000205412216
+              },
+              "partition_mean_us": {
+                "admission_us": 34784.95930180723,
+                "cdma_mutex_us": 228.9045795180723,
+                "cdma_other_us": 52.75387168674699,
+                "descriptor_other_us": 168.89343975903614,
+                "completion_us": 922.3759807228915,
+                "other_us": 32.67622048192773
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 1660,
+                "descriptor_upload": 1660,
+                "vpp_completion_wait": 1660
+              }
+            },
+            "thumbnail": {
+              "paired_roots": 1251,
+              "complete_wrapper_calls_in_capture": 1251,
+              "graph_us": {
+                "count": 1251,
+                "mean": 33950.58529976019,
+                "min": 9854.25,
+                "p50": 34835.79,
+                "p95": 42531.41,
+                "max": 50169.29
+              },
+              "wrapper_minus_graph_us": {
+                "count": 1251,
+                "mean": 9.83778177947671,
+                "min": 2.4730002892465563,
+                "p50": 5.747999800150865,
+                "p95": 10.81500021078682,
+                "max": 2645.77500015276
+              },
+              "timestamp_minus_graph_us": {
+                "count": 1251,
+                "mean": 0.0022302191632083586,
+                "min": -4.7899996414998895,
+                "p50": 0.049999683989881305,
+                "p95": 0.920000247322605,
+                "max": 11.170000318161328
+              },
+              "partition_mean_us": {
+                "admission_us": 32626.78588888889,
+                "cdma_mutex_us": 349.08443725019987,
+                "cdma_other_us": 54.17561790567546,
+                "descriptor_other_us": 97.55678657074341,
+                "completion_us": 788.5642989608314,
+                "other_us": 34.41827018385291
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 1251,
+                "descriptor_upload": 1251,
+                "vpp_completion_wait": 1250
+              }
+            },
+            "unclassified": {
+              "paired_roots": 6110,
+              "complete_wrapper_calls_in_capture": 6110,
+              "graph_us": {
+                "count": 6110,
+                "mean": 32955.50445499182,
+                "min": 4112.5,
+                "p50": 33629.16,
+                "p95": 42562.04,
+                "max": 51049.83
+              },
+              "wrapper_minus_graph_us": {
+                "count": 6110,
+                "mean": 6.778512600134906,
+                "min": 2.4330000316804217,
+                "p50": 5.709999571707158,
+                "p95": 9.776999706842616,
+                "max": 954.2519995207476
+              },
+              "timestamp_minus_graph_us": {
+                "count": 6110,
+                "mean": 0.0007823245325957666,
+                "min": -5.1999996845152054,
+                "p50": 5.603942554444075e-07,
+                "p95": 0.9200004857411841,
+                "max": 97.95999984109221
+              },
+              "partition_mean_us": {
+                "admission_us": 31429.759453846156,
+                "cdma_mutex_us": 262.2241363338789,
+                "cdma_other_us": 53.743761047463174,
+                "descriptor_other_us": 130.37406890343698,
+                "completion_us": 1046.1712376432079,
+                "other_us": 33.23179721767599
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 6110,
+                "descriptor_upload": 6110,
+                "vpp_completion_wait": 6110
+              }
+            }
+          }
+        },
+        "2": {
+          "windows": {
+            "capture": {
+              "throughput": {
+                "seconds": 6.300049000000399,
+                "fps": 265.870947987848,
+                "min_stream_fps": 8.095175132764327,
+                "begin": 6862.021441,
+                "end": 6868.32149,
+                "samples": 7
+              },
+              "api": {
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1484,
+                    "mean": 12.772932142186036,
+                    "min": 0.5565080000451417,
+                    "p50": 10.509478500352998,
+                    "p95": 30.480754000564048,
+                    "max": 39.17720800018287
+                  },
+                  "driver_ms": {
+                    "count": 1484,
+                    "mean": 12.755350932619855,
+                    "min": 0.5462990002342849,
+                    "p50": 10.485707499810815,
+                    "p95": 30.470253999737906,
+                    "max": 39.16262399980042
+                  },
+                  "driver_counts": {
+                    "1": 1484
+                  },
+                  "descriptor_counts": {
+                    "1": 1484
+                  }
+                },
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 2144,
+                    "mean": 13.398871137121406,
+                    "min": 0.6673429998045322,
+                    "p50": 9.572777999892423,
+                    "p95": 33.589671999834536,
+                    "max": 42.49321199949918
+                  },
+                  "driver_ms": {
+                    "count": 2144,
+                    "mean": 13.379150695898396,
+                    "min": 0.6478000004790374,
+                    "p50": 9.522464999918157,
+                    "p95": 33.5803379994104,
+                    "max": 42.48096199989959
+                  },
+                  "driver_counts": {
+                    "1": 2144
+                  },
+                  "descriptor_counts": {
+                    "1": 2144
+                  }
+                },
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 2137,
+                    "mean": 15.518538350496833,
+                    "min": 0.561758000003465,
+                    "p50": 13.00238800013176,
+                    "p95": 35.92128800028149,
+                    "max": 42.260459000317496
+                  },
+                  "driver_ms": {
+                    "count": 2137,
+                    "mean": 15.500729249903594,
+                    "min": 0.5527160001292941,
+                    "p50": 12.985178999770142,
+                    "p95": 35.90670399989904,
+                    "max": 42.24529200018878
+                  },
+                  "driver_counts": {
+                    "1": 2137
+                  },
+                  "descriptor_counts": {
+                    "1": 2137
+                  }
+                }
+              }
+            },
+            "before": {
+              "throughput": {
+                "seconds": 8.799989999999525,
+                "fps": 270.1139433113138,
+                "min_stream_fps": 8.18182747934985,
+                "begin": 6850.121326,
+                "end": 6858.921316,
+                "samples": 9
+              },
+              "api": {
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 2694,
+                    "mean": 13.528659268388015,
+                    "min": 0.6317590004982776,
+                    "p50": 10.374581000178296,
+                    "p95": 33.27962700041098,
+                    "max": 42.018080999696394
+                  },
+                  "driver_ms": {
+                    "count": 2694,
+                    "mean": 13.509129788419028,
+                    "min": 0.6119250001574983,
+                    "p50": 10.356059499827097,
+                    "p95": 33.26737599945773,
+                    "max": 42.00262099948304
+                  },
+                  "driver_counts": {
+                    "1": 2694
+                  },
+                  "descriptor_counts": {
+                    "1": 2694
+                  }
+                },
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 2685,
+                    "mean": 15.50847236051983,
+                    "min": 0.5483409995576949,
+                    "p50": 12.342629000158922,
+                    "p95": 36.01287199944636,
+                    "max": 42.03499699997337
+                  },
+                  "driver_ms": {
+                    "count": 2685,
+                    "mean": 15.489537887140688,
+                    "min": 0.5337570000847336,
+                    "p50": 12.325712000347266,
+                    "p95": 35.99128899986681,
+                    "max": 42.013122000753356
+                  },
+                  "driver_counts": {
+                    "1": 2685
+                  },
+                  "descriptor_counts": {
+                    "1": 2685
+                  }
+                },
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1868,
+                    "mean": 12.80372439722663,
+                    "min": 0.5865499997526058,
+                    "p50": 11.23282200023823,
+                    "p95": 29.96041400001559,
+                    "max": 41.7561599997498
+                  },
+                  "driver_ms": {
+                    "count": 1868,
+                    "mean": 12.785476554071654,
+                    "min": 0.5728409996663686,
+                    "p50": 11.19534199960981,
+                    "p95": 29.940872000224772,
+                    "max": 41.73924299993814
+                  },
+                  "driver_counts": {
+                    "1": 1868
+                  },
+                  "descriptor_counts": {
+                    "1": 1868
+                  }
+                }
+              }
+            },
+            "after": {
+              "throughput": {
+                "seconds": 9.698585000000094,
+                "fps": 267.9772358545061,
+                "min_stream_fps": 8.248625959353785,
+                "begin": 6871.42268,
+                "end": 6881.121265,
+                "samples": 10
+              },
+              "api": {
+                "thumbnail": {
+                  "api_ms": {
+                    "count": 1948,
+                    "mean": 11.461646205851128,
+                    "min": 0.5821750000905013,
+                    "p50": 9.172314000352344,
+                    "p95": 27.687716000400542,
+                    "max": 42.45879500012961
+                  },
+                  "driver_ms": {
+                    "count": 1948,
+                    "mean": 11.44188491273125,
+                    "min": 0.5652580002788454,
+                    "p50": 9.158897000361321,
+                    "p95": 27.672548999362334,
+                    "max": 42.43808600040211
+                  },
+                  "driver_counts": {
+                    "1": 1948
+                  },
+                  "descriptor_counts": {
+                    "1": 1948
+                  }
+                },
+                "pre_vpp": {
+                  "api_ms": {
+                    "count": 2685,
+                    "mean": 11.218733760147721,
+                    "min": 0.606092000452918,
+                    "p50": 6.5515070000401465,
+                    "p95": 30.55600500010769,
+                    "max": 40.26076399986778
+                  },
+                  "driver_ms": {
+                    "count": 2685,
+                    "mean": 11.200927948223306,
+                    "min": 0.5885919999855105,
+                    "p50": 6.5363399999114336,
+                    "p95": 30.53646300031687,
+                    "max": 40.2406390003307
+                  },
+                  "driver_counts": {
+                    "1": 2685
+                  },
+                  "descriptor_counts": {
+                    "1": 2685
+                  }
+                },
+                "pre_convert": {
+                  "api_ms": {
+                    "count": 2687,
+                    "mean": 13.6448701217011,
+                    "min": 0.5139229997439543,
+                    "p50": 10.482061999937287,
+                    "p95": 33.39454399974784,
+                    "max": 41.65786700013996
+                  },
+                  "driver_ms": {
+                    "count": 2687,
+                    "mean": 13.625685007431894,
+                    "min": 0.5025489999752608,
+                    "p50": 10.464270000738907,
+                    "p95": 33.386668999810354,
+                    "max": 41.63774199969339
+                  },
+                  "driver_counts": {
+                    "1": 2687
+                  },
+                  "descriptor_counts": {
+                    "1": 2687
+                  }
+                }
+              }
+            }
+          },
+          "roles": {
+            "pre_vpp": {
+              "paired_roots": 2137,
+              "complete_wrapper_calls_in_capture": 2144,
+              "graph_us": {
+                "count": 2137,
+                "mean": 13407.388737950398,
+                "min": 643.708,
+                "p50": 9597.0,
+                "p95": 33625.66,
+                "max": 42474.25
+              },
+              "wrapper_minus_graph_us": {
+                "count": 2137,
+                "mean": 7.433294341006142,
+                "min": 1.1920003221443949,
+                "p50": 5.688000406171341,
+                "p95": 10.405999804475869,
+                "max": 1344.3490003486513
+              },
+              "timestamp_minus_graph_us": {
+                "count": 2137,
+                "mean": -0.41353906862013473,
+                "min": -5.957999861698681,
+                "p50": -0.3699996434188506,
+                "p95": 0.6249992911471054,
+                "max": 2.9599995952812606
+              },
+              "partition_mean_us": {
+                "admission_us": 12017.107221338325,
+                "cdma_mutex_us": 126.37984277023865,
+                "cdma_other_us": 34.50809078146935,
+                "descriptor_other_us": 223.4735933551708,
+                "completion_us": 975.9344043051007,
+                "other_us": 29.985585400093633
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 2137,
+                "descriptor_upload": 2137,
+                "vpp_completion_wait": 2137
+              }
+            },
+            "pre_convert": {
+              "paired_roots": 2134,
+              "complete_wrapper_calls_in_capture": 2137,
+              "graph_us": {
+                "count": 2134,
+                "mean": 15511.090751171509,
+                "min": 550.083,
+                "p50": 13031.955,
+                "p95": 35901.83,
+                "max": 42238.58
+              },
+              "wrapper_minus_graph_us": {
+                "count": 2134,
+                "mean": 7.821292429277118,
+                "min": 0.888999735571474,
+                "p50": 5.639500035591482,
+                "p95": 11.691000426336132,
+                "max": 1267.9659998093266
+              },
+              "timestamp_minus_graph_us": {
+                "count": 2134,
+                "mean": 0.013747429004886425,
+                "min": -4.000000036670826,
+                "p50": 3.863242454826832e-07,
+                "p95": 0.8800003257310891,
+                "max": 3.2909992197262454
+              },
+              "partition_mean_us": {
+                "admission_us": 14117.923283505155,
+                "cdma_mutex_us": 135.6557525773196,
+                "cdma_other_us": 35.01571134020619,
+                "descriptor_other_us": 226.04549437675726,
+                "completion_us": 966.3893870665418,
+                "other_us": 30.061122305529555
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 2134,
+                "descriptor_upload": 2134,
+                "vpp_completion_wait": 2133
+              }
+            },
+            "thumbnail": {
+              "paired_roots": 1482,
+              "complete_wrapper_calls_in_capture": 1484,
+              "graph_us": {
+                "count": 1482,
+                "mean": 12763.734018893387,
+                "min": 544.834,
+                "p50": 10482.645,
+                "p95": 30464.29,
+                "max": 39156.25
+              },
+              "wrapper_minus_graph_us": {
+                "count": 1482,
+                "mean": 7.824722677593517,
+                "min": 1.4650002342849575,
+                "p50": 5.356500091702856,
+                "p95": 10.574000180964504,
+                "max": 1549.676999639254
+              },
+              "timestamp_minus_graph_us": {
+                "count": 1482,
+                "mean": -0.2981214603644434,
+                "min": -5.0829997458072285,
+                "p50": -0.28999980605294695,
+                "p95": 0.6300006058809231,
+                "max": 2.710000429804495
+              },
+              "partition_mean_us": {
+                "admission_us": 11549.77235020243,
+                "cdma_mutex_us": 135.10345951417003,
+                "cdma_other_us": 36.03836234817814,
+                "descriptor_other_us": 165.68866126855602,
+                "completion_us": 847.0572624831309,
+                "other_us": 30.073923076923066
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 1482,
+                "descriptor_upload": 1482,
+                "vpp_completion_wait": 1482
+              }
+            },
+            "unclassified": {
+              "paired_roots": 6131,
+              "complete_wrapper_calls_in_capture": 6130,
+              "graph_us": {
+                "count": 6131,
+                "mean": 17332.058909802643,
+                "min": 922.541,
+                "p50": 17195.2,
+                "p95": 28197.16,
+                "max": 39265.33
+              },
+              "wrapper_minus_graph_us": {
+                "count": 6131,
+                "mean": 6.6320905232144405,
+                "min": 1.7720002182918506,
+                "p50": 5.634000056962577,
+                "p95": 9.194000141225843,
+                "max": 227.0650000562091
+              },
+              "timestamp_minus_graph_us": {
+                "count": 6131,
+                "mean": -0.32575044826406363,
+                "min": -21.99999976536492,
+                "p50": -0.2500004922039807,
+                "p95": 0.6700002422003308,
+                "max": 25.3800001039599
+              },
+              "partition_mean_us": {
+                "admission_us": 16109.016539226881,
+                "cdma_mutex_us": 57.280323601370085,
+                "cdma_other_us": 38.8503164247268,
+                "descriptor_other_us": 51.5979771652259,
+                "completion_us": 1044.6728293916165,
+                "other_us": 30.640923992823375
+              },
+              "stage_presence_counts": {
+                "vpp_admission": 6131,
+                "descriptor_upload": 6131,
+                "vpp_completion_wait": 6131
+              }
+            }
+          }
+        }
+      },
+      "unmatched": [],
+      "negative_roots": []
+    }
+  ]
+}

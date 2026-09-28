@@ -1,0 +1,233 @@
+{
+  "scope": "Payload-only and ideal full-128B TLP serialization bounds; not total SDK latency or hardware bus utilization.",
+  "link_MB_s_after_encoding": 500.0,
+  "optimistic_payload_MB_s_with_20B_overhead": 432.43243243243245,
+  "optimistic_payload_MB_s_with_24B_overhead": 421.05263157894734,
+  "per_stream": [
+    {
+      "stream": 1,
+      "frames": 328,
+      "fps": 7.288888888888889,
+      "cycle_mean_ms": 136.64279042682918
+    },
+    {
+      "stream": 2,
+      "frames": 316,
+      "fps": 7.022222222222222,
+      "cycle_mean_ms": 142.2959405348101
+    },
+    {
+      "stream": 3,
+      "frames": 329,
+      "fps": 7.311111111111111,
+      "cycle_mean_ms": 136.67989869908817
+    },
+    {
+      "stream": 4,
+      "frames": 329,
+      "fps": 7.311111111111111,
+      "cycle_mean_ms": 136.18290864133735
+    },
+    {
+      "stream": 5,
+      "frames": 314,
+      "fps": 6.977777777777778,
+      "cycle_mean_ms": 142.71034897452236
+    },
+    {
+      "stream": 6,
+      "frames": 314,
+      "fps": 6.977777777777778,
+      "cycle_mean_ms": 143.21631619745207
+    },
+    {
+      "stream": 7,
+      "frames": 318,
+      "fps": 7.066666666666666,
+      "cycle_mean_ms": 141.49250876415087
+    },
+    {
+      "stream": 8,
+      "frames": 319,
+      "fps": 7.088888888888889,
+      "cycle_mean_ms": 141.38544098432607
+    },
+    {
+      "stream": 9,
+      "frames": 326,
+      "fps": 7.2444444444444445,
+      "cycle_mean_ms": 137.97120414417176
+    },
+    {
+      "stream": 10,
+      "frames": 319,
+      "fps": 7.088888888888889,
+      "cycle_mean_ms": 140.99545222257058
+    },
+    {
+      "stream": 11,
+      "frames": 318,
+      "fps": 7.066666666666666,
+      "cycle_mean_ms": 141.32407938050312
+    },
+    {
+      "stream": 12,
+      "frames": 321,
+      "fps": 7.133333333333334,
+      "cycle_mean_ms": 139.74662202803734
+    },
+    {
+      "stream": 13,
+      "frames": 321,
+      "fps": 7.133333333333334,
+      "cycle_mean_ms": 140.35320464485977
+    },
+    {
+      "stream": 14,
+      "frames": 319,
+      "fps": 7.088888888888889,
+      "cycle_mean_ms": 140.85649191849535
+    },
+    {
+      "stream": 15,
+      "frames": 321,
+      "fps": 7.133333333333334,
+      "cycle_mean_ms": 140.0580791806854
+    },
+    {
+      "stream": 16,
+      "frames": 325,
+      "fps": 7.222222222222222,
+      "cycle_mean_ms": 138.48514581846158
+    },
+    {
+      "stream": 17,
+      "frames": 330,
+      "fps": 7.333333333333333,
+      "cycle_mean_ms": 136.00584048484848
+    },
+    {
+      "stream": 18,
+      "frames": 331,
+      "fps": 7.355555555555555,
+      "cycle_mean_ms": 136.07016817220546
+    },
+    {
+      "stream": 19,
+      "frames": 322,
+      "fps": 7.155555555555556,
+      "cycle_mean_ms": 139.7912953291926
+    },
+    {
+      "stream": 20,
+      "frames": 322,
+      "fps": 7.155555555555556,
+      "cycle_mean_ms": 139.92692279503112
+    },
+    {
+      "stream": 21,
+      "frames": 318,
+      "fps": 7.066666666666666,
+      "cycle_mean_ms": 141.55454861006288
+    },
+    {
+      "stream": 22,
+      "frames": 323,
+      "fps": 7.177777777777778,
+      "cycle_mean_ms": 139.58034889473694
+    },
+    {
+      "stream": 23,
+      "frames": 325,
+      "fps": 7.222222222222222,
+      "cycle_mean_ms": 137.89593446769229
+    },
+    {
+      "stream": 24,
+      "frames": 320,
+      "fps": 7.111111111111111,
+      "cycle_mean_ms": 140.15115301249998
+    },
+    {
+      "stream": 25,
+      "frames": 324,
+      "fps": 7.2,
+      "cycle_mean_ms": 139.02481900617292
+    },
+    {
+      "stream": 26,
+      "frames": 313,
+      "fps": 6.955555555555556,
+      "cycle_mean_ms": 143.77670668690087
+    },
+    {
+      "stream": 27,
+      "frames": 333,
+      "fps": 7.4,
+      "cycle_mean_ms": 135.03991844744746
+    },
+    {
+      "stream": 28,
+      "frames": 328,
+      "fps": 7.288888888888889,
+      "cycle_mean_ms": 137.5603483353658
+    },
+    {
+      "stream": 29,
+      "frames": 323,
+      "fps": 7.177777777777778,
+      "cycle_mean_ms": 138.71711366873072
+    },
+    {
+      "stream": 30,
+      "frames": 317,
+      "fps": 7.044444444444444,
+      "cycle_mean_ms": 141.47450098738162
+    },
+    {
+      "stream": 31,
+      "frames": 323,
+      "fps": 7.177777777777778,
+      "cycle_mean_ms": 139.09173387306504
+    },
+    {
+      "stream": 32,
+      "frames": 325,
+      "fps": 7.222222222222222,
+      "cycle_mean_ms": 138.13801115999996
+    }
+  ],
+  "weighted_cycle_ms": 139.47111639286408,
+  "copy_comparisons": [
+    {
+      "payload_bytes": 33600,
+      "payload_only_ms": 0.0672,
+      "optimistic_tlp20_ms": 0.07772,
+      "optimistic_tlp24_ms": 0.079824,
+      "isolated_copy_ms": 0.27618224918651635,
+      "video_wall_copy_ms": 1.4984818174326155,
+      "wall_over_isolated_ratio": 5.425699232468173
+    },
+    {
+      "payload_bytes": 110592,
+      "payload_only_ms": 0.221184,
+      "optimistic_tlp20_ms": 0.255744,
+      "optimistic_tlp24_ms": 0.262656,
+      "isolated_copy_ms": 0.7524507515349512,
+      "video_wall_copy_ms": 1.989568145675044,
+      "wall_over_isolated_ratio": 2.6441174277737813
+    }
+  ],
+  "results_bytes_per_detection": 118814.83187899942,
+  "result_read_ms_per_detection": 10.540891721737442,
+  "result_payload_only_ms_per_detection": 0.23762966375799882,
+  "result_tlp20_bulk_approx_ms_per_detection": 0.2747592987201861,
+  "result_tlp24_bulk_approx_ms_per_detection": 0.2821852257126236,
+  "counted_downlink_MB_s": 44.05217386666667,
+  "average_threads_in_stages": {
+    "preprocess_ms": 13.958079400000004,
+    "inference_ms": 5.658722533333333,
+    "postprocess_ms": 7.877731111111111,
+    "preview_ms": 4.4667255193777775
+  }
+}

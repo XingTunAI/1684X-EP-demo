@@ -1,0 +1,9 @@
+# Decoder-format ablation — plan before execution
+
+New evidence: every second about 768 additional VPP submissions occur outside explicitly observed preprocessing/thumbnail APIs. A one-stream actual installed-library stack identifies VideoCapture::read/retrieve → cv::bmcv::decomp → bmcv_image_vpp_csc_matrix_convert → bm_trigger_vpp. The installed h264_bm decoder documents output_format 0 as linear and101 as compressed, zero_copy1 retaining device pixels. Upstream OpenCV source hardcodes101 then decompresses when returning YUV, but installed binary/observed override logs must verify this rather than assuming exact source version.
+
+Experiment: temporary process-local av_dict_set_int interposer changes ONLY output_format to0 or101, logs original/effective value, all other arguments passed unchanged. No SDK/driver/production file is replaced. This is a diagnostic configuration ablation, not a deployed fix or approved production implementation.
+
+First one-stream policy-all output correctness check at both formats on device0: same input/model/thresholds, no preview, no drops, full per-frame detection JSON. Match source sequence/frame IDs, compare classes/coordinates/scores and count; retain any discrepancy. Observer verifies removal (or persistence) of unclassified VPP calls; command logs verify override actually applied. Both successful measurement and output comparisons required before interpreting multi-stream ablation performance.
+
+If smoke passes, compare original compressed101 and linear0 at32 streams, same sync preview cap10 and readback, two cards concurrently. Use repeated/reversed cases and unchanged warmup/duration; preserve actual preview rate, decode rate, individual stream continuity and errors. Test does not prove bitwise pixel equivalence, long-term stability or suitability for all codecs. A lower VPP request count is a falsifiable expectation; an FPS increase alone does not prove all driver-level mechanisms.

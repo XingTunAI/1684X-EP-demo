@@ -1,0 +1,1012 @@
+{
+  "rows": [
+    {
+      "case": "wall_preview",
+      "stage": "linear8_first_device0",
+      "decode_fps": 768.05,
+      "preview_MB_s": 19.0605312,
+      "result_MB_s": 32.5967768,
+      "dropped_stale_lifetime": 0,
+      "dropped_overwrite_lifetime": 44467,
+      "source_age_max_ms": 309.681716,
+      "decoder_source_lag_max_ms": null,
+      "videos": [],
+      "seconds": 60.0,
+      "fps": 273.6666666666667,
+      "minimum_stream_fps": 8.416666666666666,
+      "zero_streams": 0,
+      "per_stream_fps": [
+        8.45,
+        8.633333333333333,
+        8.55,
+        8.5,
+        8.6,
+        8.516666666666667,
+        8.516666666666667,
+        8.45,
+        8.583333333333334,
+        8.5,
+        8.566666666666666,
+        8.416666666666666,
+        8.5,
+        8.566666666666666,
+        8.55,
+        8.616666666666667,
+        8.583333333333334,
+        8.516666666666667,
+        8.55,
+        8.716666666666667,
+        8.616666666666667,
+        8.516666666666667,
+        8.483333333333333,
+        8.466666666666667,
+        8.533333333333333,
+        8.55,
+        8.683333333333334,
+        8.6,
+        8.65,
+        8.583333333333334,
+        8.55,
+        8.55
+      ],
+      "stage_mean_ms": {
+        "decode_ms": 10.239926021924484,
+        "image_bridge_ms": 0.0074256546285018255,
+        "preprocess_ms": 23.80296619975639,
+        "inference_ms": 35.15472978075518,
+        "inference_submit_ms": 0.07105621699147381,
+        "inference_sync_ms": 35.07838355718637,
+        "output_copy_ms": 51.02228792582217,
+        "cpu_postprocess_ms": 0.05820109622411692,
+        "draw_ms": null,
+        "encode_submit_ms": null,
+        "preview_vpp_ms": 7.212560398414081,
+        "preview_readback_ms": 2.66526606082584
+      },
+      "measurement_start": 7881.575735375,
+      "measurement_end": 7941.575735375,
+      "tpu_percent": 98.7,
+      "tpu_samples": 60,
+      "device": 0,
+      "configuration": "linear8_first",
+      "maximum_no_result_interval_s": 0.2817196190000004,
+      "actual_format": 0,
+      "extra_buffers": 8,
+      "actual_preview_fps_per_stream": 5.3859375,
+      "driver_calls_in_formal_window": {
+        "pre_vpp": 16416,
+        "pre_convert": 16418,
+        "thumbnail": 10341
+      },
+      "descriptors_in_formal_window": {
+        "pre_vpp": 16416,
+        "pre_convert": 16418,
+        "thumbnail": 10341
+      },
+      "driver_calls_per_s": {
+        "pre_vpp": 273.6,
+        "pre_convert": 273.6333333333333,
+        "thumbnail": 172.35
+      },
+      "api": {
+        "pre_vpp": {
+          "api_ms": {
+            "count": 16416,
+            "mean": 11.743060406315207,
+            "min": 0.7373429998551728,
+            "p50": 9.933131999787292,
+            "p95": 27.751286000238906,
+            "max": 41.49859300014214
+          },
+          "driver_ms": {
+            "count": 16416,
+            "mean": 11.72505564772581,
+            "min": 0.7288839997272589,
+            "p50": 9.915777499827527,
+            "p95": 27.73378500023682,
+            "max": 41.4834269995481
+          },
+          "driver_counts": {
+            "1": 16416
+          },
+          "descriptor_counts": {
+            "1": 16416
+          }
+        },
+        "pre_convert": {
+          "api_ms": {
+            "count": 16418,
+            "mean": 11.98826274637576,
+            "min": 0.5010900003981078,
+            "p50": 10.275991000526119,
+            "p95": 28.38421000069502,
+            "max": 43.501203000232636
+          },
+          "driver_ms": {
+            "count": 16418,
+            "mean": 11.970172756240343,
+            "min": 0.49525599933986086,
+            "p50": 10.254844500195759,
+            "p95": 28.371961000630108,
+            "max": 43.49186999934318
+          },
+          "driver_counts": {
+            "1": 16418
+          },
+          "descriptor_counts": {
+            "1": 16418
+          }
+        },
+        "thumbnail": {
+          "api_ms": {
+            "count": 10341,
+            "mean": 7.208800456623987,
+            "min": 0.6749259991920553,
+            "p50": 4.2061809999722755,
+            "p95": 22.671259000162536,
+            "max": 39.56831799951033
+          },
+          "driver_ms": {
+            "count": 10341,
+            "mean": 7.189923991871639,
+            "min": 0.6623839999519987,
+            "p50": 4.18926400016062,
+            "p95": 22.647051000603824,
+            "max": 39.550233999761986
+          },
+          "driver_counts": {
+            "1": 10341
+          },
+          "descriptor_counts": {
+            "1": 10341
+          }
+        }
+      },
+      "max_sampled_decode_lag_ms": 52.822259,
+      "max_sampled_preview_age_s": 0.2894553,
+      "override_count": 32
+    },
+    {
+      "case": "wall_preview",
+      "stage": "linear8_first_device2",
+      "decode_fps": 768.05,
+      "preview_MB_s": 27.5208192,
+      "result_MB_s": 33.063996,
+      "dropped_stale_lifetime": 0,
+      "dropped_overwrite_lifetime": 44085,
+      "source_age_max_ms": 227.815276,
+      "decoder_source_lag_max_ms": null,
+      "videos": [],
+      "seconds": 60.0,
+      "fps": 277.73333333333335,
+      "minimum_stream_fps": 8.633333333333333,
+      "zero_streams": 0,
+      "per_stream_fps": [
+        8.683333333333334,
+        8.7,
+        8.7,
+        8.65,
+        8.65,
+        8.683333333333334,
+        8.683333333333334,
+        8.683333333333334,
+        8.683333333333334,
+        8.666666666666666,
+        8.683333333333334,
+        8.666666666666666,
+        8.7,
+        8.7,
+        8.65,
+        8.633333333333333,
+        8.683333333333334,
+        8.65,
+        8.666666666666666,
+        8.666666666666666,
+        8.683333333333334,
+        8.7,
+        8.666666666666666,
+        8.683333333333334,
+        8.7,
+        8.7,
+        8.7,
+        8.7,
+        8.666666666666666,
+        8.683333333333334,
+        8.7,
+        8.666666666666666
+      ],
+      "stage_mean_ms": {
+        "decode_ms": 4.166549118098895,
+        "image_bridge_ms": 0.007119900504080653,
+        "preprocess_ms": 4.921789186269803,
+        "inference_ms": 52.44418092894861,
+        "inference_submit_ms": 0.055779368158905426,
+        "inference_sync_ms": 52.3827996055569,
+        "output_copy_ms": 54.53645768290926,
+        "cpu_postprocess_ms": 0.059848835813730177,
+        "draw_ms": null,
+        "encode_submit_ms": null,
+        "preview_vpp_ms": 2.0505758586832763,
+        "preview_readback_ms": 0.97247739193624
+      },
+      "measurement_start": 7877.087418238,
+      "measurement_end": 7937.087418238,
+      "tpu_percent": 100,
+      "tpu_samples": 59,
+      "device": 2,
+      "configuration": "linear8_first",
+      "maximum_no_result_interval_s": 0.16301399999999688,
+      "actual_format": 0,
+      "extra_buffers": 8,
+      "actual_preview_fps_per_stream": 7.7765625,
+      "driver_calls_in_formal_window": {
+        "thumbnail": 14931,
+        "pre_vpp": 16664,
+        "pre_convert": 16664
+      },
+      "descriptors_in_formal_window": {
+        "thumbnail": 14931,
+        "pre_vpp": 16664,
+        "pre_convert": 16664
+      },
+      "driver_calls_per_s": {
+        "thumbnail": 248.85,
+        "pre_vpp": 277.73333333333335,
+        "pre_convert": 277.73333333333335
+      },
+      "api": {
+        "thumbnail": {
+          "api_ms": {
+            "count": 14931,
+            "mean": 2.048900391134417,
+            "min": 0.6372999996528961,
+            "p50": 1.5849379997234792,
+            "p95": 4.488227000365441,
+            "max": 16.613263000181178
+          },
+          "driver_ms": {
+            "count": 14931,
+            "mean": 2.0310344827571303,
+            "min": 0.6186340006024693,
+            "p50": 1.5683120000176132,
+            "p95": 4.4634350006163,
+            "max": 16.59838699924876
+          },
+          "driver_counts": {
+            "1": 14931
+          },
+          "descriptor_counts": {
+            "1": 14931
+          }
+        },
+        "pre_vpp": {
+          "api_ms": {
+            "count": 16664,
+            "mean": 2.402173545848105,
+            "min": 0.7073020005918806,
+            "p50": 1.9276510001873248,
+            "p95": 5.163443000128609,
+            "max": 17.056017999493633
+          },
+          "driver_ms": {
+            "count": 16664,
+            "mean": 2.3852482891276163,
+            "min": 0.697383999977319,
+            "p50": 1.9124835002912732,
+            "p95": 5.147402000147849,
+            "max": 17.040267999618663
+          },
+          "driver_counts": {
+            "1": 16664
+          },
+          "descriptor_counts": {
+            "1": 16664
+          }
+        },
+        "pre_convert": {
+          "api_ms": {
+            "count": 16664,
+            "mean": 2.5124347218585115,
+            "min": 0.48971399974107044,
+            "p50": 2.0886524994239153,
+            "p95": 5.498281999280152,
+            "max": 18.551412999840977
+          },
+          "driver_ms": {
+            "count": 16664,
+            "mean": 2.4963954348890276,
+            "min": 0.4754230003527482,
+            "p50": 2.074214999538526,
+            "p95": 5.479031000504619,
+            "max": 18.528954999965208
+          },
+          "driver_counts": {
+            "1": 16664
+          },
+          "descriptor_counts": {
+            "1": 16664
+          }
+        }
+      },
+      "max_sampled_decode_lag_ms": 52.509666,
+      "max_sampled_preview_age_s": 0.21483606,
+      "override_count": 32
+    },
+    {
+      "case": "wall_preview",
+      "stage": "compressed8_control_device0",
+      "decode_fps": 768.1499999999999,
+      "preview_MB_s": 16.8302592,
+      "result_MB_s": 27.206228,
+      "dropped_stale_lifetime": 0,
+      "dropped_overwrite_lifetime": 48431,
+      "source_age_max_ms": 343.82142300000004,
+      "decoder_source_lag_max_ms": null,
+      "videos": [],
+      "seconds": 60.0,
+      "fps": 228.55,
+      "minimum_stream_fps": 6.983333333333333,
+      "zero_streams": 0,
+      "per_stream_fps": [
+        7.183333333333334,
+        7.216666666666667,
+        7.2,
+        7.116666666666666,
+        7.116666666666666,
+        7.3,
+        6.983333333333333,
+        7.15,
+        7.15,
+        7.166666666666667,
+        7.066666666666666,
+        7.05,
+        7.15,
+        7.1,
+        7.133333333333334,
+        7.2,
+        7.216666666666667,
+        7.1,
+        7.116666666666666,
+        7.133333333333334,
+        7.133333333333334,
+        7.15,
+        7.1,
+        7.2,
+        7.116666666666666,
+        7.133333333333334,
+        7.1,
+        7.3,
+        7.15,
+        7.0,
+        7.183333333333334,
+        7.133333333333334
+      ],
+      "stage_mean_ms": {
+        "decode_ms": 35.59936591482534,
+        "image_bridge_ms": 0.0055991591920075846,
+        "preprocess_ms": 61.24542842558158,
+        "inference_ms": 24.455155691679433,
+        "inference_submit_ms": 0.07199127040035001,
+        "inference_sync_ms": 24.377994481222192,
+        "output_copy_ms": 34.297116658207536,
+        "cpu_postprocess_ms": 0.056370961861007776,
+        "draw_ms": null,
+        "encode_submit_ms": null,
+        "preview_vpp_ms": 27.55124490055854,
+        "preview_readback_ms": 1.9835904360968137
+      },
+      "measurement_start": 7979.185811281,
+      "measurement_end": 8039.185811281,
+      "tpu_percent": 83,
+      "tpu_samples": 60,
+      "device": 0,
+      "configuration": "compressed8_control",
+      "maximum_no_result_interval_s": 0.2757144139999994,
+      "actual_format": 101,
+      "extra_buffers": 8,
+      "actual_preview_fps_per_stream": 4.755729166666667,
+      "driver_calls_in_formal_window": {
+        "unclassified": 46065,
+        "pre_convert": 13709,
+        "thumbnail": 9123,
+        "pre_vpp": 13699
+      },
+      "descriptors_in_formal_window": {
+        "unclassified": 46065,
+        "pre_convert": 13709,
+        "thumbnail": 9123,
+        "pre_vpp": 13699
+      },
+      "driver_calls_per_s": {
+        "unclassified": 767.75,
+        "pre_convert": 228.48333333333332,
+        "thumbnail": 152.05,
+        "pre_vpp": 228.31666666666666
+      },
+      "api": {
+        "pre_convert": {
+          "api_ms": {
+            "count": 13709,
+            "mean": 30.91273890510514,
+            "min": 0.510131999362784,
+            "p50": 32.37105500011239,
+            "p95": 39.15939599937701,
+            "max": 68.99262499973702
+          },
+          "driver_ms": {
+            "count": 13709,
+            "mean": 30.89529739878954,
+            "min": 0.49817299986898433,
+            "p50": 32.35180499996204,
+            "p95": 39.14160299973446,
+            "max": 68.97541699981957
+          },
+          "driver_counts": {
+            "1": 13709
+          },
+          "descriptor_counts": {
+            "1": 13709
+          }
+        },
+        "thumbnail": {
+          "api_ms": {
+            "count": 9123,
+            "mean": 27.542568272500056,
+            "min": 0.61455000013666,
+            "p50": 28.747047999786446,
+            "p95": 38.16771600031643,
+            "max": 68.73857999926258
+          },
+          "driver_ms": {
+            "count": 9123,
+            "mean": 27.524563447111426,
+            "min": 0.6040500002200133,
+            "p50": 28.730422999615257,
+            "p95": 38.156923000315146,
+            "max": 68.72049600042374
+          },
+          "driver_counts": {
+            "1": 9123
+          },
+          "descriptor_counts": {
+            "1": 9123
+          }
+        },
+        "pre_vpp": {
+          "api_ms": {
+            "count": 13699,
+            "mean": 30.31647964011596,
+            "min": 0.6212589996721363,
+            "p50": 31.78829699936614,
+            "p95": 38.644305000161694,
+            "max": 70.59973000013997
+          },
+          "driver_ms": {
+            "count": 13699,
+            "mean": 30.29921492561447,
+            "min": 0.6098829999245936,
+            "p50": 31.771087999914016,
+            "p95": 38.62430499975744,
+            "max": 70.58281300032831
+          },
+          "driver_counts": {
+            "1": 13699
+          },
+          "descriptor_counts": {
+            "1": 13699
+          }
+        }
+      },
+      "max_sampled_decode_lag_ms": 117.60133,
+      "max_sampled_preview_age_s": 0.32951088,
+      "override_count": 32
+    },
+    {
+      "case": "wall_preview",
+      "stage": "compressed8_control_device2",
+      "decode_fps": 768.0166666666667,
+      "preview_MB_s": 21.8161152,
+      "result_MB_s": 32.4512104,
+      "dropped_stale_lifetime": 0,
+      "dropped_overwrite_lifetime": 44571,
+      "source_age_max_ms": 291.679449,
+      "decoder_source_lag_max_ms": null,
+      "videos": [],
+      "seconds": 60.0,
+      "fps": 272.3666666666667,
+      "minimum_stream_fps": 8.433333333333334,
+      "zero_streams": 0,
+      "per_stream_fps": [
+        8.583333333333334,
+        8.516666666666667,
+        8.466666666666667,
+        8.55,
+        8.55,
+        8.5,
+        8.433333333333334,
+        8.483333333333333,
+        8.55,
+        8.55,
+        8.483333333333333,
+        8.55,
+        8.466666666666667,
+        8.566666666666666,
+        8.516666666666667,
+        8.483333333333333,
+        8.6,
+        8.45,
+        8.5,
+        8.55,
+        8.516666666666667,
+        8.483333333333333,
+        8.5,
+        8.466666666666667,
+        8.466666666666667,
+        8.533333333333333,
+        8.45,
+        8.583333333333334,
+        8.533333333333333,
+        8.516666666666667,
+        8.45,
+        8.516666666666667
+      ],
+      "stage_mean_ms": {
+        "decode_ms": 18.660977860543394,
+        "image_bridge_ms": 0.00556748041855342,
+        "preprocess_ms": 18.365205299228975,
+        "inference_ms": 44.68943391261779,
+        "inference_submit_ms": 0.0596798068167911,
+        "inference_sync_ms": 44.62411959809082,
+        "output_copy_ms": 47.45730218541182,
+        "cpu_postprocess_ms": 0.059253763309264476,
+        "draw_ms": null,
+        "encode_submit_ms": null,
+        "preview_vpp_ms": 8.325434312943562,
+        "preview_readback_ms": 0.9919489117100373
+      },
+      "measurement_start": 7976.335361025,
+      "measurement_end": 8036.335361025,
+      "tpu_percent": 99.62711864406779,
+      "tpu_samples": 59,
+      "device": 2,
+      "configuration": "compressed8_control",
+      "maximum_no_result_interval_s": 0.2078348029999999,
+      "actual_format": 101,
+      "extra_buffers": 8,
+      "actual_preview_fps_per_stream": 6.164583333333333,
+      "driver_calls_in_formal_window": {
+        "unclassified": 46081,
+        "thumbnail": 11834,
+        "pre_vpp": 16340,
+        "pre_convert": 16337
+      },
+      "descriptors_in_formal_window": {
+        "unclassified": 46081,
+        "thumbnail": 11834,
+        "pre_vpp": 16340,
+        "pre_convert": 16337
+      },
+      "driver_calls_per_s": {
+        "unclassified": 768.0166666666667,
+        "thumbnail": 197.23333333333332,
+        "pre_vpp": 272.3333333333333,
+        "pre_convert": 272.28333333333336
+      },
+      "api": {
+        "thumbnail": {
+          "api_ms": {
+            "count": 11834,
+            "mean": 8.324652577066436,
+            "min": 0.5462980006996077,
+            "p50": 6.193186500240699,
+            "p95": 21.782539000014367,
+            "max": 39.16610299984313
+          },
+          "driver_ms": {
+            "count": 11834,
+            "mean": 8.307039859552802,
+            "min": 0.5352159996618866,
+            "p50": 6.172769499698916,
+            "p95": 21.76941400011856,
+            "max": 39.15793699979986
+          },
+          "driver_counts": {
+            "1": 11834
+          },
+          "descriptor_counts": {
+            "1": 11834
+          }
+        },
+        "pre_vpp": {
+          "api_ms": {
+            "count": 16340,
+            "mean": 8.493699347679112,
+            "min": 0.5810080001538154,
+            "p50": 5.463281000174902,
+            "p95": 24.95562300009624,
+            "max": 46.296282000184874
+          },
+          "driver_ms": {
+            "count": 16340,
+            "mean": 8.47751927178987,
+            "min": 0.5740070000683772,
+            "p50": 5.448551499739551,
+            "p95": 24.934914999903413,
+            "max": 46.28199000035238
+          },
+          "driver_counts": {
+            "1": 16340
+          },
+          "descriptor_counts": {
+            "1": 16340
+          }
+        },
+        "pre_convert": {
+          "api_ms": {
+            "count": 16337,
+            "mean": 9.891293838527375,
+            "min": 0.4894230005447753,
+            "p50": 6.711046999953396,
+            "p95": 26.36205900034838,
+            "max": 47.58313299953443
+          },
+          "driver_ms": {
+            "count": 16337,
+            "mean": 9.874548063167556,
+            "min": 0.47979800001485273,
+            "p50": 6.6947139994226745,
+            "p95": 26.351850000537524,
+            "max": 47.57029899974441
+          },
+          "driver_counts": {
+            "1": 16337
+          },
+          "descriptor_counts": {
+            "1": 16337
+          }
+        }
+      },
+      "max_sampled_decode_lag_ms": 65.891337,
+      "max_sampled_preview_age_s": 0.27120694,
+      "override_count": 32
+    },
+    {
+      "case": "wall_preview",
+      "stage": "linear8_repeat_device0",
+      "decode_fps": 768.0333333333333,
+      "preview_MB_s": 18.9278208,
+      "result_MB_s": 32.4793112,
+      "dropped_stale_lifetime": 0,
+      "dropped_overwrite_lifetime": 44452,
+      "source_age_max_ms": 321.08710099999996,
+      "decoder_source_lag_max_ms": null,
+      "videos": [],
+      "seconds": 60.0,
+      "fps": 272.9166666666667,
+      "minimum_stream_fps": 8.383333333333333,
+      "zero_streams": 0,
+      "per_stream_fps": [
+        8.5,
+        8.6,
+        8.533333333333333,
+        8.6,
+        8.433333333333334,
+        8.5,
+        8.516666666666667,
+        8.55,
+        8.583333333333334,
+        8.466666666666667,
+        8.383333333333333,
+        8.5,
+        8.566666666666666,
+        8.55,
+        8.55,
+        8.483333333333333,
+        8.433333333333334,
+        8.55,
+        8.55,
+        8.5,
+        8.616666666666667,
+        8.583333333333334,
+        8.583333333333334,
+        8.566666666666666,
+        8.533333333333333,
+        8.4,
+        8.516666666666667,
+        8.516666666666667,
+        8.633333333333333,
+        8.55,
+        8.566666666666666,
+        8.5
+      ],
+      "stage_mean_ms": {
+        "decode_ms": 10.480434060458018,
+        "image_bridge_ms": 0.007015450442748089,
+        "preprocess_ms": 24.192576610687027,
+        "inference_ms": 34.80149557251908,
+        "inference_submit_ms": 0.0728409975572519,
+        "inference_sync_ms": 34.72331075816793,
+        "output_copy_ms": 51.04465469429009,
+        "cpu_postprocess_ms": 0.05713013740458013,
+        "draw_ms": null,
+        "encode_submit_ms": null,
+        "preview_vpp_ms": 7.5781521301003005,
+        "preview_readback_ms": 2.770810207323011
+      },
+      "measurement_start": 8080.953084246,
+      "measurement_end": 8140.953084246,
+      "tpu_percent": 97.43333333333334,
+      "tpu_samples": 60,
+      "device": 0,
+      "configuration": "linear8_repeat",
+      "maximum_no_result_interval_s": 0.27689451399999854,
+      "actual_format": 0,
+      "extra_buffers": 8,
+      "actual_preview_fps_per_stream": 5.3484375,
+      "driver_calls_in_formal_window": {
+        "pre_vpp": 16375,
+        "pre_convert": 16378,
+        "thumbnail": 10264
+      },
+      "descriptors_in_formal_window": {
+        "pre_vpp": 16375,
+        "pre_convert": 16378,
+        "thumbnail": 10264
+      },
+      "driver_calls_per_s": {
+        "pre_vpp": 272.9166666666667,
+        "pre_convert": 272.96666666666664,
+        "thumbnail": 171.06666666666666
+      },
+      "api": {
+        "pre_vpp": {
+          "api_ms": {
+            "count": 16375,
+            "mean": 12.081014200066948,
+            "min": 0.7143009997889749,
+            "p50": 10.57159900028637,
+            "p95": 27.705784999852767,
+            "max": 70.01988899992284
+          },
+          "driver_ms": {
+            "count": 16375,
+            "mean": 12.062708053861458,
+            "min": 0.7000089999564807,
+            "p50": 10.559347999333113,
+            "p95": 27.69061800063355,
+            "max": 70.00822200006951
+          },
+          "driver_counts": {
+            "1": 16375
+          },
+          "descriptor_counts": {
+            "1": 16375
+          }
+        },
+        "pre_convert": {
+          "api_ms": {
+            "count": 16378,
+            "mean": 12.144247062219113,
+            "min": 0.5185899999560206,
+            "p50": 10.727789000156918,
+            "p95": 27.98374700068962,
+            "max": 81.85267099997873
+          },
+          "driver_ms": {
+            "count": 16378,
+            "mean": 12.12549463902745,
+            "min": 0.5107150000185356,
+            "p50": 10.704891999921529,
+            "p95": 27.957788999628974,
+            "max": 81.83925499997713
+          },
+          "driver_counts": {
+            "1": 16378
+          },
+          "descriptor_counts": {
+            "1": 16378
+          }
+        },
+        "thumbnail": {
+          "api_ms": {
+            "count": 10264,
+            "mean": 7.569025879092628,
+            "min": 0.6661749994236743,
+            "p50": 4.552393999802007,
+            "p95": 23.381476999929873,
+            "max": 71.78887099962594
+          },
+          "driver_ms": {
+            "count": 10264,
+            "mean": 7.550016743670116,
+            "min": 0.6434249999074382,
+            "p50": 4.532560000370722,
+            "p95": 23.361935000139056,
+            "max": 71.75853800072218
+          },
+          "driver_counts": {
+            "1": 10264
+          },
+          "descriptor_counts": {
+            "1": 10264
+          }
+        }
+      },
+      "max_sampled_decode_lag_ms": 54.015893,
+      "max_sampled_preview_age_s": 0.310616,
+      "override_count": 32
+    },
+    {
+      "case": "wall_preview",
+      "stage": "linear8_repeat_device2",
+      "decode_fps": 768.0166666666667,
+      "preview_MB_s": 26.744832,
+      "result_MB_s": 33.1079672,
+      "dropped_stale_lifetime": 0,
+      "dropped_overwrite_lifetime": 44069,
+      "source_age_max_ms": 219.817799,
+      "decoder_source_lag_max_ms": null,
+      "videos": [],
+      "seconds": 60.0,
+      "fps": 277.93333333333334,
+      "minimum_stream_fps": 8.65,
+      "zero_streams": 0,
+      "per_stream_fps": [
+        8.683333333333334,
+        8.7,
+        8.7,
+        8.65,
+        8.666666666666666,
+        8.683333333333334,
+        8.683333333333334,
+        8.683333333333334,
+        8.683333333333334,
+        8.7,
+        8.683333333333334,
+        8.683333333333334,
+        8.683333333333334,
+        8.65,
+        8.666666666666666,
+        8.7,
+        8.716666666666667,
+        8.666666666666666,
+        8.7,
+        8.7,
+        8.716666666666667,
+        8.683333333333334,
+        8.683333333333334,
+        8.7,
+        8.7,
+        8.683333333333334,
+        8.7,
+        8.683333333333334,
+        8.666666666666666,
+        8.666666666666666,
+        8.7,
+        8.666666666666666
+      ],
+      "stage_mean_ms": {
+        "decode_ms": 4.255344635524107,
+        "image_bridge_ms": 0.0072019808107459836,
+        "preprocess_ms": 5.576609318781484,
+        "inference_ms": 51.88026607100026,
+        "inference_submit_ms": 0.0564104021348045,
+        "inference_sync_ms": 51.81809041136962,
+        "output_copy_ms": 54.24129726709043,
+        "cpu_postprocess_ms": 0.05991622691292875,
+        "draw_ms": null,
+        "encode_submit_ms": null,
+        "preview_vpp_ms": 2.298757411164714,
+        "preview_readback_ms": 0.9926208541006203
+      },
+      "measurement_start": 8076.424886642,
+      "measurement_end": 8136.424886642,
+      "tpu_percent": 100,
+      "tpu_samples": 60,
+      "device": 2,
+      "configuration": "linear8_repeat",
+      "maximum_no_result_interval_s": 0.17634196900000276,
+      "actual_format": 0,
+      "extra_buffers": 8,
+      "actual_preview_fps_per_stream": 7.557291666666667,
+      "driver_calls_in_formal_window": {
+        "thumbnail": 14509,
+        "pre_vpp": 16675,
+        "pre_convert": 16677
+      },
+      "descriptors_in_formal_window": {
+        "thumbnail": 14509,
+        "pre_vpp": 16675,
+        "pre_convert": 16677
+      },
+      "driver_calls_per_s": {
+        "thumbnail": 241.81666666666666,
+        "pre_vpp": 277.9166666666667,
+        "pre_convert": 277.95
+      },
+      "api": {
+        "thumbnail": {
+          "api_ms": {
+            "count": 14509,
+            "mean": 2.2970639232213443,
+            "min": 0.6466329996328568,
+            "p50": 1.6631060007057386,
+            "p95": 5.574699999669974,
+            "max": 19.06679500007158
+          },
+          "driver_ms": {
+            "count": 14509,
+            "mean": 2.279567213458468,
+            "min": 0.6338000002870103,
+            "p50": 1.646187999540416,
+            "p95": 5.565074000514869,
+            "max": 19.042586999603373
+          },
+          "driver_counts": {
+            "1": 14509
+          },
+          "descriptor_counts": {
+            "1": 14509
+          }
+        },
+        "pre_vpp": {
+          "api_ms": {
+            "count": 16675,
+            "mean": 2.721270893734968,
+            "min": 0.6804670001656632,
+            "p50": 2.046653000434162,
+            "p95": 6.727964000674547,
+            "max": 20.318644999861135
+          },
+          "driver_ms": {
+            "count": 16675,
+            "mean": 2.703541523660915,
+            "min": 0.6696760001432267,
+            "p50": 2.0311939997554873,
+            "p95": 6.712798000080511,
+            "max": 20.30231100070523
+          },
+          "driver_counts": {
+            "1": 16675
+          },
+          "descriptor_counts": {
+            "1": 16675
+          }
+        },
+        "pre_convert": {
+          "api_ms": {
+            "count": 16677,
+            "mean": 2.849243350427443,
+            "min": 0.5287989997668774,
+            "p50": 2.182862000154273,
+            "p95": 7.294388999980583,
+            "max": 23.52322900060244
+          },
+          "driver_ms": {
+            "count": 16677,
+            "mean": 2.8321757077985694,
+            "min": 0.5215070004851441,
+            "p50": 2.1653620005963603,
+            "p95": 7.275429999936023,
+            "max": 23.47043699955975
+          },
+          "driver_counts": {
+            "1": 16677
+          },
+          "descriptor_counts": {
+            "1": 16677
+          }
+        }
+      },
+      "max_sampled_decode_lag_ms": 48.486047,
+      "max_sampled_preview_age_s": 0.21110501,
+      "override_count": 32
+    }
+  ],
+  "notes": [
+    "Events and app completed frames have different formal-window edge populations.",
+    "Stale/overwrite counts cover whole run; FPS and API means cover formal window.",
+    "Source lag and preview age are sampled maxima, not all-frame latency percentiles.",
+    "Removal of unclassified VPP calls is checked explicitly; output correctness uses separate matched-source-frame records."
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "rows": [
+    {
+      "capture": "vpp0",
+      "device": 0,
+      "service_ms_after_admission": {
+        "pre_vpp": 1.3339734784660768,
+        "pre_convert": 1.376115407053198,
+        "thumbnail": 1.508959628432956,
+        "unclassified": 1.5041313680510136
+      },
+      "fixed_decode_requests_per_s": 768,
+      "preview_calls_per_detection": 0.7379598824843542,
+      "slot_budget_ms_per_s": 2000,
+      "remaining_slot_ms_per_s_after_decode": 844.8271093368216,
+      "slot_demand_ms_per_detection_including_preview": 3.8236405555912936,
+      "approx_vpp_limited_fps": 220.94835982985757,
+      "observed_fps": 209.6950175971583,
+      "difference_percent": 5.366528190153685
+    },
+    {
+      "capture": "vpp0",
+      "device": 2,
+      "service_ms_after_admission": {
+        "pre_vpp": 1.3822486652562296,
+        "pre_convert": 1.4102956865601504,
+        "thumbnail": 1.3182748106007067,
+        "unclassified": 1.2194862062510174
+      },
+      "fixed_decode_requests_per_s": 768,
+      "preview_calls_per_detection": 0.6658393534453874,
+      "slot_budget_ms_per_s": 2000,
+      "remaining_slot_ms_per_s_after_decode": 1063.4345935992187,
+      "slot_demand_ms_per_detection_including_preview": 3.670303599370095,
+      "approx_vpp_limited_fps": 289.7402257899667,
+      "observed_fps": 265.6361639363841,
+      "difference_percent": 9.074088970564699
+    },
+    {
+      "capture": "vpp1",
+      "device": 0,
+      "service_ms_after_admission": {
+        "pre_vpp": 1.3765974840265218,
+        "pre_convert": 1.4056040921686748,
+        "thumbnail": 1.3237994108713032,
+        "unclassified": 1.525745001145663
+      },
+      "fixed_decode_requests_per_s": 768,
+      "preview_calls_per_detection": 0.751360886827742,
+      "slot_budget_ms_per_s": 2000,
+      "remaining_slot_ms_per_s_after_decode": 828.2278391201307,
+      "slot_demand_ms_per_detection_including_preview": 3.7768526755295015,
+      "approx_vpp_limited_fps": 219.29048079801422,
+      "observed_fps": 208.11787846637233,
+      "difference_percent": 5.368401030210945
+    },
+    {
+      "capture": "vpp1",
+      "device": 2,
+      "service_ms_after_admission": {
+        "pre_vpp": 1.3902815166120732,
+        "pre_convert": 1.3931674676663546,
+        "thumbnail": 1.2139616686909582,
+        "unclassified": 1.2230423705757625
+      },
+      "fixed_decode_requests_per_s": 768,
+      "preview_calls_per_detection": 0.6967516140503507,
+      "slot_budget_ms_per_s": 2000,
+      "remaining_slot_ms_per_s_after_decode": 1060.7034593978144,
+      "slot_demand_ms_per_detection_including_preview": 3.62927873633411,
+      "approx_vpp_limited_fps": 292.26288099029233,
+      "observed_fps": 265.870947987848,
+      "difference_percent": 9.926595290753838
+    }
+  ],
+  "limits": [
+    "This is a resource-budget consistency check conditional on measured service times and preview ratio, not an independently predicted PCIe bandwidth limit.",
+    "After-admission driver wall time approximates slot occupancy and includes small work outside the critical section; it is not VPP hardware compute time.",
+    "CDMA contention in measured service time depends on this workload; do not extrapolate unchanged to other concurrency levels.",
+    "The decoder rate is the independently known 32 streams times24fps, checked against observed calls and decoded-frame counters.",
+    "TPU capacity and other work may impose a lower limit; intrusive trace changes throughput."
+  ]
+}

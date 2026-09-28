@@ -1,5 +1,7 @@
 # 模型与传输诊断
 
+2026-09-28 的 VPP 等待及解码格式调查见[根因报告](../../docs/vpp-root-cause.md)。当时使用的观察器、采集和分析脚本以及选定输入摘要保存在[研究快照](studies/rootcause-20260928/README.md)，按原始路径恢复后复算。
+
 最新诊断结果：[同卡DMA/VPP矩阵](../../docs/dma-vpp-link-20260924.md)、[无飞线PCIe2带宽](../../docs/pcie2-direct-bandwidth-20260924.md)、[传输成本计算](../../docs/pcie-transfer-cost-20260924.md)。矩阵脚本包含特定设备/BDF及链路变速操作，属于实验入口，运行前须核对目标、空闲状态和恢复配置，不是通用即用基准。应用DMA上限不等同物理链路饱和。
 
 [仓库首页](../../README.md) / [文档索引](../../docs/README.md)

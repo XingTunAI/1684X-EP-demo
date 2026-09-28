@@ -1,0 +1,33 @@
+{
+  "checks": [
+    {
+      "format": 101,
+      "frames": 240,
+      "driver_calls": {
+        "outside": 240,
+        "inside": 480
+      },
+      "override_logs": [
+        "VPP_DIAG output_format requested=101 effective=101"
+      ]
+    },
+    {
+      "format": 0,
+      "frames": 240,
+      "driver_calls": {
+        "inside": 480
+      },
+      "override_logs": [
+        "VPP_DIAG output_format requested=101 effective=0"
+      ]
+    }
+  ],
+  "common_frames": 240,
+  "range": [
+    0,
+    239
+  ],
+  "exact_detection_equal_frames": 240,
+  "different_frames": [],
+  "examples": []
+}

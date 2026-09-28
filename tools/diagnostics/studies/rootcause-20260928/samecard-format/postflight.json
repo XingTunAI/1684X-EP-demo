@@ -1,0 +1,22 @@
+{
+  "time": 1790566413.6840894,
+  "conflicts": [],
+  "tracer": "nop",
+  "links": {
+    "0002:21:00.0": {
+      "current_link_speed": "5.0 GT/s PCIe",
+      "current_link_width": "1"
+    },
+    "0004:41:00.0": {
+      "current_link_speed": "5.0 GT/s PCIe",
+      "current_link_width": "1"
+    },
+    "0003:31:00.0": {
+      "current_link_speed": "8.0 GT/s PCIe",
+      "current_link_width": "1"
+    }
+  },
+  "binary_sha256": "daed4220073e4668791e47469e4e34e7bfa898ebab9ab4158eeb8efdddd9ed91",
+  "rootport_target": "0003",
+  "smi": "  SM7 PCIE chip0: 0 002:21:00.0 Active 48C 50C  1.9W 874mV OFF N/A 0% 25M 1000M 1000M  2.2A 78MB 14781MB \n  SM7 PCIE chip1: 1 004:41:00.0 Active 50C 47C  4.0W 868mV OFF N/A 0% 25M 1000M 1000M  4.6A 78MB 14781MB \n  SM7 PCIE chip2: 2 003:31:00.0 Active 48C 44C  2.3W 874mV OFF N/A 0% 25M 1000M 1000M  2.6A 78MB 14781MB \n"
+}

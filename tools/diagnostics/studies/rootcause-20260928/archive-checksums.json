@@ -1,0 +1,38 @@
+[
+  {
+    "archive": "evidence.tar.gz",
+    "purpose": "原始双卡基线、预览消融和重复对照",
+    "bytes": 22181432,
+    "sha256": "e287779d4926f3525346bfaa673e93e4582882165a73e14521c5f406ed3297df"
+  },
+  {
+    "archive": "preprocess-split-evidence.tar.gz",
+    "purpose": "两步预处理 API 拆分与前后观察器对照",
+    "bytes": 11699102,
+    "sha256": "e17cb05d2d8635d2d509b5645c7af5840b68efc49866ab9c08b004d9195ba94a"
+  },
+  {
+    "archive": "vpp-attribution-v2-evidence.tar.gz",
+    "purpose": "API/驱动事件、原始内核函数图、缓冲统计及前后对照",
+    "bytes": 52807278,
+    "sha256": "2657e3524bb2f5b626e5bbf2a63eb6a1f02635bbb97b8c16de74ed515555f6c7"
+  },
+  {
+    "archive": "decoder-format-evidence.tar.gz",
+    "purpose": "默认 2 缓冲格式 ABBA、240 帧正确性、真实解码调用栈；保留时延退化",
+    "bytes": 37215888,
+    "sha256": "4680aa62ff998dc2b6121da9940145938b6ebd67a8830478bcaac4352337137b"
+  },
+  {
+    "archive": "decoder-buffers8-evidence.tar.gz",
+    "purpose": "双卡额外 8 缓冲，线性→压缩→线性",
+    "bytes": 24987343,
+    "sha256": "e6daa686364490039cf2e4a99c2e6cb1d9d72c877ec9b0b05f7131047535d167"
+  },
+  {
+    "archive": "samecard-format-evidence.tar.gz",
+    "purpose": "device 2 同卡同槽 8→5→8 GT/s，两种格式交叉验证与恢复检查",
+    "bytes": 25965992,
+    "sha256": "cb3e1315fefce1c011b2d6a1adeb779fd4a043141b5039e3958e57209a09c041"
+  }
+]

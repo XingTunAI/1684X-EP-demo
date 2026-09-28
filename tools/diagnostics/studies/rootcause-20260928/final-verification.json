@@ -1,0 +1,192 @@
+{
+  "inputs_sha256": {
+    "vpp-attribution-v2/analysis-v2/summary.json": "439ef666adad575db3cd6f245b357a31c638ce0d801ee4d752fbbb97ff5b7042",
+    "decoder-format32-buffers8/format-analysis.json": "c8c16067f2593ca2d8b7c2b2f39eebf2b258ea034ebfdd89cf80d08cc8232cf9",
+    "samecard-format/format-analysis.json": "138ae8cd1311a6f6897aa837911fcac7706f36161b054fcefd66e9551cb6bc0f",
+    "samecard-format/state.json": "aa1649dc9493bcd18a7b962a598533fd32d698ab3e47167554bd073c4375a5fc"
+  },
+  "trace_preprocess_partition": [
+    {
+      "capture": "vpp0",
+      "device_mean_ms": {
+        "0": {
+          "admission_ms": 68.3487205477585,
+          "cdma_mutex_ms": 0.47502149725379844,
+          "cdma_other_ms": 0.10412026723371542,
+          "descriptor_other_ms": 0.2173323304088711,
+          "completion_ms": 1.84987982111375,
+          "other_ms": 0.0637349695091397,
+          "total_ms": 71.05880943327776
+        },
+        "2": {
+          "admission_ms": 34.76246828689495,
+          "cdma_mutex_ms": 0.2681178887685539,
+          "cdma_other_ms": 0.06952018756627995,
+          "descriptor_other_ms": 0.47515054468814844,
+          "completion_ms": 1.9217952862398857,
+          "other_ms": 0.05796044455351186,
+          "total_ms": 37.55501263871133
+        }
+      },
+      "difference_ms": {
+        "admission_ms": 33.58625226086355,
+        "cdma_mutex_ms": 0.20690360848524453,
+        "cdma_other_ms": 0.034600079667435474,
+        "descriptor_other_ms": -0.2578182142792773,
+        "completion_ms": -0.07191546512613578,
+        "other_ms": 0.005774524955627844,
+        "total_ms": 33.503796794566426
+      },
+      "admission_difference_over_total_difference": 1.002461078271299
+    },
+    {
+      "capture": "vpp1",
+      "device_mean_ms": {
+        "0": {
+          "admission_ms": 68.7773903114516,
+          "cdma_mutex_ms": 0.4600315011576142,
+          "cdma_other_ms": 0.10465840393508936,
+          "descriptor_other_ms": 0.33541329750466603,
+          "completion_ms": 1.8160240012171653,
+          "other_ms": 0.06607437238066194,
+          "total_ms": 71.5595918876468
+        },
+        "2": {
+          "admission_ms": 26.13503050484348,
+          "cdma_mutex_ms": 0.2620355953475582,
+          "cdma_other_ms": 0.06952380212167554,
+          "descriptor_other_ms": 0.44951908773192806,
+          "completion_ms": 1.9423237913716425,
+          "other_ms": 0.06004670770562319,
+          "total_ms": 28.91847948912191
+        }
+      },
+      "difference_ms": {
+        "admission_ms": 42.64235980660811,
+        "cdma_mutex_ms": 0.197995905810056,
+        "cdma_other_ms": 0.035134601813413824,
+        "descriptor_other_ms": -0.11410579022726203,
+        "completion_ms": -0.12629979015447712,
+        "other_ms": 0.006027664675038749,
+        "total_ms": 42.641112398524896
+      },
+      "admission_difference_over_total_difference": 1.0000292536477837
+    }
+  ],
+  "dual_buffers8": {
+    "0": {
+      "linear_mean_fps": 273.2916666666667,
+      "linear_mean_tpu_percent": 98.06666666666666,
+      "linear_mean_preprocess_ms": 23.99777140522171,
+      "linear_mean_actual_preview_fps_per_stream": 5.3671875,
+      "compressed_fps": 228.55,
+      "compressed_tpu_percent": 83,
+      "compressed_actual_preview_fps_per_stream": 4.755729166666667,
+      "linear_gain_percent": 19.576314446146004
+    },
+    "2": {
+      "linear_mean_fps": 277.83333333333337,
+      "linear_mean_tpu_percent": 100,
+      "linear_mean_preprocess_ms": 5.249199252525644,
+      "linear_mean_actual_preview_fps_per_stream": 7.666927083333333,
+      "compressed_fps": 272.3666666666667,
+      "compressed_tpu_percent": 99.62711864406779,
+      "compressed_actual_preview_fps_per_stream": 6.164583333333333,
+      "linear_gain_percent": 2.007098274385033
+    }
+  },
+  "samecard": [
+    {
+      "format": 101,
+      "high_8GT_mean_fps": 260.775,
+      "low_5GT_fps": 212.66666666666666,
+      "low_rate_loss_percent": 18.44821525580801,
+      "rows": [
+        {
+          "stage": "compressed_b0_device2",
+          "link_gt_s": 8,
+          "fps": 262.8666666666667,
+          "tpu_percent": 95.72881355932203,
+          "dropped_stale_lifetime": 0,
+          "maximum_no_result_interval_s": 0.23271267799999995,
+          "actual_preview_fps_per_stream": 5.509895833333333,
+          "max_sampled_decode_lag_ms": 74.123372
+        },
+        {
+          "stage": "compressed_b2_device2",
+          "link_gt_s": 8,
+          "fps": 258.68333333333334,
+          "tpu_percent": 94.20338983050847,
+          "dropped_stale_lifetime": 0,
+          "maximum_no_result_interval_s": 0.2273516400000002,
+          "actual_preview_fps_per_stream": 5.325520833333333,
+          "max_sampled_decode_lag_ms": 68.368575
+        },
+        {
+          "stage": "compressed_b1_device2",
+          "link_gt_s": 5,
+          "fps": 212.66666666666666,
+          "tpu_percent": 77.13333333333334,
+          "dropped_stale_lifetime": 0,
+          "maximum_no_result_interval_s": 0.282214837999998,
+          "actual_preview_fps_per_stream": 5.089583333333333,
+          "max_sampled_decode_lag_ms": 100.25784
+        }
+      ]
+    },
+    {
+      "format": 0,
+      "high_8GT_mean_fps": 278.225,
+      "low_5GT_fps": 273.01666666666665,
+      "low_rate_loss_percent": 1.8719861023751894,
+      "rows": [
+        {
+          "stage": "linear_b0_device2",
+          "link_gt_s": 8,
+          "fps": 278.1,
+          "tpu_percent": 99.9,
+          "dropped_stale_lifetime": 0,
+          "maximum_no_result_interval_s": 0.22599475600000218,
+          "actual_preview_fps_per_stream": 6.6546875,
+          "max_sampled_decode_lag_ms": 53.066179
+        },
+        {
+          "stage": "linear_b2_device2",
+          "link_gt_s": 8,
+          "fps": 278.35,
+          "tpu_percent": 99.9,
+          "dropped_stale_lifetime": 0,
+          "maximum_no_result_interval_s": 0.22053693000000152,
+          "actual_preview_fps_per_stream": 6.619791666666667,
+          "max_sampled_decode_lag_ms": 47.094404
+        },
+        {
+          "stage": "linear_b1_device2",
+          "link_gt_s": 5,
+          "fps": 273.01666666666665,
+          "tpu_percent": 97.86666666666666,
+          "dropped_stale_lifetime": 0,
+          "maximum_no_result_interval_s": 0.2838656929999992,
+          "actual_preview_fps_per_stream": 5.536979166666667,
+          "max_sampled_decode_lag_ms": 46.986105
+        }
+      ]
+    }
+  ],
+  "theory": {
+    "gen2_B_s": 500000000.0,
+    "gen3_B_s": 984615384.6153846,
+    "descriptor_B": 336,
+    "descriptor_ideal_us_gen2": 0.6719999999999999,
+    "descriptor_ideal_us_gen3": 0.34125,
+    "fixed_background_requests_per_s": 768,
+    "buffer_increment_unaligned_bytes": 597196800
+  },
+  "dual_linear_fps_gap_percent": 1.6346730653869268,
+  "notes": [
+    "Means of API types are added, not individual frame-paired trace hardware times.",
+    "Same-card standalone load is separate from simultaneous dual-card load.",
+    "PCIe serialization lower bounds do not predict wall-clock API duration.",
+    "Buffer memory is an unaligned estimate, not measured device memory usage."
+  ]
+}

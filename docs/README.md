@@ -2,6 +2,8 @@
 
 **[PCIe性能调查：阅读顺序、文档目的与结论边界](pcie-reading-guide.md)**
 
+2026-09-28 更新：[VPP 预处理等待根因与解码格式验证](vpp-root-cause.md)，附[原始归档和复算索引](vpp-evidence-index.md)。
+
 新增实测：[PCIe 2.0 ×1 回传影响、双向传输与各 Demo 对照](readback-performance.md)。
 
 [仓库首页](../README.md)

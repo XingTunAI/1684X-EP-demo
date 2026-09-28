@@ -1,0 +1,7 @@
+{
+  "status": "completed",
+  "stage": "linear_b2_device2",
+  "actual_speed": "8.0 GT/s PCIe",
+  "restored_speed": "8.0 GT/s PCIe",
+  "restored_target": "0003"
+}

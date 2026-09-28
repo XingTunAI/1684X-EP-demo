@@ -1,0 +1,14 @@
+{
+  "date": "2026-09-28",
+  "hardware_experiments_rerun": false,
+  "checks": {
+    "snapshot_files_sha256_verified": 38,
+    "analysis_tests_passed": 3,
+    "existing_dispatch_tests_passed": 14,
+    "relative_documentation_links_resolved": 88,
+    "archived_python_sources_syntax": "passed",
+    "vpp_pool_model_replay": "JSON identical to archived result",
+    "final_attribution_replay": "JSON identical to archived result"
+  },
+  "replay_method": "Restore snapshot into a temporary local/rootcause-20260928 layout with repository tools/diagnostics dependencies; rename output copies before recalculation; original evidence unchanged."
+}
