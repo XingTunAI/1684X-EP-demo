@@ -75,7 +75,7 @@ class ObserveTests(unittest.TestCase):
         self.assertEqual(plan["devices"], list(range(4)))
         self.assertEqual(plan["compare_stream_ids"], [11, 0, 5, 7])
         self.assertEqual([options["streams"] for options in plan["device_configuration"]["devices"].values()], [12] * 4)
-        self.assertEqual([options["gate_merge_budget_kib"] for options in plan["device_configuration"]["devices"].values()], [64, 128, 64, 128])
+        self.assertEqual([options["gate_merge_budget_kib"] for options in plan["device_configuration"]["devices"].values()], [64, 64, 64, 64])
 
     def test_stop_skips_hardware_busy_checks_preparation_and_model_preflight(self):
         args = self.parse("--devices", "auto", "--stop", "--compare-streams", "ignored")

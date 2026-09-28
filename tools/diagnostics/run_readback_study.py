@@ -16,7 +16,7 @@ def save(path, obj):
     path.write_text(json.dumps(obj, indent=2) + '\n')
 
 
-def run_stage(root, name, command, device, timeout=180, barrier=False, readback=None):
+def run_stage(root, name, command, device, timeout=180, barrier=False, readback=None, player_fps=10):
     folder = root / name
     folder.mkdir()
     command = [str(x).replace('{stage}', str(folder)) for x in command]
@@ -39,7 +39,7 @@ def run_stage(root, name, command, device, timeout=180, barrier=False, readback=
                 fifo = folder / 'worker/preview.bgr'
                 if fifo.exists() and player is None:
                     env = dict(os.environ, DISPLAY=':0', XAUTHORITY='/var/run/lightdm/root/:0', LD_LIBRARY_PATH='/usr/lib/aarch64-linux-gnu', SDL_RENDER_DRIVER='software')
-                    player = subprocess.Popen(['/usr/bin/ffplay', '-loglevel', 'error', '-autoexit', '-fs', '-f', 'rawvideo', '-pixel_format', 'bgr24', '-video_size', '1920x1080', '-framerate', '10', '-i', str(fifo)], env=env, stdout=out, stderr=err, start_new_session=True)
+                    player = subprocess.Popen(['/usr/bin/ffplay', '-loglevel', 'error', '-autoexit', '-fs', '-f', 'rawvideo', '-pixel_format', 'bgr24', '-video_size', '1920x1080', '-framerate', str(player_fps), '-i', str(fifo)], env=env, stdout=out, stderr=err, start_new_session=True)
                 tick = time.monotonic()
                 sample = subprocess.run(['bm-smi','--noloop','--text_format',f'--start_dev={device}',f'--last_dev={device}'], capture_output=True, text=True, timeout=5)
                 telemetry.write(json.dumps({'monotonic':tick, 'returncode':sample.returncode,'smi':sample.stdout,'stderr':sample.stderr})+'\n')

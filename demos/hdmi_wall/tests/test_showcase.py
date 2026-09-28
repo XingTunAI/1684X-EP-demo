@@ -155,7 +155,7 @@ class ShowcaseTests(unittest.TestCase):
                  {"device": 1, "available": True, "generation": 2, "current_link_width": 1},
                  {"device": 2, "available": True, "generation": 3, "current_link_width": 1},
                  {"device": 3, "available": False, "generation": 2, "current_link_width": 1}]
-        for mode, gen2_streams, gen2_budget in (("showcase", 32, 128), ("stress", 20, 64)):
+        for mode, gen2_streams, gen2_budget in (("showcase", 32, 64), ("stress", 20, 64)):
             with self.subTest(mode=mode), patch.object(runner.sys, "platform", "linux"), \
                     patch.object(runner, "device_link", side_effect=links):
                 plan = runner.build_plan(self.parse("--devices", "0,1,2,3", "--mode", mode))
@@ -165,7 +165,7 @@ class ShowcaseTests(unittest.TestCase):
                 "1": {"streams": gen2_streams, "gate_merge_budget_kib": gen2_budget},
                 "2": {"streams": 32, "gate_merge_budget_kib": 64},
                 "3": {"streams": 32, "gate_merge_budget_kib": 64}})
-            for device in (2, 3):
+            for device in ((3,) if mode == "showcase" else (2, 3)):
                 self.assertEqual(document["context"]["profile_selection"][str(device)]["default_source"], "unvalidated_fallback")
             self.assertEqual(plan["prime_local_decoders"], "on")
             self.assertEqual(plan["record_mode"], "summary")

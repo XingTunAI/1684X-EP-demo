@@ -26,6 +26,9 @@ def arguments(argv=None):
                         help="Background decoders per device, 1..32; default 32, independent of selected comparison views.")
     parser.add_argument("--duration", type=multi_run.single.positive, default=300,
                         help="Formal duration in seconds, plus 3s warmup; default 300.")
+    parser.add_argument("--input", help="Optional local source; repeated without re-encoding.")
+    multi_run.single.add_pipeline_arguments(parser)
+    parser.set_defaults(preview_fps=10.0)
     parser.add_argument("--inference", choices=("on", "off"), default="on",
                         help="on loads YOLOv8s and score gate; off runs a genuine decoder-only baseline.")
     parser.add_argument("--compare-streams", default="0,1",
@@ -48,6 +51,8 @@ def arguments(argv=None):
     args.mode = "showcase"
     args.profile = None
     args.telemetry_interval = 5.0
+    args.local_catchup_index = None
+    multi_run.single.validate_pipeline(parser, args)
     multi_run.single.validate_observation(parser, args, [args.streams])
     return args
 

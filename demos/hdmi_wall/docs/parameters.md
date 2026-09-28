@@ -1,5 +1,20 @@
 # HDMI 命令参数
 
+## 指定素材与线性解码（2026-09-28）
+
+`showcase.sh --mode showcase|stress` 现在支持 `--input 本地视频` 与 `--streams N`。省略输入仍使用官方 1080p24；指定视频时只复制压缩包生成长循环素材，不重编码、不降帧率。不同输入路径使用独立缓存，并保留内容 SHA-256 校验。
+
+| 参数 | 可用入口与默认值 |
+|---|---|
+| `--decoder linear` | run / multi_run / showcase / observe；showcase、stress 默认 linear，其余默认 opencv。linear 直接调用 SOPHON H.264/H.265 解码器，保留设备端图像。 |
+| `--decoder-buffers 8` | 线性解码额外帧缓冲数，允许 2–8，默认 8；不是待推理队列长度，也不是解码器总帧缓存数。opencv 模式沿用 SDK 自己的设置。 |
+| `--retrieve-every 2` | 每 2 帧取 1 帧，默认 1。仍解码 I/P/B 依赖帧；只允许 latest 推理，不能与观察或本地追赶同时使用。 |
+| `--wall-fps 10` | 墙面合成限频，0–120，0 不限频；普通入口默认 10，showcase / stress 默认 0。 |
+| `--preview-fps 3` | 每路预览上限；showcase / stress 默认 3；不限制推理。0 关闭预览。 |
+| `--streams 24` | showcase / stress 新增统一路数覆盖；逐卡 profile 中的 streams 优先。 |
+
+showcase 与 stress 均默认线性输出、8 块额外缓冲、输出缓冲复用和首帧预取，不依赖诊断用的 `LD_PRELOAD`。showcase 统一采用 32 路 / 64 KiB，stress 保留逐链路路数；普通 run / multi_run / benchmark 的默认解码路径不变。两份素材的实测和运行命令见[线性解码与素材验收](linear-materials.md)。同一程序支持换素材，不代表所有素材都能稳定跑 32 路。
+
 本地追赶实验新增 `--local-catchup-index JSON`（`run.py` / `multi_run.py` / 原生程序，默认关闭）。仅允许本地文件、latest 和正数过期门槛；使用前必须生成与原视频匹配的关键帧片段。其跳帧、停顿代价和实测状态见[本地追赶实验](../../../docs/local-catchup.md)。
 
 回传诊断新增可选参数：`--preview-fps 0` 停止检测缩略图，保留结果回传；`--active-limit N` 公平限制同时进入处理段的路数（0 不限制，1..32），不减少解码路数。两者均支持 `run.sh` / `multi_run.sh`。showcase 可在 profile 的逐设备配置使用 `preview_fps` 和 `active_limit`。默认仍为不限制并发，是否提速需按路数、素材和设备实测。latest 策略在取得处理名额后选取新帧；all 策略仍逐帧处理。
@@ -61,9 +76,9 @@
 | 参数 / 固定配置 | 含义 |
 |---|---|
 | `--devices auto` | 从板端 sysfs 发现实际设备，也可指定 `0,1`。 |
-| `--mode showcase` | 默认每卡 32 路，优先完整页面；Gen2 ×1 合并预算 128 KiB，Gen3 ×2 为 64 KiB。 |
+| `--mode showcase` | 默认原 1080p24、每卡 32 路、64 KiB、线性输出与 8 块额外缓冲、预览 3 FPS / 墙面不限频。 |
 | `--mode stress` | 使用已测负载档位：Gen2 ×1 为 20 路 / 64 KiB，Gen3 ×2 为 32 路 / 64 KiB。 |
-| `--profile PATH` | 按设备覆盖路数、预算、preview_fps 和 output_buffer；这里不直接接受 `--streams`，格式见 [每卡配置](showcase.md#每卡独立配置)。 |
+| `--profile PATH` | 按设备覆盖路数、预算、preview_fps 和 output_buffer；逐卡设置优先于统一 `--streams`，格式见 [每卡配置](showcase.md#每卡独立配置)。 |
 | `--telemetry-interval 5` | 默认每卡约 5 秒采样，0 关闭。 |
 | 固定配置 | YOLOv8s、gate on、latest、infer-fps 0、年龄 250 ms、image auto、prime on、summary。 |
 

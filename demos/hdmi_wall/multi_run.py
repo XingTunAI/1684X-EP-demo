@@ -105,6 +105,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--preview-fps", type=single.detection_preview_fps, default=10.0)
     parser.add_argument("--active-limit", type=int, choices=range(33), default=0)
     parser.add_argument("--output-buffer", choices=("baseline", "reuse"), default="baseline")
+    single.add_pipeline_arguments(parser)
     single.add_observation_arguments(parser)
     parser.add_argument("--fifo-timeout", type=single.positive, default=90,
                         help="Maximum wait for each worker's FIFO, seconds.")
@@ -152,6 +153,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--root must be an absolute Linux path (required on non-Linux hosts)")
     if args.stop and args.dry_run:
         parser.error("--stop and --dry-run cannot be combined")
+    single.validate_pipeline(parser, args)
     single.validate_observation(parser, args, [args.device_overrides.get(str(device), {}).get("streams", args.streams)
                                               for device in args.devices])
     return args

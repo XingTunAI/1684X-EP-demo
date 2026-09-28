@@ -10,6 +10,39 @@
 
 **[当前数据与推荐配置](docs/current-data.md)** · [全仓库文档索引](../../docs/README.md)
 
+## 2026-09-28：优化状态与调用指令
+
+现有入口可显式启用输出缓冲复用、score gate 回传合并和降低预览频率；不指定参数仍使用原默认值。板端 `build-async/hdmi_wall.pcie` 是独立实验构建，`run.py` 当前没有 `--preview-mode` 参数，也不会自动选择该构建。
+
+### 现有入口：单卡 32 路低回传配置
+
+以下在板端执行，适用于本板已确认的 LightDM 显示环境。先结束同一卡上的现有实验；单卡启动器管理的运行使用下方停止命令，多卡入口使用其自己的停止命令。辅助模型须存在于 `data/models/score_gate/score_gate_reducemax_f32.bmodel`。
+
+```bash
+cd /userdata/1684X-EP-demo
+sudo bash demos/hdmi_wall/run.sh --stop
+
+sudo env DISPLAY=:0 \
+  XAUTHORITY=/var/run/lightdm/root/:0 \
+  SDL_VIDEODRIVER=x11 \
+  PLAYER_LIB_PATH=/usr/lib/aarch64-linux-gnu \
+  bash demos/hdmi_wall/run.sh \
+  --device 0 --streams 32 --model s --duration 300 \
+  --input /userdata/1684X-EP-demo/data/inputs/hdmi_wall_demo_loop_2400s.mp4 \
+  --policy latest --infer-fps 0 --max-frame-age-ms 250 \
+  --score-gate on --output-buffer reuse \
+  --gate-merge-budget-kib 64 --prime-local-decoders on \
+  --preview-fps 3 --record-mode summary
+```
+
+只检查调用计划时，在启动命令末尾加 `--dry-run`。实际设备编号需先核对；`--preview-fps 3` 是每路预览上限，不是推理限速，也不代表启用了异步预览。停止本次单卡运行：
+
+```bash
+sudo bash /userdata/1684X-EP-demo/demos/hdmi_wall/run.sh --stop
+```
+
+此命令使用现有启动器及默认构建，启动器预热为 3 秒。显式指定本板已有的 2400 秒素材，其他设备先按长素材说明准备并核对路径。2026-09-28 实测默认 24.73 秒短片循环时出现 EOF 重开日志，多路源滞后达数秒，超过 250 ms 门槛后持续丢帧并显示 STALE。不要省略长素材参数；长素材规避本次 300 秒运行中的 EOF 重开，不等于已经修复循环追赶机制，也不保证任意负载下不再落后。
+
 ## 选择运行入口
 
 多设备播放器新增 **READBACK ON / OFF** 按钮（快捷键 **R**）：所有卡一起停止或恢复模型结果与预览回传；关闭时保留真实解码、预处理和推理，改为显示各卡吞吐与 TPU 仪表页。双卡各 32 路的低回传配置、统计口径与实测见 [回传开关](docs/readback-toggle.md)。
@@ -18,7 +51,7 @@
 |---|---|---|---|
 | 首次确认单卡推理和 HDMI 正常 | `run.sh` | device 0、1 路、1800 秒，系统 ffplay | [单设备运行](docs/single-device.md) |
 | 自己指定多卡、路数和检测参数 | `multi_run.sh` | devices 0,1、每卡 32 路、1800 秒，按钮切页 | [多设备运行](docs/multi-device.md) |
-| 双卡各 32 路低回传展示，并切换结果回传 | `showcase.sh --mode showcase --profile demos/hdmi_wall/profiles/dual32-low-readback.json` | 设备 0、1 每卡 32 路，预览上限 3 FPS；R 键切换 | [回传开关](docs/readback-toggle.md) |
+| 双卡各 32 路、已测双 TPU 100% 的展示配置 | `showcase.sh --devices 0,2` | 原 1080p24，线性 + 8 缓冲，预览 3 FPS；R 键切换 | [当前展示配置](docs/linear-materials.md) |
 | 复现默认每卡 32 路展示 | `showcase.sh --mode showcase` | 自动识别设备、每卡 32 路、4 小时 | [展示与压测](docs/showcase.md) |
 | 多卡并行，采用已测高 TPU 负载档位 | `showcase.sh --mode stress` | Gen2 ×1 为 20 路，Gen3 ×2 为 32 路、4 小时 | [展示与压测](docs/showcase.md) |
 | 比较开启推理前后，解码是否降速或停顿 | `observe.sh` | 自动识别设备、每卡后台 32 路、300 秒，选 2 路放大对照 | [解码观测](docs/decoder-observation.md) |
@@ -66,9 +99,9 @@ sudo env DISPLAY=:0 \
   --devices auto --mode showcase --duration 60
 ```
 
-以上命令复现旧默认 showcase；要使用新低回传配置，在命令后追加 `--profile demos/hdmi_wall/profiles/dual32-low-readback.json`，并显式选择 `--devices 0,1`。
+以上命令已包含当前推荐的线性输出、8 块额外缓冲、输出复用和预览 3 FPS，不需要另加低回传 profile。本轮实测设备为 0、2，分别为 PCIe2 ×1 / PCIe3 ×1；设备编号以实际板卡为准。
 
-使用旧默认压测档位时，将 `--mode showcase` 改为 `--mode stress`。需要正式运行四小时，删除 `--duration 60` 或改为 `--duration 14400`；长素材准备、校验耗时及磁盘空间见 [长素材说明](docs/showcase.md#长素材与磁盘空间)。
+使用压测模式时，将 `--mode showcase` 改为 `--mode stress`。需要正式运行四小时，删除 `--duration 60` 或改为 `--duration 14400`；长素材准备、校验耗时及磁盘空间见 [长素材说明](docs/showcase.md#长素材与磁盘空间)。
 
 点击设备按钮、按 `1`–`4` 或左右键切页。`Esc`、关闭窗口、启动终端 `Ctrl+C` 会结束整场多卡运行；也可在另一终端执行：
 
@@ -92,7 +125,7 @@ sudo bash demos/hdmi_wall/showcase.sh --stop
 
 ## 指标与限制
 
-输入 FPS、解码 DEC、检测 INF 和拼屏刷新率分别统计。`latest` 在完整解码后选择最新帧送检，因此减少检测帧数不等于减少解码负担。当前输出是一幅 1920×1080 视频墙、默认预览刷新上限10 FPS；底层不限频选项及独立播放器设置见[参数说明](docs/parameters.md#单路预览不限频2026-09-24)。视频墙不是 32 路独立的 1080p 编码输出。
+输入 FPS、解码 DEC、检测 INF 和拼屏刷新率分别统计。`latest` 在完整解码后选择最新帧送检，因此减少检测帧数不等于减少解码负担。当前输出是一幅 1920×1080 视频墙；普通入口墙面上限为 10 FPS，showcase / stress 默认墙面不限频、每路预览上限 3 FPS；底层不限频选项及独立播放器设置见[参数说明](docs/parameters.md#单路预览不限频2026-09-24)。视频墙不是 32 路独立的 1080p 编码输出。
 
 多个通道独立读取同一本地视频，不代表已验证同等数量的独立摄像头。源年龄不包含相机到屏幕的全部延时；TPU 满载、画面仍在动或总解码接近目标，也不能单独证明全部通道实时达标。逐路指标和对照方法见 [解码观测](docs/decoder-observation.md)。
 
@@ -115,3 +148,7 @@ sudo bash demos/hdmi_wall/showcase.sh --stop
 ## 截图素材
 
 当前首页截图来自 SOPHON 官方车辆 / 行人视频；历史公路截图来自 Freestocks。来源、署名和衍生文件说明见 [截图素材](docs/results.md#截图素材)。
+
+### 更换视频素材（2026-09-28）
+
+showcase / stress 现在支持 `--input 本地视频 --streams N`，共用原生线性解码和 8 块额外缓冲；不需要诊断注入库。两份素材的稳定配置、运行命令和验收结果见[线性解码与素材配置](docs/linear-materials.md)。32 路容量仍须按素材验证，不能只凭总推理 FPS 判断通过。

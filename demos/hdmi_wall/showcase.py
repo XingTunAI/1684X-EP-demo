@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import hashlib
 import math
 import os
 from pathlib import Path, PurePosixPath
@@ -33,14 +34,15 @@ GENERATION = {2.5: 1, 5.0: 2, 8.0: 3, 16.0: 4, 32.0: 5, 64.0: 6}
 # actual (generation, width), never device IDs; explicit card options win.
 DEFAULT_CARD_PROFILE = {"streams": 32, "gate_merge_budget_kib": 64}
 DEFAULT_LINK_PROFILES: dict[tuple[int, int], dict] = {
-    (2, 1): {"streams": 32, "gate_merge_budget_kib": 128},
+    (2, 1): {"streams": 32, "gate_merge_budget_kib": 64},
+    (3, 1): {"streams": 32, "gate_merge_budget_kib": 64},
     (3, 2): {"streams": 32, "gate_merge_budget_kib": 64},
 }
 STRESS_LINK_PROFILES: dict[tuple[int, int], dict] = {
     (2, 1): {"streams": 20, "gate_merge_budget_kib": 64},
     (3, 2): {"streams": 32, "gate_merge_budget_kib": 64},
 }
-MODE_GOALS = {"showcase": "Prefer 32 visible channels per device while all selected devices keep running.",
+MODE_GOALS = {"showcase": "Use the original 1080p24, 32-channel linear/8-buffer low-preview preset measured at 100% TPU on both tested x1 links; explicit overrides require revalidation.",
               "stress": "Prefer load-oriented per-link settings while all selected devices keep running; full TPU utilization is not guaranteed."}
 PRIME_LOCAL_DECODERS = "on"
 FIXED_OPTIONS = [*benchmark.FIXED_OPTIONS, "--record-mode", "summary", "--prime-local-decoders", PRIME_LOCAL_DECODERS]
@@ -93,6 +95,12 @@ def arguments(argv=None):
                         help="Formal run duration in seconds, plus 3s warmup; default: 14400 (4h).")
     parser.add_argument("--mode", choices=("showcase", "stress"), default="showcase",
                         help="showcase prefers 32 channels/card; stress uses per-link load-oriented settings. Both retain every card and HDMI preview.")
+    parser.add_argument("--input", help="Local video to repeat without re-encoding; omitted uses the original 1080p24 demo.")
+    parser.add_argument("--streams", type=multi_run.single.positive, help="Channels per device (1..32); per-device profile overrides win.")
+    multi_run.single.add_pipeline_arguments(parser, decoder="linear")
+    parser.set_defaults(wall_fps=None)
+    parser.add_argument("--preview-fps", type=multi_run.single.detection_preview_fps, default=None,
+                        help="Per-stream preview cap; default 3 in both modes. Inference is uncapped.")
     parser.add_argument("--profile", help='JSON with devices overrides, e.g. {"devices":{"0":{"streams":20,"gate_merge_budget_kib":64}}}.')
     parser.add_argument("--telemetry-interval", type=multi_run.single.nonnegative_finite, default=5,
                         help="Per-device bm-smi sampling interval, seconds; default: 5; 0 disables.")
@@ -101,6 +109,12 @@ def arguments(argv=None):
     args = parser.parse_args(argv)
     if args.root is None or not PurePosixPath(args.root).is_absolute():
         parser.error("--root must be an absolute Linux path")
+    if args.streams is not None and args.streams > 32:
+        parser.error("--streams must be between 1 and 32")
+    if args.input and "://" in args.input:
+        parser.error("--input must be a local video path")
+    if args.wall_fps is not None and args.wall_fps > 120:
+        parser.error("--wall-fps must be between 0 and 120")
     if args.stop and args.dry_run:
         parser.error("--stop and --dry-run cannot be combined")
     return args
@@ -136,6 +150,9 @@ def build_plan(args) -> dict:
     for device, link in zip(devices, links):
         link_key = (link.get("generation"), link.get("current_link_width")) if link.get("available") is True else (None, None)
         defaults = link_profiles.get(link_key, DEFAULT_CARD_PROFILE)
+        defaults = dict(defaults)
+        if args.streams is not None:
+            defaults["streams"] = args.streams
         options[str(device)] = dict(defaults, **overrides.get(str(device), {}))
         profile_selection[str(device)] = {"default_source": "short_test_link_profile" if link_key in link_profiles else "unvalidated_fallback",
                                           "explicit_overrides": overrides.get(str(device), {})}
@@ -143,10 +160,24 @@ def build_plan(args) -> dict:
     options = multi_run.normalize_device_overrides(options)
     seconds = benchmark.material_seconds(args.duration)
     source = root / "data/inputs" / f"hdmi_wall_demo_loop_{seconds}s.mp4"
+    original = str(root / PurePosixPath(args.input)) if args.input else None
+    prepare = [python, str(root / "scripts/prepare_hdmi_loop.py"), "--root", args.root, "--seconds", str(seconds)]
+    if original:
+        # Distinct inputs cannot reuse/overwrite the default video's cache.
+        key = hashlib.sha256(original.encode("utf-8")).hexdigest()[:16]
+        source = root / "data/inputs" / f"hdmi_wall_{key}_loop_{seconds}s.mp4"
+        prepare.extend(["--input", original, "--output", str(source)])
+    preview_fps = args.preview_fps if args.preview_fps is not None else 3.0
+    wall_fps = args.wall_fps if args.wall_fps is not None else 0.0
+    pipeline = ["--decoder", args.decoder, "--decoder-buffers", str(args.decoder_buffers),
+                "--retrieve-every", str(args.retrieve_every), "--output-buffer", "reuse",
+                "--preview-fps", str(preview_fps), "--wall-fps", str(wall_fps)]
     config_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:8]
     config_path = root / "data/results/hdmi-showcase" / config_id / "device-config.json"
     context = {"entrypoint": "showcase", "mode": args.mode, "mode_goal": MODE_GOALS[args.mode], "duration_seconds": args.duration,
                "warmup_seconds": 3, "material_seconds": seconds, "record_mode": "summary",
+               "source_input": original, "decoder": args.decoder, "decoder_buffers": args.decoder_buffers,
+               "preview_fps": preview_fps, "wall_fps": wall_fps, "retrieve_every": args.retrieve_every,
                "prime_local_decoders": PRIME_LOCAL_DECODERS,
                "pcie_devices": links, "profile_path": str(profile_path) if profile_path else None,
                "profile_context": profile_context, "profile_status": "configured_not_capacity_certified",
@@ -160,12 +191,11 @@ def build_plan(args) -> dict:
             "record_mode": "summary", "telemetry_interval_seconds": args.telemetry_interval,
             "prime_local_decoders": PRIME_LOCAL_DECODERS,
             "device_config_path": str(config_path), "device_configuration": {"devices": options, "context": context},
-            "prepare_command": [python, str(root / "scripts/prepare_hdmi_loop.py"), "--root", args.root,
-                                "--seconds", str(seconds)],
+            "prepare_command": prepare,
             "run_command": [*launcher, "--root", args.root, "--devices", ",".join(map(str, devices)),
                             "--duration", str(args.duration), "--input", str(source),
                             "--device-config", str(config_path), "--telemetry-interval", str(args.telemetry_interval),
-                            *FIXED_OPTIONS]}
+                            *pipeline, *FIXED_OPTIONS]}
 
 
 def shared_lock_owner(lock_path: Path, proc_locks: Path = Path("/proc/locks")) -> int | None:

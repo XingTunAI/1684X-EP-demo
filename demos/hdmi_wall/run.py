@@ -119,6 +119,25 @@ def live_source(source: str) -> bool:
     return source.startswith(("rtsp://", "rtsps://"))
 
 
+def add_pipeline_arguments(parser: argparse.ArgumentParser, decoder="opencv") -> None:
+    parser.add_argument("--decoder", choices=("opencv", "linear"), default=decoder,
+                        help="linear uses H.264/H.265 device decoding with explicit buffers; opencv retains the SDK capture path.")
+    parser.add_argument("--decoder-buffers", type=int, choices=range(2, 9), default=8,
+                        help="Extra decoder surfaces in linear mode (2..8); default 8. Not the inference queue length.")
+    parser.add_argument("--retrieve-every", type=int, choices=range(1, 121), default=1,
+                        help="Retrieve one of N decoded frames; every compressed frame is still decoded. Default 1.")
+    parser.add_argument("--wall-fps", type=nonnegative_finite, default=10.0,
+                        help="Wall composition rate, 0..120; 0 removes pacing, independently of per-stream preview FPS.")
+
+
+def validate_pipeline(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    if args.wall_fps > 120:
+        parser.error("--wall-fps must be between 0 and 120")
+    if args.retrieve_every > 1 and (args.policy != "latest" or args.inference != "on" or
+                                   args.observe_decode != "off" or args.local_catchup_index):
+        parser.error("--retrieve-every > 1 requires latest inference without observation or local catchup")
+
+
 def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=DEFAULT_ROOT, help="Absolute board repository directory; inferred on Linux, required for Windows --dry-run.")
@@ -157,6 +176,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--preview-fps", type=detection_preview_fps, default=10.0,
                         help="Per-stream detection preview readback cap, (0,10]; does not cap inference.")
     parser.add_argument("--output-buffer", choices=("baseline", "reuse"), default="baseline")
+    add_pipeline_arguments(parser)
     add_observation_arguments(parser)
     parser.add_argument("--fifo-timeout", type=positive, default=90, help="Maximum FIFO startup wait, seconds.")
     parser.add_argument("--dry-run", action="store_true", help="Print the plan without checking board files or launching anything.")
@@ -184,6 +204,7 @@ def arguments(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--root must be an absolute Linux path")
     if args.stop and args.dry_run:
         parser.error("--stop and --dry-run cannot be combined")
+    validate_pipeline(parser, args)
     validate_observation(parser, args, [args.streams])
     return args
 
@@ -207,6 +228,8 @@ def build_plan(args: argparse.Namespace) -> dict:
         "--warmup", "3",
         "--duration", str(args.duration), "--window", str(min(10, args.duration)), "--local-eof", "loop",
         "--output-buffer", args.output_buffer, "--preview-fps", str(args.preview_fps), "--score-gate", args.score_gate,
+        "--decoder", args.decoder, "--decoder-buffers", str(args.decoder_buffers),
+        "--retrieve-every", str(args.retrieve_every), "--wall-fps", str(args.wall_fps),
         "--active-limit", str(args.active_limit),
         "--record-mode", args.record_mode,
         "--prime-local-decoders", args.prime_local_decoders,
@@ -237,6 +260,8 @@ def build_plan(args: argparse.Namespace) -> dict:
         "classnames": str(classes), "score_gate_model": str(gate),
         "selected_device": args.device, "streams": args.streams,
         "output_buffer": args.output_buffer, "preview_fps": args.preview_fps,
+        "decoder": args.decoder, "decoder_buffers": args.decoder_buffers if args.decoder == "linear" else None,
+        "retrieve_every": args.retrieve_every, "wall_fps": args.wall_fps,
         "gate_merge_budget_kib": args.gate_merge_budget_kib,
         "record_mode": args.record_mode,
         "prime_local_decoders": args.prime_local_decoders,

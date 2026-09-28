@@ -10,6 +10,7 @@
 #include "diagnostic_trace.hpp"
 #include "bounded_metrics.hpp"
 #include "../common/fair_admission.hpp"
+#include "../common/device_capture.hpp"
 extern "C" {
 #include <libavutil/frame.h>
 }
@@ -72,6 +73,9 @@ static void json_file(const std::string& p, const json& value) {
 struct Config {
     int device = 0, slots = 2, active_limit = 0;
     int gate_merge_budget_kib = 0;
+    int retrieve_every = 1;
+    std::string decoder = "opencv";
+    int decoder_buffers = 8;
     double warmup = 5, duration = 30, window = 10;
     float conf = 0.25f, nms = 0.7f;
     std::string readback_control;
@@ -96,7 +100,7 @@ struct Config {
 };
 static Config arguments(int argc, char** argv) {
     std::map<std::string, std::string> opts;
-    const std::vector<std::string> accepted = {"input", "inputs-file", "streams", "slots", "device", "bmodel", "classnames", "output", "warmup", "duration", "window", "conf", "nms", "local-eof", "output-buffer", "policy", "infer-fps", "max-frame-age-ms", "score-gate", "score-gate-model", "cpu-post", "image-path", "gate-merge-budget-kib", "record-mode", "prime-local-decoders", "observe-decode", "inference", "compare-streams", "observe-preview-fps", "preview-fps", "readback-control", "active-limit", "local-catchup-index", "preview-stage", "preview-mode", "wall-fps"};
+    const std::vector<std::string> accepted = {"input", "inputs-file", "streams", "slots", "device", "bmodel", "classnames", "output", "warmup", "duration", "window", "conf", "nms", "local-eof", "output-buffer", "policy", "infer-fps", "max-frame-age-ms", "score-gate", "score-gate-model", "cpu-post", "image-path", "gate-merge-budget-kib", "record-mode", "prime-local-decoders", "observe-decode", "inference", "compare-streams", "observe-preview-fps", "preview-fps", "readback-control", "active-limit", "local-catchup-index", "preview-stage", "preview-mode", "wall-fps", "decoder", "decoder-buffers", "retrieve-every"};
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--help") {
@@ -109,6 +113,8 @@ static Config arguments(int argc, char** argv) {
                       << "  [--local-catchup-index JSON] (verified keyframe segments; local latest loop only)\n"
                       << "  [--readback-control JSON] (runtime output/preview toggle; decoded frames still inferred)\n"
                       << "  [--preview-fps 10] (-1 previews every detection; 0 disables; otherwise FPS <= 10)\n"
+                      << "  [--decoder opencv|linear --decoder-buffers 2..8] (linear: H.264/H.265 device output)\n"
+                      << "  [--retrieve-every 1..120] (decode every frame, retrieve one in N; latest inference only)\n"
                       << "  [--wall-fps 10] (0 disables wall renderer pacing; maximum 120)\n"
                       << "  [--image-path auto|bgr|yuv] (auto selects direct YUV for supported layouts)\n"
                       << "  [--score-gate off|on --score-gate-model AUXILIARY_BMODEL]\n"
@@ -281,12 +287,22 @@ static Config arguments(int argc, char** argv) {
         if (c.compare_streams.empty() || c.compare_streams.size() > 4 || (!chosen_text.empty() && chosen_text.back() == ','))
             throw std::runtime_error("compare-streams requires 1..4 IDs");
     }
+    c.decoder = get("decoder", "opencv");
+    c.decoder_buffers = integer("decoder-buffers", 8);
+    if (c.decoder != "opencv" && c.decoder != "linear") throw std::runtime_error("decoder must be opencv or linear");
+    if (c.decoder_buffers < 2 || c.decoder_buffers > 8) throw std::runtime_error("decoder-buffers must be in [2,8]");
+    c.retrieve_every = integer("retrieve-every", 1);
+    if (c.retrieve_every < 1 || c.retrieve_every > 120)
+        throw std::runtime_error("retrieve-every must be 1..120");
+    if (c.retrieve_every > 1 && (c.policy != "latest" || !c.inference_enabled || c.observe_decode || !c.local_catchup_index.empty()))
+        throw std::runtime_error("retrieve-every requires latest inference, no decode observation or catchup");
     return c;
 }
 
 struct Frame {
     // Declared before Mat so the surface is released before this lease.
     std::shared_ptr<int> decoder_generation;
+    std::shared_ptr<void> decoder_owner;
     cv::Mat mat;
     size_t stream = 0;
     uint64_t sequence = 0, source_frame = 0, source_loop = 0;
@@ -366,6 +382,7 @@ struct Stream {
     bool done = false, eof_seen = false;
     std::string error;
     uint64_t decoded = 0, completed = 0, decoded_measured = 0, completed_measured = 0;
+    uint64_t skipped_before_vpp = 0, skipped_before_vpp_measured = 0;
     uint64_t results_readback_measured = 0, model_only_measured = 0;
     uint64_t records_written = 0, records_written_measured = 0;
     uint64_t previews_submitted = 0, previews_submitted_measured = 0;
@@ -478,10 +495,8 @@ struct Shared {
     size_t window_index(Time t) const { return static_cast<size_t>(elapsed(measure_start, t) / config.window); }
 };
 
-static void configure_capture(cv::VideoCapture& cap, const std::string& input, int device) {
-    if (!cap.open(input, cv::CAP_FFMPEG, device) || !cap.isOpened()) throw std::runtime_error("Decoder open failed");
-    if (!cap.set(cv::CAP_PROP_OUTPUT_YUV, 1) || cap.get(cv::CAP_PROP_OUTPUT_YUV) != 1)
-        throw std::runtime_error("Decoder cannot provide device YUV");
+static void configure_capture(sophon_demo::DeviceCapture& cap, const std::string& input, const Config& config) {
+    cap.open(input, config.device, config.decoder, config.decoder_buffers, [] { return interrupted != 0; });
 }
 static double stage(TimeStamp* ts, const std::string& name) {
     auto found = ts->records_.find(name);
@@ -730,7 +745,7 @@ static void stream_thread(Shared& state, size_t id) {
         if (detector) thumbnail.reset(new Thumbnail(state.config.device, compare ? 640 : 256, compare ? 360 : 144));
         const auto& source = state.config.sources[id];
         const bool live = live_source(source);
-        cv::VideoCapture cap; configure_capture(cap, source, state.config.device);
+        sophon_demo::DeviceCapture cap; configure_capture(cap, source, state.config);
         stream.width = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH));
         stream.height = static_cast<int>(cap.get(cv::CAP_PROP_FRAME_HEIGHT));
         stream.source_fps = cap.get(cv::CAP_PROP_FPS);
@@ -745,6 +760,7 @@ static void stream_thread(Shared& state, size_t id) {
             // playback clock begins. Keep the actual decode times and surface;
             // read_next consumes it once without another cap.read or Mat copy.
             primed_frame.reset(new Frame);
+            primed_frame->decoder_owner = cap.lease();
             stream.priming_attempted = true;
             primed_frame->before_decode = stream.priming_before_decode = Clock::now();
             cap >> primed_frame->mat;
@@ -787,8 +803,9 @@ static void stream_thread(Shared& state, size_t id) {
                         if (!drain_decoder()) return nullptr;
                         // Open a verified independent keyframe segment. The SDK's
                         // POS_FRAMES seek can mislabel delayed decoder output.
-                        cap.release(); configure_capture(cap,state.config.catchup_paths[target.segment],state.config.device);
+                        cap.release(); configure_capture(cap,state.config.catchup_paths[target.segment],state.config);
                         primed_frame.reset(new Frame);
+                        primed_frame->decoder_owner = cap.lease();
                         primed_frame->before_decode = Clock::now(); cap >> primed_frame->mat;
                         primed_frame->after_decode = Clock::now(); primed_frame->ready = primed_frame->after_decode;
                         if (primed_frame->mat.empty()) throw std::runtime_error("Catchup segment returned no first frame");
@@ -821,16 +838,27 @@ static void stream_thread(Shared& state, size_t id) {
                 // keeps the decoded device surface alive during inference.
                 const bool from_priming = static_cast<bool>(primed_frame);
                 std::unique_ptr<Frame> frame = from_priming ? std::move(primed_frame) : std::unique_ptr<Frame>(new Frame);
+                frame->decoder_owner = cap.lease();
                 frame->stream = id; frame->sequence = sequence;
                 frame->source_frame = source_frame; frame->source_loop = source_loop;
                 frame->live = live; frame->due = due;
+                const bool selected = sequence % state.config.retrieve_every == 0;
+                bool read_ok = true;
                 if (from_priming) {
                     if (sequence == 0) stream.priming_consumed = true;
                 } else {
                     frame->before_decode = Clock::now();
-                    cap >> frame->mat; frame->after_decode = Clock::now();
+                    if (state.config.retrieve_every == 1) {
+                        cap >> frame->mat;
+                        read_ok = !frame->mat.empty();
+                    } else {
+                        read_ok = cap.grab();
+                        if (read_ok && selected && (!cap.retrieve(frame->mat) || frame->mat.empty()))
+                            throw std::runtime_error("Selected frame retrieve failed");
+                    }
+                    frame->after_decode = Clock::now();
                 }
-                if (frame->mat.empty()) {
+                if (!read_ok || (selected && frame->mat.empty())) {
                     if (live) throw std::runtime_error("RTSP returned no frame; reconnect is not implemented");
                     if (segment_cursor >= 0) {
                         const auto cursor=static_cast<size_t>(segment_cursor);
@@ -841,14 +869,14 @@ static void stream_thread(Shared& state, size_t id) {
                             segment_cursor=0; ++source_loop; source_frame=0;
                         }
                         if (!drain_decoder()) return nullptr;
-                        cap.release(); configure_capture(cap,state.config.catchup_paths[segment_cursor],state.config.device);
+                        cap.release(); configure_capture(cap,state.config.catchup_paths[segment_cursor],state.config);
                         continue;
                     }
                     if (!source_frame) throw std::runtime_error("Local source returned no frames");
                     if (state.config.eof == "fail") throw std::runtime_error("Local EOF before test deadline");
                     if (state.config.eof == "stop") { stream.eof_seen = true; return nullptr; }
                     if (!state.config.local_catchup_index.empty() && !drain_decoder()) return nullptr;
-                    cap.release(); configure_capture(cap, source, state.config.device);
+                    cap.release(); configure_capture(cap, source, state.config);
                     ++source_loop; source_frame = 0; continue;
                 }
                 if (!state.config.local_catchup_index.empty()) frame->decoder_generation = decoder_generation;
@@ -868,6 +896,11 @@ static void stream_thread(Shared& state, size_t id) {
                 state.wall.observe_decode(id, frame->sequence, live ? -1 : elapsed(state.start, due),
                     frame->after_decode, live ? -1 : std::max(0.0, millis(due, frame->after_decode)),
                     millis(frame->before_decode, frame->after_decode));
+                if (!selected) {
+                    ++stream.skipped_before_vpp;
+                    if (state.measured(frame->after_decode)) ++stream.skipped_before_vpp_measured;
+                    continue;
+                }
                 frame->ready = frame->after_decode;
                 return frame;
             }
@@ -1071,7 +1104,8 @@ int main(int argc, char** argv) {
         for (size_t i = 0; i < config.sources.size(); ++i) sources.push_back({{"stream_id", i}, {"source_id", stream_name(i)}, {"source", redacted(config.sources[i])},
             {"live", live_source(config.sources[i])}, {"decoder_priming", live_source(config.sources[i]) ? "not_applicable_rtsp" : config.prime_local_decoders}});
         json_file(config.output + "/config.json", {{"device", config.device}, {"streams", config.sources.size()}, {"slots", config.slots},
-            {"active_limit", config.active_limit}, {"preview_mode", config.preview_mode},
+            {"decoder", config.decoder}, {"decoder_extra_buffers", config.decoder == "linear" ? json(config.decoder_buffers) : json(nullptr)},
+            {"retrieve_every", config.retrieve_every}, {"active_limit", config.active_limit}, {"preview_mode", config.preview_mode},
             {"warmup_s", config.warmup}, {"duration_s", config.duration}, {"window_s", config.window}, {"model", config.model},
             {"conf", config.conf}, {"nms", config.nms}, {"sources", sources}, {"policy", config.policy}, {"local_eof", config.eof},
             {"infer_fps_cap", config.infer_fps}, {"max_frame_age_ms", config.max_frame_age_ms},
@@ -1135,7 +1169,7 @@ int main(int argc, char** argv) {
             if (s.records.is_open()) s.records.close();
             eof_seen = eof_seen || s.eof_seen;
             const bool stream_accounting_complete = config.inference_enabled
-                ? hdmi_metrics::accounting_complete(s.decoded, s.completed, s.drops.drops(), s.error.empty())
+                ? hdmi_metrics::accounting_complete(s.decoded, s.completed, s.drops.drops() + s.skipped_before_vpp, s.error.empty())
                 : s.error.empty() && s.baseline_consumed == s.decoded && s.completed == 0 && s.drops.drops() == 0;
             const bool stream_records_complete = config.record_mode == "full" && stream_accounting_complete && s.records_written == s.completed;
             complete = complete && stream_accounting_complete; records_complete = records_complete && stream_records_complete;
@@ -1153,7 +1187,7 @@ int main(int argc, char** argv) {
                     {"decoded", s.decode_windows[w]}, {"completed_fps", s.complete_windows[w] / duration}, {"decoded_fps", s.decode_windows[w] / duration}});
             }
             json result = {{"stream_id", i}, {"source_id", stream_name(i)}, {"decoded", s.decoded}, {"completed", s.completed},
-                {"decoded_measured", s.decoded_measured}, {"completed_measured", s.completed_measured}, {"decoded_fps", decode_fps}, {"results_readback_measured", s.results_readback_measured}, {"model_only_measured", s.model_only_measured}, {"completed_fps", fps},
+                {"retrieve_every", config.retrieve_every}, {"skipped_before_vpp", s.skipped_before_vpp}, {"skipped_before_vpp_measured", s.skipped_before_vpp_measured}, {"decoded_measured", s.decoded_measured}, {"completed_measured", s.completed_measured}, {"decoded_fps", decode_fps}, {"results_readback_measured", s.results_readback_measured}, {"model_only_measured", s.model_only_measured}, {"completed_fps", fps},
                 {"source_width", s.width}, {"source_height", s.height}, {"source_fps", std::isfinite(s.source_fps) ? json(s.source_fps) : json(nullptr)},
                 {"source_ended", s.eof_seen}, {"error", s.error},
                 {"local_catchup", {{"events", s.catchups}, {"events_measured", s.catchups_measured},
