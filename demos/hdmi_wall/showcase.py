@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Run a four-hour multi-card HDMI showcase or stress session on the Linux board.
+"""Run a 20-minute HDMI showcase or three-hour stress session on the Linux board.
 
 Every selected accelerator runs concurrently, including hidden pages. Showcase
-prefers 32 channels per card; stress selects per-link load-oriented settings.
+prefers 8 channels per card; stress uses a fixed 32-channel load per card.
 Neither mode guarantees TPU utilization. Caller-provided DISPLAY/XAUTHORITY
 remain intact. Local repeated footage does not validate independent cameras.
 """
@@ -32,18 +32,18 @@ GENERATION = {2.5: 1, 5.0: 2, 8.0: 3, 16.0: 4, 32.0: 5, 64.0: 6}
 # Candidate settings from short board comparisons, not four-hour certification.
 # Unknown links retain an explicitly unvalidated fallback. Keys below are the
 # actual (generation, width), never device IDs; explicit card options win.
-DEFAULT_CARD_PROFILE = {"streams": 32, "gate_merge_budget_kib": 64}
+DEFAULT_CARD_PROFILE = {"streams": 8, "gate_merge_budget_kib": 64}
 DEFAULT_LINK_PROFILES: dict[tuple[int, int], dict] = {
-    (2, 1): {"streams": 32, "gate_merge_budget_kib": 64},
-    (3, 1): {"streams": 32, "gate_merge_budget_kib": 64},
-    (3, 2): {"streams": 32, "gate_merge_budget_kib": 64},
+    (2, 1): {"streams": 8, "gate_merge_budget_kib": 64},
+    (3, 1): {"streams": 8, "gate_merge_budget_kib": 64},
+    (3, 2): {"streams": 8, "gate_merge_budget_kib": 64},
 }
 STRESS_LINK_PROFILES: dict[tuple[int, int], dict] = {
-    (2, 1): {"streams": 20, "gate_merge_budget_kib": 64},
+    (2, 1): {"streams": 32, "gate_merge_budget_kib": 64},
     (3, 2): {"streams": 32, "gate_merge_budget_kib": 64},
 }
-MODE_GOALS = {"showcase": "Use the original 1080p24, 32-channel linear/8-buffer low-preview preset measured at 100% TPU on both tested x1 links; explicit overrides require revalidation.",
-              "stress": "Prefer load-oriented per-link settings while all selected devices keep running; full TPU utilization is not guaranteed."}
+MODE_GOALS = {"showcase": "Display 8 channels per card with linear decoding, 8 extra buffers and uncapped preview submissions; actual display continuity requires measurement.",
+              "stress": "Measure a fixed 32-channel load per card with preview capped at 3 FPS; require per-channel continuity and complete accounting, not TPU utilization alone."}
 PRIME_LOCAL_DECODERS = "on"
 FIXED_OPTIONS = [*benchmark.FIXED_OPTIONS, "--record-mode", "summary", "--prime-local-decoders", PRIME_LOCAL_DECODERS]
 
@@ -91,22 +91,24 @@ def arguments(argv=None):
                         help="Absolute Linux repository path; required for Windows --dry-run.")
     parser.add_argument("--devices", type=selected_devices, default="auto",
                         help="auto discovers 1..4 sysfs devices; or provide IDs such as 0,1.")
-    parser.add_argument("--duration", type=multi_run.single.positive, default=14400,
-                        help="Formal run duration in seconds, plus 3s warmup; default: 14400 (4h).")
+    parser.add_argument("--duration", type=multi_run.single.positive, default=None,
+                        help="Formal seconds plus 3s warmup; default: showcase 1200 (20min), stress 10800 (3h).")
     parser.add_argument("--mode", choices=("showcase", "stress"), default="showcase",
-                        help="showcase prefers 32 channels/card; stress uses per-link load-oriented settings. Both retain every card and HDMI preview.")
+                        help="showcase prefers 8 channels/card; stress uses 32 channels/card with preview capped at 3 FPS. Both retain every card and HDMI preview.")
     parser.add_argument("--input", help="Local video to repeat without re-encoding; omitted uses the original 1080p24 demo.")
     parser.add_argument("--streams", type=multi_run.single.positive, help="Channels per device (1..32); per-device profile overrides win.")
     multi_run.single.add_pipeline_arguments(parser, decoder="linear")
-    parser.set_defaults(wall_fps=None)
+    parser.set_defaults(wall_fps=None, display_fps=None, local_eof=None)
     parser.add_argument("--preview-fps", type=multi_run.single.detection_preview_fps, default=None,
-                        help="Per-stream preview cap; default 3 in both modes. Inference is uncapped.")
+                        help="Per-stream preview cap; default -1 (uncapped) in showcase, 3 in stress. Inference is uncapped.")
     parser.add_argument("--profile", help='JSON with devices overrides, e.g. {"devices":{"0":{"streams":20,"gate_merge_budget_kib":64}}}.')
     parser.add_argument("--telemetry-interval", type=multi_run.single.nonnegative_finite, default=5,
                         help="Per-device bm-smi sampling interval, seconds; default: 5; 0 disables.")
     parser.add_argument("--dry-run", action="store_true", help="Print exact commands/configuration without writing files or starting processes.")
     parser.add_argument("--stop", action="store_true", help="Stop the latest verified multi-device run, without probing hardware or preparing video.")
     args = parser.parse_args(argv)
+    if args.duration is None:
+        args.duration = 1200 if args.mode == "showcase" else 10800
     if args.root is None or not PurePosixPath(args.root).is_absolute():
         parser.error("--root must be an absolute Linux path")
     if args.streams is not None and args.streams > 32:
@@ -149,7 +151,8 @@ def build_plan(args) -> dict:
     link_profiles = DEFAULT_LINK_PROFILES if args.mode == "showcase" else STRESS_LINK_PROFILES
     for device, link in zip(devices, links):
         link_key = (link.get("generation"), link.get("current_link_width")) if link.get("available") is True else (None, None)
-        defaults = link_profiles.get(link_key, DEFAULT_CARD_PROFILE)
+        fallback = DEFAULT_CARD_PROFILE if args.mode == "showcase" else {"streams": 32, "gate_merge_budget_kib": 64}
+        defaults = link_profiles.get(link_key, fallback)
         defaults = dict(defaults)
         if args.streams is not None:
             defaults["streams"] = args.streams
@@ -167,23 +170,25 @@ def build_plan(args) -> dict:
         key = hashlib.sha256(original.encode("utf-8")).hexdigest()[:16]
         source = root / "data/inputs" / f"hdmi_wall_{key}_loop_{seconds}s.mp4"
         prepare.extend(["--input", original, "--output", str(source)])
-    preview_fps = args.preview_fps if args.preview_fps is not None else 3.0
+    preview_fps = args.preview_fps if args.preview_fps is not None else (-1.0 if args.mode == "showcase" else 3.0)
+    display_fps = args.display_fps if args.display_fps is not None else (30 if args.mode == "showcase" else 10)
     wall_fps = args.wall_fps if args.wall_fps is not None else 0.0
-    pipeline = ["--decoder", args.decoder, "--decoder-buffers", str(args.decoder_buffers),
+    local_eof = args.local_eof or ("loop" if args.mode == "showcase" else "fail")
+    pipeline = ["--local-eof", local_eof,"--decoder", args.decoder, "--decoder-buffers", str(args.decoder_buffers),
                 "--retrieve-every", str(args.retrieve_every), "--output-buffer", "reuse",
                 "--preview-fps", str(preview_fps), "--wall-fps", str(wall_fps),
-                "--display-fps", str(args.display_fps)]
+                "--display-fps", str(display_fps)]
     config_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:8]
     config_path = root / "data/results/hdmi-showcase" / config_id / "device-config.json"
     context = {"entrypoint": "showcase", "mode": args.mode, "mode_goal": MODE_GOALS[args.mode], "duration_seconds": args.duration,
                "warmup_seconds": 3, "material_seconds": seconds, "record_mode": "summary",
-               "source_input": original, "decoder": args.decoder, "decoder_buffers": args.decoder_buffers,
-               "preview_fps": preview_fps, "wall_fps": wall_fps, "retrieve_every": args.retrieve_every,
+               "local_eof": local_eof, "source_input": original, "decoder": args.decoder, "decoder_buffers": args.decoder_buffers,
+               "preview_fps": preview_fps, "display_fps": display_fps, "wall_fps": wall_fps, "retrieve_every": args.retrieve_every,
                "prime_local_decoders": PRIME_LOCAL_DECODERS,
                "pcie_devices": links, "profile_path": str(profile_path) if profile_path else None,
                "profile_context": profile_context, "profile_status": "configured_not_capacity_certified",
                "profile_validation_scope": "Settings selected from short board comparisons; concurrent and four-hour performance must be assessed from this run's summaries and telemetry. No TPU utilization guarantee.",
-               "default_profile": DEFAULT_CARD_PROFILE,
+               "default_profile": fallback,
                "default_link_profiles": {f"gen{generation}_x{width}": options for (generation, width), options in link_profiles.items()},
                "profile_selection": profile_selection,
                "note": "All selected devices run concurrently. Both modes retain preview. Repeated local video is not independent-camera live acceptance."}

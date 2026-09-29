@@ -43,11 +43,11 @@ class ShowcaseTests(unittest.TestCase):
             self.assertEqual(worker["infer_fps"], 0)
             self.assertEqual(worker["gate_merge_budget_kib"], 64)
 
-    def test_four_hour_default_rounding_summary_and_concurrent_pages(self):
+    def test_showcase_default_rounding_summary_and_concurrent_pages(self):
         args = self.parse()
         plan = self.off_board_plan(args)
-        self.assertEqual(plan["duration_seconds"], 14400)
-        self.assertEqual(plan["material_seconds"], 15000)
+        self.assertEqual(plan["duration_seconds"], 1200)
+        self.assertEqual(plan["material_seconds"], 1800)
         self.assertEqual(plan["telemetry_interval_seconds"], 5)
         self.assertEqual(plan["record_mode"], "summary")
         self.assertEqual(plan["prime_local_decoders"], "on")
@@ -155,21 +155,21 @@ class ShowcaseTests(unittest.TestCase):
                  {"device": 1, "available": True, "generation": 2, "current_link_width": 1},
                  {"device": 2, "available": True, "generation": 3, "current_link_width": 1},
                  {"device": 3, "available": False, "generation": 2, "current_link_width": 1}]
-        for mode, gen2_streams, gen2_budget in (("showcase", 32, 64), ("stress", 20, 64)):
+        for mode, gen2_streams, gen2_budget in (("showcase", 8, 64), ("stress", 32, 64)):
             with self.subTest(mode=mode), patch.object(runner.sys, "platform", "linux"), \
                     patch.object(runner, "device_link", side_effect=links):
                 plan = runner.build_plan(self.parse("--devices", "0,1,2,3", "--mode", mode))
             document = plan["device_configuration"]
             self.assertEqual(document["devices"], {
-                "0": {"streams": 32, "gate_merge_budget_kib": 64},
+                "0": {"streams": 8 if mode == "showcase" else 32, "gate_merge_budget_kib": 64},
                 "1": {"streams": gen2_streams, "gate_merge_budget_kib": gen2_budget},
-                "2": {"streams": 32, "gate_merge_budget_kib": 64},
-                "3": {"streams": 32, "gate_merge_budget_kib": 64}})
+                "2": {"streams": 8 if mode == "showcase" else 32, "gate_merge_budget_kib": 64},
+                "3": {"streams": 8 if mode == "showcase" else 32, "gate_merge_budget_kib": 64}})
             for device in ((3,) if mode == "showcase" else (2, 3)):
                 self.assertEqual(document["context"]["profile_selection"][str(device)]["default_source"], "unvalidated_fallback")
             self.assertEqual(plan["prime_local_decoders"], "on")
             self.assertEqual(plan["record_mode"], "summary")
-            self.assertEqual(plan["duration_seconds"], 14400)
+            self.assertEqual(plan["duration_seconds"], 1200 if mode == "showcase" else 10800)
             self.assertEqual(document["context"]["mode_goal"], runner.MODE_GOALS[mode])
             self.assertIn("No TPU utilization guarantee", document["context"]["profile_validation_scope"])
 

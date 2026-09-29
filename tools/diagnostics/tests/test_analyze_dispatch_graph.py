@@ -4,7 +4,7 @@ import sys
 import unittest
 
 
-PATH = Path(__file__).resolve().parents[1] / "analyze_dispatch_graph.py"
+PATH = (Path(__file__).resolve().parents[1] / "legacy") / "analyze_dispatch_graph.py"
 SPEC = importlib.util.spec_from_file_location("analyze_dispatch_graph", PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = MODULE

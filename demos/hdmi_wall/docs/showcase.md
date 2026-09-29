@@ -1,6 +1,6 @@
-# 四小时多设备展示
+# 多设备展示与长时间测试
 
-> **2026-09-28 更新：** showcase / stress 已接入原生线性解码、8 块额外缓冲和输出缓冲复用，支持 `--input` / `--streams`。此处保留原 1080p24、32 路 / 64 KiB 的双卡吞吐配置；画面展示按[五档效果](layouts.md)选择路数及预览参数。两种模式默认预览上限 3 FPS、墙面不限频。下方旧性能数据对应当时版本；当前用法与两种素材的验收见[线性解码与素材配置](linear-materials.md)。
+> **当前默认：** showcase 每卡 8 路、预览不限频、播放器 30 FPS；stress 默认每卡 32 路、预览 3 FPS、播放器 10 FPS。两种模式均使用原生线性解码、8 块额外缓冲、输出复用和墙面不限频。32 路需显式指定，仅作容量展示，不保证每路达到源视频帧率。历史吞吐配置使用 `--streams 32 --preview-fps 3 --display-fps 10` 复现；见[五档效果](layouts.md)及[历史素材验证](linear-materials.md)。
 
 > 时序说明：本页保留各节标注日期、设备和配置的历史记录，不代表当前所有配置的性能上限。后续同卡x1速率验证、回传优化和24路一小时结果，统一见[最新数据总览](current-data.md)与[阅读导航](../../../docs/pcie-reading-guide.md)。历史Gen3 x2结果不改写为当前Gen3 x1。
 
@@ -8,13 +8,119 @@
 
 屏幕上每个字段的含义、状态阈值和读数示例见 [32 路视频墙指标说明](wall-indicators.md)。
 
-`showcase.sh` 把长素材准备、设备识别、每卡配置、分页显示和利用率采样放进一个入口，默认正式运行 **14,400 秒（4 小时）**，另有 3 秒预热、初始化和收尾。所有选中的卡同时工作，顶部每张卡一个按钮；切页后其他卡仍继续解码、推理和更新预览。每卡可配置 1–32 路，最多选择 4 张卡。
+`showcase.sh` 把长素材准备、设备识别、每卡配置、分页显示和利用率采样放进一个入口，showcase 默认正式运行 **1,200 秒（20 分钟）**，stress 默认 **10,800 秒（3 小时）**，另有 3 秒预热、初始化和收尾。所有选中的卡同时工作，顶部每张卡一个按钮；切页后其他卡仍继续解码、推理和更新预览。每卡可配置 1–32 路，最多选择 4 张卡。
 
 此前双卡各 32 路展示采用 **showcase + 低回传 profile**：恢复显示后的稳定区间，Gen2 ×1 / Gen3 ×2 TPU 平均为 **95.18% / 99.98%**，总推理 **261.14 / 276.04 FPS**。按 R 关闭结果和预览回传后，17–19 秒稳定区间两卡 TPU 采样均为 100%。配置、计数范围及旧默认对照集中在 [当前数据总览](current-data.md)。**默认四小时是运行时长，尚未完成四小时验收。**
 
-单卡历史测量分别见 [device 1 的 30 路基准](performance-30.md)和 [device 0 路数及回传预算对照](device0-capacity.md)。多卡共享主机资源，应按同时运行的结果判断各卡实际速度，不能直接相加单卡结果。
+单卡历史测量分别见 [device 1 的 30 路基准](archive/performance-30.md)和 [device 0 路数及回传预算对照](archive/device0-capacity.md)。多卡共享主机资源，应按同时运行的结果判断各卡实际速度，不能直接相加单卡结果。
 
-两种接口的理论带宽、20 / 32 路 TPU 利用率、检测吞吐及已记录回传量，见 [PCIe 2.0 ×1 与 PCIe 3.0 ×2 对比](pcie-comparison.md)。其中区分了带宽上限与实际传输统计，并保留 Gen2 ×1 的旧默认 20 路档位依据；新低回传 32 路结论单独列明。
+两种接口的理论带宽、20 / 32 路 TPU 利用率、检测吞吐及已记录回传量，见 [PCIe 2.0 ×1 与 PCIe 3.0 ×2 对比](archive/pcie-comparison.md)。其中区分了带宽上限与实际传输统计，并保留 Gen2 ×1 的旧默认 20 路档位依据；新低回传 32 路结论单独列明。
+
+## 两种用途
+
+| 用途 | 入口模式 | 默认路数 / 预览 / 播放器 | 本地文件末尾 | 判断依据 |
+|---|---|---|---|---|
+| HDMI 墙展示 | `--mode showcase` | 每卡 8 路 / 不限预览 / 30 FPS | `loop`，允许重复播放 | 逐路画面更新、源年龄、最长停更时间；不以 TPU 满载判断效果 |
+| 固定负载压测 | `--mode stress` | 每卡 32 路 / 预览上限 3 FPS / 10 FPS | `fail`，提前 EOF 明确失败 | 正式时长、全部通道计数、错误、最长无结果间隔、两类丢帧、正式 TPU |
+
+两个模式都支持 1–4 张卡和显式参数覆盖，都保留 HDMI 输出。压力配置不是流畅展示推荐；展示配置也不保证充分占满硬件。历史按链路自动选择 20/32 路的规则仅保留在旧报告中，当前压测统一默认 32 路，实际配置写入运行记录。四卡尚未上板验证。
+
+```bash
+# 展示：先运行五分钟，检查画面。
+bash demos/hdmi_wall/showcase.sh --devices auto --mode showcase --duration 300
+
+# 压测：结束前一任务后再运行；自动准备覆盖两小时的素材。
+bash demos/hdmi_wall/showcase.sh --devices auto --mode stress --duration 7200
+```
+
+显式 `--local-eof loop` 可以进行循环恢复专项测试，但这与默认的连续素材压测是不同条件，报告必须注明。`--local-eof stop` 提前结束也不能认定完成所请求的正式时长。不允许通过重置源时钟或放宽年龄门槛掩盖恢复失败。
+
+## 两小时、每卡 32 路、预览 3 FPS
+
+下面保留本轮循环专项的原始配置，**该运行因循环后部分通道长期 STALE 已提前停止，不是两小时通过记录**。2026-09-29 启动的运行 ID 为 `20260929T073221Z-32308e14`，三卡共 96 路，正式时长 7,200 秒。最终结果应以该目录完成后的 `run.json`、各卡 `summary.json` 和正式窗口遥测为准；先前停止的 8 路或不限预览测试不能拼接为这轮两小时成绩。
+
+### 使用已有素材立即启动
+
+本次失败运行复用已准备的 600 秒官方 1080p24 素材，读到末尾后循环，因此直接使用 `multi_run.py`。它不生成更长的视频，也不改变素材帧率。下列命令显式给出本轮配置，适用于已安装更新后代码的正式仓库；请先确认没有其他任务占用设备。本轮实际使用的隔离代码目录是 `/userdata/defaults-check-20260929`，现场复核时将 `cd` 和 `--root` 一起替换成该路径。无需为了查看当前测试再次执行启动命令。
+
+```bash
+cd /userdata/1684X-EP-demo
+sudo env DISPLAY=:0 \
+  XAUTHORITY=/var/run/lightdm/root/:0 \
+  SDL_VIDEODRIVER=x11 \
+  PLAYER_LIB_PATH=/usr/lib/aarch64-linux-gnu \
+  python3 demos/hdmi_wall/multi_run.py \
+  --root /userdata/1684X-EP-demo \
+  --devices 0,1,2 --streams 32 --duration 7200 --local-eof loop \
+  --input data/inputs/hdmi_wall_demo_loop_600s.mp4 \
+  --model s --score-gate on --gate-merge-budget-kib 64 \
+  --decoder linear --decoder-buffers 8 --retrieve-every 1 \
+  --output-buffer reuse --policy latest --infer-fps 0 \
+  --max-frame-age-ms 250 --image-path auto \
+  --preview-fps 3 --wall-fps 0 --display-fps 30 \
+  --record-mode summary --prime-local-decoders on \
+  --telemetry-interval 5
+```
+
+命令末尾加 `--dry-run` 可先检查配置与工作进程命令，不启动任务。`--devices 0`、`0,1`、`0,1,2`、`0,1,2,3` 分别是 1–4 张卡的示例，只能选择现场存在的编号。这里 `multi_run` 使用明确编号；自动发现设备使用 `showcase --devices auto`。
+
+### 参数和固定行为
+
+| 参数 | 本轮含义 |
+|---|---|
+| `--root` | 板端代码与资源根目录；停止和查询时使用同一根目录。 |
+| `--devices 0,1,2` | 三张卡同时工作，切换显示页面不暂停其他卡。 |
+| `--streams 32` | **每卡** 32 路，共 96 路；各路读取同一本地素材，不是 96 个独立网络摄像头。 |
+| `--duration 7200` | 每卡正式测量两小时，不含 3 秒预热、初始化和退出；各卡正式窗口可能稍有错开。 |
+| `--input ...600s.mp4` | 已准备的 10 分钟素材；本地 EOF 使用 `loop`，循环边界也属于此次连续性观测范围。 |
+| `--model s` | 官方 YOLOv8s INT8 batch 1 模型；须预先准备模型及类别文件。 |
+| `--score-gate on` / `--gate-merge-budget-kib 64` | 启用辅助筛选模型与 64 KiB 合并预算；辅助模型须存在，不是关闭检测结果回传。 |
+| `--decoder linear` / `--decoder-buffers 8` | 原生线性解码输出、8 块额外解码缓冲；不是 8 帧推理队列。 |
+| `--retrieve-every 1` | 每个解码帧都参与获取；后续 latest 调度仍可能覆盖或淘汰候选帧。 |
+| `--output-buffer reuse` | 复用模型输出缓冲，减少重复分配。 |
+| `--policy latest` | 优先处理最新候选帧；不承诺所有输入帧都被检测。 |
+| `--infer-fps 0` | 不主动限制检测启动频率，不代表检测达到源视频帧率。 |
+| `--max-frame-age-ms 250` | 送检前的帧年龄门槛；不是摄像头到屏幕的端到端延迟保证。 |
+| `--image-path auto` | 使用自动选择的图像处理路径。 |
+| `--preview-fps 3` | 每路预览提交上限 3 FPS；实际可能更低，不限制检测为 3 FPS。`-1` 为不限频，`0` 为关闭预览。 |
+| `--wall-fps 0` | 整墙合成不限频，与单路预览上限独立。 |
+| `--display-fps 30` | 播放器 30 FPS，可能重复显示同一画面；不是每路 30 张新图。 |
+| `--record-mode summary` | 保留汇总与运行日志，减少逐帧记录，不是录像模式。 |
+| `--prime-local-decoders on` | 正式源时钟开始前预取本地解码器首帧。 |
+| `--telemetry-interval 5` | 每卡约 5 秒一次 TPU 采样；看正式窗口统计，不能用单次峰值当均值。 |
+
+`DISPLAY` / `XAUTHORITY` 指定本机图形会话，`SDL_VIDEODRIVER` 指定 X11，`PLAYER_LIB_PATH` 指定播放器系统库；路径需匹配现场环境。ADB root 可省略 `sudo`。普通前台执行时保持终端连接；本轮由独立后台进程运行，启动命令另存于 `/userdata/long-test-2h-32ch-preview3-20260929/launch.json`，日志为同目录 `launch.log`。
+
+### 自动准备素材的另一种启动方式
+
+如果希望入口自动准备覆盖整个测试时长的素材，可改用以下命令，并沿用上面的显示环境：
+
+```bash
+bash demos/hdmi_wall/showcase.sh --devices 0,1,2 --mode stress \
+  --streams 32 --duration 7200 --preview-fps 3 --display-fps 30 \
+  --wall-fps 0 --decoder linear --decoder-buffers 8 \
+  --retrieve-every 1 --telemetry-interval 5
+```
+
+这条命令会先准备、校验长素材，正式两小时从工作进程开始测量时计算；准备时间不计入测试。`showcase --input` 也会准备长素材，并非跳过准备的开关。本轮为节省等待时间采用上一节的已有短素材循环方案，两种方式的 EOF 边界不同，记录结果时应注明。
+
+### 查看结果与提前停止
+
+启动终端会打印运行目录，`data/results/hdmi-wall-multi/latest.json` 指向最近一次运行；长期跟踪请记住本次 run ID，避免后续运行更新 latest 后查错数据。目录中 `device_N/status.json` 是运行中短窗口状态，`device_N/config.json` 是实际配置，`device_N/summary.json` 是结束后统计。`telemetry-summary.json` 中正式窗口统计与全运行统计须分开解释。
+
+```bash
+# 从同一个仓库根目录执行；不会启动新的测试。
+cat data/results/hdmi-wall-multi/latest.json
+
+# 正常结束后核验指定运行；将 RUN_ID 替换为本次 ID。
+python3 tools/diagnostics/diagnose.py report \
+  data/results/hdmi-wall-multi/RUN_ID
+
+# 如需提前结束，使用本次代码根目录；提前结束不算两小时完成。
+python3 demos/hdmi_wall/multi_run.py --root /userdata/1684X-EP-demo --stop
+```
+
+本轮隔离目录对应的停止命令为 `python3 /userdata/defaults-check-20260929/demos/hdmi_wall/multi_run.py --root /userdata/defaults-check-20260929 --stop`。测试期间不要按 R 改变结果回传状态；需要换配置时先停止，保留原记录，以新运行目录重新计时。两小时后检查逐路错误、最长无结果间隔、年龄淘汰、覆盖等待帧和正式 TPU；3 FPS 预览是吞吐取向配置，不作为流畅视频验收。
 
 ## 启动与停止
 
@@ -38,7 +144,7 @@ sudo env DISPLAY=:0 \
   --profile demos/hdmi_wall/profiles/dual32-low-readback.json --dry-run
 ```
 
-正式启动双卡各 32 路低回传展示（默认四小时）：
+正式启动双卡各 32 路低回传展示（默认 20 分钟）：
 
 ```bash
 cd /userdata/1684X-EP-demo
@@ -75,9 +181,9 @@ sudo bash demos/hdmi_wall/showcase.sh --stop
 
 ## 展示与压测档位
 
-下表是**不加 profile 时的旧默认**，这些值作为历史对照保留。当前 showcase 统一采用 32 路 / 64 KiB；stress 路数维持下表。解码与预览默认值见页首更新。
+下表是**不加 profile 时的旧默认**，这些值作为历史对照保留。当前 showcase 统一采用 8 路 / 64 KiB；stress 当前也统一为 32 路 / 64 KiB。解码与预览默认值见页首更新。
 
-`--mode showcase` 为默认模式，优先每卡显示 32 路；`--mode stress` 使用本板负载测量选出的路数。两种模式均让所有选中的卡同时工作，并保留同帧画框、页面预览与切换；都默认正式运行四小时、prime on、summary 记录和约 5 秒一次的遥测。
+`--mode showcase` 为默认模式，默认每卡显示 8 路；`--mode stress` 默认每卡 32 路的固定负载。两种模式均让所有选中的卡同时工作，并保留同帧画框、页面预览与切换；分别默认正式运行 20 分钟和 3 小时、prime on、summary 记录和约 5 秒一次的遥测。
 
 | 实际 PCIe 链路 | `showcase` 路数 / 合并预算 | `stress` 路数 / 合并预算 |
 |---|---|---|
@@ -87,7 +193,7 @@ sudo bash demos/hdmi_wall/showcase.sh --stop
 
 档位按 sysfs 实际链路选择，不按设备编号选择。未知链路的后备配置未做容量认证；链路读取本身失败会明确报错。显式 profile 中逐卡字段优先于默认档位。`stress` 的名称不保证每卡利用率达到 100%，也不保证减少路数后总吞吐一定提高。
 
-从本板的 20 + 32 路 `stress` 切到每卡 32 路的 `showcase` 时，先停止，等停止命令返回后再启动：
+从每卡 32 路的 `stress` 切到每卡 8 路的 `showcase` 时，先停止，等停止命令返回后再启动：
 
 ```bash
 cd /userdata/1684X-EP-demo
@@ -99,7 +205,7 @@ sudo env DISPLAY=:0 \
   bash demos/hdmi_wall/showcase.sh --devices auto --mode showcase
 ```
 
-切回压测同样先执行 `--stop`，再将启动命令改为 `--mode stress`；两种模式都默认四小时。下方双卡 120 秒对照使用 09-09 旧版本的 20 + 32 路压测与 32 + 32 路展示配置，不能作为当前默认参数的测试成绩。当前配置见[线性解码与素材验证](linear-materials.md)，四小时持续性仍需完整长测。
+切回压测同样先执行 `--stop`，再将启动命令改为 `--mode stress`；展示默认 20 分钟，压测默认 3 小时。下方双卡 120 秒对照使用 09-09 旧版本的 20 + 32 路压测与 32 + 32 路展示配置，不能作为当前默认参数的测试成绩。当前配置见[线性解码与素材验证](linear-materials.md)，四小时持续性仍需完整长测。
 
 ## 每卡独立配置
 
@@ -152,11 +258,11 @@ sudo env DISPLAY=:0 \
 
 压测还验证了两页的真实 PCIe 标签和 20 / 32 路配置，切页 4 次，两页各收到超过 1,200 张完整拼屏画面；隐藏页也持续接收。这里是整页接收次数，不是每路检测帧数。32 + 32 路展示满足本轮每卡 32 路页面需求，20 + 32 路压测在本板取得更高 TPU 利用率与 Gen2 ×1 检测吞吐，保留两种用途。
 
-首帧等待从正式起点算起，应另加 3 秒预热及之前的初始化；源年龄只统计完成帧，最大检测间隔也不是屏幕端延时。120 秒结果不能外推到四小时、四张卡或独立实时摄像头。prime 的单卡启动改善与同帧结果核对见[解码预取实测](device0-capacity.md#32-路本地解码预取改善启动)。
+首帧等待从正式起点算起，应另加 3 秒预热及之前的初始化；源年龄只统计完成帧，最大检测间隔也不是屏幕端延时。120 秒结果不能外推到四小时、四张卡或独立实时摄像头。prime 的单卡启动改善与同帧结果核对见[解码预取实测](archive/device0-capacity.md#32-路本地解码预取改善启动)。
 
 ## 长素材与磁盘空间
 
-入口自动准备至少覆盖“正式时长 + 3 秒预热 + 60 秒余量”的素材，再向上取整到 600 秒。默认四小时会使用 **15,000 秒**的 `data/inputs/hdmi_wall_demo_loop_15000s.mp4`。准备过程重复官方本地视频的压缩包，不重编码，保留原 1920×1080、约 24 FPS 的视频规格；各通道独立读取同一份素材，不是同等数量的独立摄像头。
+入口自动准备至少覆盖“正式时长 + 3 秒预热 + 60 秒余量”的素材，再向上取整到 600 秒。展示默认使用 1,800 秒素材，压测默认使用 11,400 秒素材；显式指定四小时时会使用 **15,000 秒**的 `data/inputs/hdmi_wall_demo_loop_15000s.mp4`。准备过程重复官方本地视频的压缩包，不重编码，保留原 1920×1080、约 24 FPS 的视频规格；各通道独立读取同一份素材，不是同等数量的独立摄像头。
 
 生成前，脚本根据**源文件字节数 ÷ 探测时长 × 目标时长**估算输出大小，并要求输出盘可用空间至少为“估算输出 + 5% + 1 GiB”。stderr 会打印估算、包含余量的需求以及实际可用字节。空间不足时，在启动 ffmpeg 和创建临时素材前退出，不留下本次的部分视频；已有素材及校验清单匹配时先验证复用，不因剩余空间不足再拒绝同一份缓存。
 
@@ -175,7 +281,7 @@ data/inputs/hdmi_wall_demo_loop_15000s.mp4.manifest.json
 
 长素材让运行期间不触及短片 EOF；短片 EOF 后解码恢复的问题本身没有因此修复。改变运行时长应交给入口重新选择足够长的素材，不能把一份 600 秒文件用于四小时测试后仍声称避开了 EOF。
 
-## 四小时的记录方式
+## 长时间测试的记录方式
 
 `summary` 模式保留同帧检测框、10 FPS 页面预览和逐路统计，但不创建 `detections.jsonl`，避免把整场所有帧的框逐条写盘。各卡仍输出 `summary.json`、`streams.csv`、逐路 `summary.json`、`status.json` 和工作日志；统一页面状态由根目录的 `viewer-status.json` 记录。需要完整逐帧框对照时，另用支持 `--record-mode full` 的普通入口做有明确时长的测量。
 

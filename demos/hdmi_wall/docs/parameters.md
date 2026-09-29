@@ -4,7 +4,7 @@
 
 每卡路数由 `--streams` 指定，4 / 8 / 16 / 24 / 32 路分别使用 2×2 / 4×2 / 4×4 / 6×4 / 6×6 布局。卡数与每卡路数独立，效果与实测见[视频墙档位](layouts.md)。
 
-`--preview-fps -1` 取消单路预览限频（0 关闭，正值允许至 10）；run / multi_run / showcase 均已支持。`--display-fps 30` 设置播放器刷新率，允许 1–60，默认 10；它不会增加新的视频帧。`--wall-fps 0` 取消整墙合成限频。当前画面跟随检测结果更新，32 路时每路约 9 FPS 的检测速度仍会限制预览。
+`--preview-fps -1` 取消单路预览限频（0 关闭，正值允许至 10）；run / multi_run / showcase 均已支持。`--display-fps 30` 设置播放器刷新率，允许 1–60，showcase 默认 30，其他入口默认 10；它不会增加新的视频帧。`--wall-fps 0` 取消整墙合成限频。当前画面跟随检测结果更新，32 路时每路约 9 FPS 的检测速度仍会限制预览。
 
 ## 指定素材与线性解码（2026-09-28）
 
@@ -19,9 +19,9 @@
 | `--preview-fps 3` | 每路预览上限；showcase / stress 默认 3；不限制推理。0 关闭预览。 |
 | `--streams 24` | showcase / stress 新增统一路数覆盖；逐卡 profile 中的 streams 优先。 |
 
-showcase 与 stress 均默认线性输出、8 块额外缓冲、输出缓冲复用和首帧预取，不依赖诊断用的 `LD_PRELOAD`。showcase 统一采用 32 路 / 64 KiB，stress 保留逐链路路数；普通 run / multi_run / benchmark 的默认解码路径不变。两份素材的实测和运行命令见[线性解码与素材验收](linear-materials.md)。同一程序支持换素材，不代表所有素材都能稳定跑 32 路。
+showcase 与 stress 均默认线性输出、8 块额外缓冲、输出缓冲复用和首帧预取，不依赖诊断用的 `LD_PRELOAD`。showcase 默认采用 8 路 / 64 KiB，stress 默认每卡 32 路固定负载；普通 run / multi_run / benchmark 的默认解码路径不变。两份素材的实测和运行命令见[线性解码与素材验收](linear-materials.md)。同一程序支持换素材，不代表所有素材都能稳定跑 32 路。
 
-本地追赶实验新增 `--local-catchup-index JSON`（`run.py` / `multi_run.py` / 原生程序，默认关闭）。仅允许本地文件、latest 和正数过期门槛；使用前必须生成与原视频匹配的关键帧片段。其跳帧、停顿代价和实测状态见[本地追赶实验](../../../docs/local-catchup.md)。
+本地追赶实验新增 `--local-catchup-index JSON`（`run.py` / `multi_run.py` / 原生程序，默认关闭）。仅允许本地文件、latest 和正数过期门槛；使用前必须生成与原视频匹配的关键帧片段。其跳帧、停顿代价和实测状态见[本地追赶实验](../../../docs/archive/local-catchup.md)。
 
 回传诊断新增可选参数：`--preview-fps 0` 停止检测缩略图，保留结果回传；`--active-limit N` 公平限制同时进入处理段的路数（0 不限制，1..32），不减少解码路数。两者均支持 `run.sh` / `multi_run.sh`。showcase 可在 profile 的逐设备配置使用 `preview_fps` 和 `active_limit`。默认仍为不限制并发，是否提速需按路数、素材和设备实测。latest 策略在取得处理名额后选取新帧；all 策略仍逐帧处理。
 
@@ -35,8 +35,8 @@ showcase 与 stress 均默认线性输出、8 块额外缓冲、输出缓冲复�
 |---|---|---:|---|
 | `run.sh` | device 0 / 1 路 | 1800 秒 | s / gate off / full |
 | `multi_run.sh` | devices 0,1 / 32 路 | 1800 秒 | s / gate off / full |
-| `showcase.sh --mode showcase` | auto / 32 路 | 14400 秒 | s / gate on / summary |
-| `showcase.sh --mode stress` | auto / Gen2 ×1 为 20 路，Gen3 ×2 为 32 路 | 14400 秒 | s / gate on / summary |
+| `showcase.sh --mode showcase` | auto / 8 路 | 1200 秒 | s / gate on / summary |
+| `showcase.sh --mode stress` | auto / 32 路 | 10800 秒 | s / gate on / summary |
 | `observe.sh` | auto / 32 路 | 300 秒 | 默认 inference on；summary |
 | `benchmark.sh` | device 1 / 30 路 | 300 秒 | 历史 s / gate on 基准；full |
 
@@ -77,18 +77,19 @@ showcase 与 stress 均默认线性输出、8 块额外缓冲、输出缓冲复�
 
 ## 展示和压测入口
 
-`showcase.sh` 接受 `--root`、`--devices`、`--duration`、`--mode`、`--profile`、`--telemetry-interval`、`--dry-run`、`--stop`、`--help`。
+`showcase.sh` 接受 `--root`、`--devices`、`--duration`、`--mode`、`--input`、`--streams`、`--decoder`、`--decoder-buffers`、`--retrieve-every`、`--local-eof`、`--preview-fps`、`--wall-fps`、`--display-fps`、`--profile`、`--telemetry-interval`、`--dry-run`、`--stop`、`--help`。完整长测示例与逐项解释见[两小时运行说明](showcase.md#两小时每卡-32-路预览-3-fps)。
 
 | 参数 / 固定配置 | 含义 |
 |---|---|
 | `--devices auto` | 从板端 sysfs 发现实际设备，也可指定 `0,1`。 |
-| `--mode showcase` | 默认原 1080p24、每卡 32 路、64 KiB、线性输出与 8 块额外缓冲、预览 3 FPS / 墙面不限频。 |
-| `--mode stress` | 使用已测负载档位：Gen2 ×1 为 20 路 / 64 KiB，Gen3 ×2 为 32 路 / 64 KiB。 |
+| `--mode showcase` | 默认原 1080p24、每卡 8 路、64 KiB、线性输出与 8 块额外缓冲、预览不限频、墙面不限频、播放器 30 FPS。 |
+| `--mode stress` | 默认每卡 32 路 / 64 KiB，预览 3 FPS，播放器 10 FPS；不是性能达标承诺。 |
+| `--local-eof loop/fail/stop` | 本地 EOF 行为；showcase 默认 loop，stress 默认 fail；run / multi_run 默认 loop。 |
 | `--profile PATH` | 按设备覆盖路数、预算、preview_fps 和 output_buffer；逐卡设置优先于统一 `--streams`，格式见 [每卡配置](showcase.md#每卡独立配置)。 |
 | `--telemetry-interval 5` | 默认每卡约 5 秒采样，0 关闭。 |
 | 固定配置 | YOLOv8s、gate on、latest、infer-fps 0、年龄 250 ms、image auto、prime on、summary。 |
 
-未知链路默认回退到 32 路 / 64 KiB，并不表示该链路已完成性能验证。showcase 的 `--dry-run` 会读取实际设备和链路，但不准备视频或启动 worker。具体启动、素材空间和停止方法见 [展示与压测](showcase.md)。
+未知链路的 showcase 回退到 8 路 / 64 KiB，stress 回退到 32 路 / 64 KiB，并不表示该链路已完成性能验证。showcase 的 `--dry-run` 会读取实际设备和链路，但不准备视频或启动 worker。具体启动、素材空间和停止方法见 [展示与压测](showcase.md)。
 
 ## 解码观测入口
 
@@ -104,7 +105,7 @@ showcase 与 stress 均默认线性输出、8 块额外缓冲、输出缓冲复�
 
 ## 历史基准入口
 
-`benchmark.sh` 接受 `--root`、`--devices`、`--streams`、`--duration`、`--gate-merge-budget-kib`、`--prime-local-decoders`、`--dry-run`、`--stop`、`--help`；参数含义与上表一致。它不接受 `auto`、`--mode` 或任意检测配置，默认复现 device 1 的 30 路基准。固定配置和完整命令见 [30 路基准](performance-30.md#每次使用统一基准入口)。
+`benchmark.sh` 接受 `--root`、`--devices`、`--streams`、`--duration`、`--gate-merge-budget-kib`、`--prime-local-decoders`、`--dry-run`、`--stop`、`--help`；参数含义与上表一致。它不接受 `auto`、`--mode` 或任意检测配置，默认复现 device 1 的 30 路基准。固定配置和完整命令见 [30 路基准](archive/performance-30.md#每次使用统一基准入口)。
 
 ## 显示环境变量
 

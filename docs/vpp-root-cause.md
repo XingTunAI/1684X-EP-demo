@@ -47,7 +47,7 @@ flowchart LR
 
 总差 42.641 ms，名额等待差 42.642 ms，其余项大体抵消。另一次捕获总差 33.504 ms、名额等待差 33.586 ms，结论相同。完成等待没有出现约三倍差异。完成等待仍包含通知和调度，不能将 1.816 / 1.942 ms 当成精确的 VPP 纯计算时间。
 
-这两段捕获的完整调用对应率为 99.73% / 99.58%，无负分段时间、无完整根无法匹配、各 CPU 追踪缓冲 overrun/dropped 均为 0。内核追踪使 PCIe 2.0 吞吐降低约 3.7%，因此这是新窗口的机制定位，不能把该比例原样套回最初 229.2 FPS 的全部样本。完整分账与限制见 [阶段证据报告](vpp-attribution-20260928.md)。
+这两段捕获的完整调用对应率为 99.73% / 99.58%，无负分段时间、无完整根无法匹配、各 CPU 追踪缓冲 overrun/dropped 均为 0。内核追踪使 PCIe 2.0 吞吐降低约 3.7%，因此这是新窗口的机制定位，不能把该比例原样套回最初 229.2 FPS 的全部样本。完整分账与限制见 [阶段证据报告](archive/vpp-attribution-20260928.md)。
 
 ## 为什么 VPP 会排这么长的队
 
@@ -93,7 +93,7 @@ VideoCapture::read / retrieve
 
 描述符尺寸来自现场配套头文件，全部正式观察到的请求均为一个描述符。即使加基本包头，命令有效载荷本身也不能解释约 40 ms 的差值。PCIe 的影响主要通过实际驱动交互、共享 DMA 和队列传播；不能把锁等待统称为 PCIe 协议开销。
 
-原视频墙已计数结果及小图下行合计只有 44.05 MB/s，也不支持“这些数据量已经耗尽 500 MB/s”这一说法。更多结果大小、分段调用次数与空闲 D2H 对照见 [PCIe 理论核验](pcie2-theory-and-concurrency.md)。
+原视频墙已计数结果及小图下行合计只有 44.05 MB/s，也不支持“这些数据量已经耗尽 500 MB/s”这一说法。更多结果大小、分段调用次数与空闲 D2H 对照见 [PCIe 理论核验](archive/pcie2-theory-and-concurrency.md)。
 
 ## 因果干预：去掉隐藏工作是否恢复性能
 
@@ -139,4 +139,4 @@ PCIe 3.0 也受到布局展开的影响：移除后预处理调用均值从 **18
 
 ## 审计与重算
 
-阶段方法及追踪排除记录见 [详细证据](vpp-attribution-20260928.md)。本地全部原始数据在 `local/rootcause-20260928/`；服务器对应目录为 `/userdata/1684X-EP-demo/data/results/rootcause-20260928/`。原始归档、SHA256、分析入口和失败配置见 [证据索引](vpp-evidence-index.md)，原数据目录也保留 `EVIDENCE-INDEX.md`。Git 中保存了[当时的源码与选定摘要快照](../tools/diagnostics/studies/rootcause-20260928/README.md)。重算结果 `final-verification.json` 同时保存输入文件 SHA256。
+阶段方法及追踪排除记录见 [详细证据](archive/vpp-attribution-20260928.md)。本地全部原始数据在 `local/rootcause-20260928/`；服务器对应目录为 `/userdata/1684X-EP-demo/data/results/rootcause-20260928/`。原始归档、SHA256、分析入口和失败配置见 [证据索引](vpp-evidence-index.md)，原数据目录也保留 `EVIDENCE-INDEX.md`。Git 中保存了[当时的源码与选定摘要快照](../tools/diagnostics/studies/rootcause-20260928/README.md)。重算结果 `final-verification.json` 同时保存输入文件 SHA256。

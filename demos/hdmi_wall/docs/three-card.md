@@ -27,7 +27,7 @@ RK3588 主机，BM1684X 三卡：device 0 / 1 为 PCIe 2.0 ×1，device 2 为 PC
 在板端仓库根目录、显示环境已配置且目标卡空闲时执行：
 
 ```bash
-bash demos/hdmi_wall/showcase.sh --devices 0,1,2 --duration 300
+bash demos/hdmi_wall/showcase.sh --devices 0,1,2 --duration 300 --streams 32 --preview-fps 3 --display-fps 10
 ```
 
 本次使用 DISPLAY=:0 与 LightDM 会话，环境准备见[显示说明](display.md)。更换设备后先核对编号与链路。

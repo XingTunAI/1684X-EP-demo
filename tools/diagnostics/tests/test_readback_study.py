@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-spec = importlib.util.spec_from_file_location('study_analysis', Path(__file__).parents[1] / 'analyze_readback_study.py')
+spec = importlib.util.spec_from_file_location('study_analysis', (Path(__file__).parents[1] / "legacy") / 'analyze_readback_study.py')
 analysis = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(analysis)
 

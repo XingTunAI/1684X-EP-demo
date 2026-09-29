@@ -107,6 +107,23 @@ public:
     // Keep this lease before the associated Mat member so Mat dies first.
     std::shared_ptr<void> lease() const { return session_; }
     void release() { session_.reset(); }
+    // Only after EOF and after every borrowed device surface has been released.
+    // Keep the hardware decoder allocated across local loops.
+    bool rewind_local() {
+        if (!session_ || !session_->linear) return false;
+        if (!session_.unique()) throw std::runtime_error("Cannot rewind with outstanding decoder leases");
+        auto& s = *session_;
+        if (!s.draining) throw std::runtime_error("Rewind requires fully drained local EOF");
+        av_frame_unref(s.frame);
+        av_packet_unref(s.packet);
+        s.arm();
+        auto* stream = s.input->streams[s.video];
+        const int64_t start = stream->start_time == AV_NOPTS_VALUE ? 0 : stream->start_time;
+        check(av_seek_frame(s.input, s.video, start, AVSEEK_FLAG_BACKWARD), "Rewind local input");
+        avcodec_flush_buffers(s.codec);
+        s.draining = false;
+        return true;
+    }
     double get(int property) const {
         auto& s = *session_;
         if (!s.linear) return s.legacy.get(property);

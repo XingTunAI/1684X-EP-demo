@@ -5,7 +5,7 @@ import sys
 import tempfile
 import unittest
 
-DIAGNOSTICS = Path(__file__).resolve().parents[1]
+DIAGNOSTICS = (Path(__file__).resolve().parents[1] / "legacy")
 sys.path.insert(0, str(DIAGNOSTICS))
 spec = importlib.util.spec_from_file_location('pipeline32', DIAGNOSTICS/'run_pipeline32_comparison.py')
 study = importlib.util.module_from_spec(spec)

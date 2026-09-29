@@ -40,7 +40,7 @@ sudo env DISPLAY=:0 \
 
 **本节为历史逐帧对照，不是当前默认展示方案。** 当前双卡各 32 路使用 [showcase / latest](showcase.md)，已完成全部通道出图与指标短测；旧命令用于复现积压现象。
 
-下面保留早期 32 路显示验证的 `--policy all` 复现命令，不做应用层抽帧或送检超龄淘汰。它可以保持全部通道有检测画面，但会累积源时间延迟；原因与对照数据见 [32 路抽帧限制说明](32-channel-realtime.md)。下面采用已验证的 YOLOv8n 和 score gate，需先准备对应模型：
+下面保留早期 32 路显示验证的 `--policy all` 复现命令，不做应用层抽帧或送检超龄淘汰。它可以保持全部通道有检测画面，但会累积源时间延迟；原因与对照数据见 [32 路抽帧限制说明](archive/32-channel-realtime.md)。下面采用已验证的 YOLOv8n 和 score gate，需先准备对应模型：
 
 ```bash
 cd /userdata/1684X-EP-demo

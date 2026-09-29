@@ -30,7 +30,9 @@ bash demos/hdmi_wall/showcase.sh --stop
 
 上面的命令使用每卡 8 路，取消单路预览限频，并将播放器刷新率设为 30 FPS；本轮每路预览提交约 24 FPS。16 / 24 路分别约 17–18 / 11–12 FPS；32 路约 7.5–8.7 FPS，保留多路展示用途，但达不到源视频 24 FPS 的流畅度。[4 / 8 / 16 / 24 / 32 路效果](demos/hdmi_wall/docs/layouts.md)。
 
-showcase 不附加上述预览参数时，默认采用线性解码输出、8 块额外缓冲、官方 1080p24 素材、每卡 32 路、每路预览上限 3 FPS。完整配置与素材限制见[运行说明](demos/hdmi_wall/docs/linear-materials.md)。
+showcase 默认采用线性解码输出、8 块额外缓冲、官方 1080p24 素材、每卡 8 路、预览不限频、播放器 30 FPS。复现旧吞吐配置须显式使用 `--streams 32 --preview-fps 3 --display-fps 10`；32 路用于容量展示，不代表每路达到源帧率。完整配置与素材限制见[运行说明](demos/hdmi_wall/docs/linear-materials.md)。
+
+展示使用 `--mode showcase`（默认每卡 8 路、预览不限频）；固定负载压测使用 `--mode stress`（默认每卡 32 路、预览 3 FPS、提前 EOF 报错）。两者目的和验收指标不同，见[两种用途](demos/hdmi_wall/docs/showcase.md#两种用途)。
 
 ## 已记录的测试结果
 

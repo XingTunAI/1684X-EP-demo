@@ -14,7 +14,7 @@
 
 ## 2026-09-28：优化状态与调用指令
 
-showcase / stress 已默认启用线性解码、8 块额外缓冲、输出复用、预览上限 3 FPS 和墙面不限频。普通 run / multi_run 保留 OpenCV 兼容默认值；使用下方单卡命令可显式启用线性优化。板端 `build-async/hdmi_wall.pcie` 是独立实验构建，`run.py` 当前没有 `--preview-mode` 参数，也不会自动选择该构建。
+showcase / stress 已默认启用线性解码、8 块额外缓冲、输出复用和墙面不限频。showcase 默认每卡 8 路、预览不限频、播放器 30 FPS；stress 保留预览上限 3 FPS、播放器 10 FPS。普通 run / multi_run 保留 OpenCV 兼容默认值；使用下方单卡命令可显式启用线性优化。板端 `build-async/hdmi_wall.pcie` 是独立实验构建，`run.py` 当前没有 `--preview-mode` 参数，也不会自动选择该构建。
 
 ### 现有入口：单卡 32 路低回传配置
 
@@ -58,13 +58,13 @@ sudo bash /userdata/1684X-EP-demo/demos/hdmi_wall/run.sh --stop
 |---|---|---|---|
 | 首次确认单卡推理和 HDMI 正常 | `run.sh` | device 0、1 路、1800 秒，系统 ffplay | [单设备运行](docs/single-device.md) |
 | 自己指定多卡、路数和检测参数 | `multi_run.sh` | devices 0,1、每卡 32 路、1800 秒，按钮切页 | [多设备运行](docs/multi-device.md) |
-| 双卡各 32 路、已测双 TPU 100% 的展示配置 | `showcase.sh --devices 0,2` | 原 1080p24，线性 + 8 缓冲，预览 3 FPS；R 键切换 | [当前展示配置](docs/linear-materials.md) |
-| 运行当前默认每卡 32 路展示 | `showcase.sh --mode showcase` | 自动识别设备、每卡 32 路、4 小时 | [展示与压测](docs/showcase.md) |
-| 多卡并行，采用已测高 TPU 负载档位 | `showcase.sh --mode stress` | Gen2 ×1 为 20 路，Gen3 ×2 为 32 路、4 小时 | [展示与压测](docs/showcase.md) |
+| 双卡各 32 路、已测双 TPU 100% 的展示配置 | `showcase.sh --devices 0,2 --streams 32 --preview-fps 3 --display-fps 10` | 原 1080p24，线性 + 8 缓冲，预览 3 FPS；R 键切换 | [当前展示配置](docs/linear-materials.md) |
+| 运行当前默认每卡 8 路展示 | `showcase.sh --mode showcase` | 自动识别设备、每卡 8 路、预览不限频、播放器 30 FPS、20 分钟 | [展示与压测](docs/showcase.md) |
+| 多卡并行，采用已测高 TPU 负载档位 | `showcase.sh --mode stress` | 每卡 32 路、预览 3 FPS、提前 EOF 报错、3 小时 | [展示与压测](docs/showcase.md) |
 | 比较开启推理前后，解码是否降速或停顿 | `observe.sh` | 自动识别设备、每卡后台 32 路、300 秒，选 2 路放大对照 | [解码观测](docs/decoder-observation.md) |
-| 复现 device 1 的历史 30 路基准 | `benchmark.sh` | device 1、30 路、300 秒 | [单卡基准](docs/performance-30.md#每次使用统一基准入口) |
+| 复现 device 1 的历史 30 路基准 | `benchmark.sh` | device 1、30 路、300 秒 | [单卡基准](docs/archive/performance-30.md#每次使用统一基准入口) |
 
-时长均指正式测量，另有 3 秒预热、初始化和收尾。展示 / 压测默认四小时是配置，**四小时稳定性尚未验收**；`stress` 不保证每次 TPU 采样为 100%。设备链路由实际发现结果决定，不按 device 编号猜测。各入口的参数并不完全通用，见 [命令参数](docs/parameters.md)。
+时长均指正式测量，另有 3 秒预热、初始化和收尾。展示默认 20 分钟、压测默认 3 小时；**默认时长不等于稳定性验收通过**；`stress` 不保证每次 TPU 采样为 100%。设备链路由实际发现结果决定，不按 device 编号猜测。各入口的参数并不完全通用，见 [命令参数](docs/parameters.md)。
 
 ## 首次运行
 
@@ -91,7 +91,11 @@ sudo env DISPLAY=:0 \
 
 正常时 HDMI 显示视频和检测框，终端打印本次结果目录。单卡运行提前停止使用相同权限执行 `bash demos/hdmi_wall/run.sh --stop`。
 
-## 双卡展示与压测
+## 多卡展示与压测
+
+用途分为 HDMI 墙展示（`--mode showcase`，默认每卡 8 路）和固定负载压测（`--mode stress`，默认每卡 32 路）。配置与判断标准见[两种用途](docs/showcase.md#两种用途)。
+
+两小时、每卡 32 路、预览 3 FPS 的完整启动命令、参数含义、已有素材循环方式和结果查看见[长测操作说明](docs/showcase.md#两小时每卡-32-路预览-3-fps)。
 
 先完成单卡检查。`showcase.sh` 还要求已准备兼容的辅助模型 `data/models/score_gate/score_gate_reducemax_f32.bmodel`；该文件不随 Git 分发，`prepare.sh` 也不生成它。只有主模型时，先使用 [multi_run.sh 的 gate off 命令](docs/multi-device.md#双设备运行)。
 
@@ -103,12 +107,13 @@ sudo env DISPLAY=:0 \
   SDL_VIDEODRIVER=x11 \
   PLAYER_LIB_PATH=/usr/lib/aarch64-linux-gnu \
   bash demos/hdmi_wall/showcase.sh \
-  --devices auto --mode showcase --duration 60
+  --devices auto --mode showcase --duration 60 \
+  --streams 32 --preview-fps 3 --display-fps 30
 ```
 
 以上命令使用线性输出、8 块额外缓冲、输出复用和预览 3 FPS 的吞吐对照配置，不需要另加低回传 profile。本轮实测设备为 0、2，分别为 PCIe2 ×1 / PCIe3 ×1；设备编号以实际板卡为准。
 
-使用压测模式时，将 `--mode showcase` 改为 `--mode stress`。需要正式运行四小时，删除 `--duration 60` 或改为 `--duration 14400`；长素材准备、校验耗时及磁盘空间见 [长素材说明](docs/showcase.md#长素材与磁盘空间)。
+使用压测模式时，将 `--mode showcase` 改为 `--mode stress`。展示默认 20 分钟、压测默认 3 小时；删除 `--duration 60` 使用对应默认值，或显式指定时长；长素材准备、校验耗时及磁盘空间见 [长素材说明](docs/showcase.md#长素材与磁盘空间)。
 
 点击设备按钮、按 `1`–`4` 或左右键切页。`Esc`、关闭窗口、启动终端 `Ctrl+C` 会结束整场多卡运行；也可在另一终端执行：
 
@@ -125,14 +130,14 @@ sudo bash demos/hdmi_wall/showcase.sh --stop
 | 连接和排错 | [ADB / SSH 与 HDMI 显示](docs/display.md) |
 | 操作与输出 | [单设备](docs/single-device.md) · [多设备](docs/multi-device.md) · [展示 / 压测](docs/showcase.md) · [解码对照](docs/decoder-observation.md) |
 | 参数和读数 | [命令参数](docs/parameters.md) · [屏幕指标](docs/wall-indicators.md) · [JSON / CSV 统计口径](../../docs/metrics.md) |
-| 抽帧 | [参数与历史画面对照](docs/realtime-usage.md) · [32 路超龄淘汰机制](docs/32-channel-realtime.md) |
+| 抽帧 | [参数与历史画面对照](docs/archive/realtime-usage.md) · [32 路超龄淘汰机制](docs/archive/32-channel-realtime.md) |
 | 当前推荐与对照 | [数据总览](docs/current-data.md) · [回传开关](docs/readback-toggle.md) |
-| 实测 | [全部实测索引](docs/results.md) · [PCIe 对比](docs/pcie-comparison.md) · [TPU 满载解码与回传隔离](docs/capacity-validation.md) |
+| 实测 | [全部实测索引](docs/results.md) · [PCIe 对比](docs/archive/pcie-comparison.md) · [TPU 满载解码与回传隔离](docs/archive/capacity-validation.md) |
 | 开发 | [实时调度实现与测试](docs/realtime.md) |
 
 ## 指标与限制
 
-输入 FPS、解码 DEC、检测 INF 和拼屏刷新率分别统计。`latest` 在完整解码后选择最新帧送检，因此减少检测帧数不等于减少解码负担。当前输出是一幅 1920×1080 视频墙；普通入口墙面上限为 10 FPS，showcase / stress 默认墙面不限频、每路预览上限 3 FPS；底层不限频选项及独立播放器设置见[参数说明](docs/parameters.md#单路预览不限频2026-09-24)。视频墙不是 32 路独立的 1080p 编码输出。
+输入 FPS、解码 DEC、检测 INF 和拼屏刷新率分别统计。`latest` 在完整解码后选择最新帧送检，因此减少检测帧数不等于减少解码负担。当前输出是一幅 1920×1080 视频墙；普通入口墙面上限为 10 FPS，showcase / stress 默认墙面不限频；showcase 每路预览不限频、播放器 30 FPS，stress 每路预览上限 3 FPS、播放器 10 FPS；底层不限频选项及独立播放器设置见[参数说明](docs/parameters.md#单路预览不限频2026-09-24)。视频墙不是 32 路独立的 1080p 编码输出。
 
 多个通道独立读取同一本地视频，不代表已验证同等数量的独立摄像头。源年龄不包含相机到屏幕的全部延时；TPU 满载、画面仍在动或总解码接近目标，也不能单独证明全部通道实时达标。逐路指标和对照方法见 [解码观测](docs/decoder-observation.md)。
 
@@ -146,11 +151,11 @@ sudo bash demos/hdmi_wall/showcase.sh --stop
 
 ## 抽帧与实时处理
 
-`latest / all`、检测限频和送检年龄的解释见 [抽帧设置](docs/realtime-usage.md#抽帧与实时处理)。当前 32 路展示使用 latest；早期失败条件及逐帧对照保留在历史报告中。
+`latest / all`、检测限频和送检年龄的解释见 [抽帧设置](docs/archive/realtime-usage.md#抽帧与实时处理)。当前 32 路展示使用 latest；早期失败条件及逐帧对照保留在历史报告中。
 
 ### 上板实测的 HDMI 效果
 
-原公路 1080p25 的逐帧 / 抽帧截图和测量表已移至 [历史画面对照](docs/realtime-usage.md#上板实测的-hdmi-效果)，不与当前官方 1080p24 测试混用。
+原公路 1080p25 的逐帧 / 抽帧截图和测量表已移至 [历史画面对照](docs/archive/realtime-usage.md#上板实测的-hdmi-效果)，不与当前官方 1080p24 测试混用。
 
 ## 截图素材
 

@@ -5,7 +5,7 @@
 ## 如何选择配置
 
 - 观看画面：按[五档布局与流畅度](layouts.md)选择路数，使用 `--preview-fps -1 --display-fps 30`；本轮 4 / 8 路接近源视频 24 FPS，32 路为 7.5–8.7 FPS。
-- 复现本页吞吐数据：保留预览 3 FPS。下表各项成绩与该配置绑定，不能用来描述不限频预览的速度。
+- 复现本页吞吐数据：显式指定每卡 32 路、预览 3 FPS、播放器 10 FPS。下表各项成绩与该配置绑定，不能用来描述不限频预览的速度。
 
 入口仍支持选择 1–4 张卡，32 路不是所有场景的固定要求。
 
@@ -14,8 +14,8 @@
 在板端仓库根目录执行，沿用已配置的 DISPLAY / XAUTHORITY。入口支持 1–4 张卡：`--devices auto` 自动选择当前设备，也可显式指定单卡或多卡；设备编号与链路以现场查询为准。
 
 ```bash
-# 吞吐优先：采用默认预览 3 FPS，无需附加 profile 或 LD_PRELOAD。
-sudo bash demos/hdmi_wall/showcase.sh --devices auto --duration 300
+# 复现历史吞吐配置：显式指定参数，无需附加 profile 或 LD_PRELOAD。
+sudo bash demos/hdmi_wall/showcase.sh --devices auto --duration 300 --streams 32 --preview-fps 3 --display-fps 10
 
 # 上一轮结束后，测试指定的 highway 1080p25，已测配置为每卡 24 路。
 sudo bash demos/hdmi_wall/showcase.sh --mode stress --devices 0,2 \
@@ -37,7 +37,7 @@ sudo bash demos/hdmi_wall/showcase.sh --stop
 
 | 素材 / 档位 | 每卡路数 | PCIe2 ×1 总 INF | PCIe3 ×1 总 INF | 正式 TPU 平均（2 / 3） | 连续性 |
 |---|---:|---:|---:|---|---|
-| **最终 showcase 默认，原 1080p24** | **32** | **280.30** | **281.43** | **100% / 100%** | 全路有结果，过期丢帧 0 / 0 |
+| **09-28 当时的 showcase 默认，原 1080p24** | **32** | **280.30** | **281.43** | **100% / 100%** | 全路有结果，过期丢帧 0 / 0 |
 | 同参数的前一轮 stress，原 1080p24 | 32 | 280.42 | 281.32 | 100% / 100% | 全路有结果，过期丢帧 0 / 0 |
 | highway 1080p25，stress | 24 | 276.35 | 279.03 | 99.82% / 100% | 全路有结果，有少量年龄淘汰 |
 | highway 1080p25，预览 10 FPS / 墙面 10 FPS | 24 | 255.05 | 273.32 | 94.55% / 99.33% | 全路有结果，有少量年龄淘汰 |

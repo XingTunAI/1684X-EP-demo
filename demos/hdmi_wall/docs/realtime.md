@@ -45,7 +45,7 @@ python3 -m unittest discover -s demos/hdmi_wall/tests -p 'test_*.py'
 
 C++ 测试覆盖慢消费者取得最新帧、旧帧及时释放、限频时继续覆盖、5/8 FPS 时间间隔、极小 FPS 防溢出、过期边界、EOF、截止/停止及 10,000 帧并发计数。Python 测试覆盖 CLI 参数、互斥约束、RTSP URI 和 dry-run。
 
-2026-09-09 已在 Windows 使用便携 Zig 0.13.0 的 C++ 编译器以 `-std=c++11 -O2 -Wall -Wextra -Werror` 构建并通过调度测试，CMake 的 `REALTIME_TESTS_ONLY` 配置、构建和 CTest（1/1）也通过。同日通过 ADB 在目标 ARM64 板子完成 SOPHON 主程序构建、CTest、Python 启动器测试以及实际 HDMI 验证。各路数结果和发现的问题见[上板验证报告](realtime-board-validation.md)。
+2026-09-09 已在 Windows 使用便携 Zig 0.13.0 的 C++ 编译器以 `-std=c++11 -O2 -Wall -Wextra -Werror` 构建并通过调度测试，CMake 的 `REALTIME_TESTS_ONLY` 配置、构建和 CTest（1/1）也通过。同日通过 ADB 在目标 ARM64 板子完成 SOPHON 主程序构建、CTest、Python 启动器测试以及实际 HDMI 验证。各路数结果和发现的问题见[上板验证报告](archive/realtime-board-validation.md)。
 
 ## 上板验收
 

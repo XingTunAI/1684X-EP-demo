@@ -2,7 +2,7 @@
 
 新增不限频口径：底层 `--preview-fps -1` 表示单路预览不主动限频、0关闭预览；`--wall-fps 0` 表示整墙不主动限频。`status.json.preview_fps_cap`为整墙配置，不是单路实际新图FPS。用预览完成数或小图字节增量计算有效预览率；整墙发布可能包含重复画面。详见[参数说明](../demos/hdmi_wall/docs/parameters.md#单路预览不限频2026-09-24)。
 
-[仓库首页](../README.md) / [文档索引](../docs/README.md)
+[仓库首页](../README.md) / [文档索引](README.md)
 
 本页定义 JSON / CSV 输出与统计口径。HDMI 页面读数见 [屏幕指标](../demos/hdmi_wall/docs/wall-indicators.md)，运行选项见 [命令参数](../demos/hdmi_wall/docs/parameters.md)。
 
@@ -120,7 +120,7 @@ HDMI 的[解码观测入口](../demos/hdmi_wall/docs/decoder-observation.md)在�
 
 `full` 模式在检测记录中给出每帧年龄；两种模式的逐路 summary 都按正式区间内的完成计数点选取已完成帧，未处理的丢帧不会进入年龄分布。无适用样本时按空统计解释，直播的 `source_age_ms` 不应当作零延迟。P95 只描述完成帧年龄，不能代替首帧等待或无结果间隔检查。
 
-`--max-frame-age-ms` 在 `latest` 下默认 250 ms，`0` 关闭。本地从帧的计划读取时刻起算，RTSP 从解码完成起算；解码后发布和取帧时均检查。随后仍需完成图像桥接与检测，因此检测完成时的对应年龄可以超过门槛。若本地解码持续落后，可能大量丢弃超龄帧，关闭门槛后 `source_age_ms` 仍可持续增长。若 RTSP 内部已缓存旧帧，较低的 `frame_age_ms` 也不能证明相机到 HDMI 的低延迟。抽帧策略已于 2026-09-09 在本地视频输入下完成[上板验证](../demos/hdmi_wall/docs/realtime-board-validation.md)，推荐配置与对照命令见 [HDMI 视频墙](../demos/hdmi_wall/README.md#抽帧与实时处理)。
+`--max-frame-age-ms` 在 `latest` 下默认 250 ms，`0` 关闭。本地从帧的计划读取时刻起算，RTSP 从解码完成起算；解码后发布和取帧时均检查。随后仍需完成图像桥接与检测，因此检测完成时的对应年龄可以超过门槛。若本地解码持续落后，可能大量丢弃超龄帧，关闭门槛后 `source_age_ms` 仍可持续增长。若 RTSP 内部已缓存旧帧，较低的 `frame_age_ms` 也不能证明相机到 HDMI 的低延迟。抽帧策略已于 2026-09-09 在本地视频输入下完成[上板验证](../demos/hdmi_wall/docs/archive/realtime-board-validation.md)，推荐配置与对照命令见 [HDMI 视频墙](../demos/hdmi_wall/README.md#抽帧与实时处理)。
 
 ## HDMI 长时汇总与分位数
 

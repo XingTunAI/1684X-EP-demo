@@ -1,6 +1,6 @@
 # 环境与依赖准备
 
-[仓库首页](../README.md) / [文档索引](../docs/README.md)
+[仓库首页](../README.md) / [文档索引](README.md)
 
 以下操作面向 Linux ARM64 的 RK3588 主机与 BM1684X PCIe 设备。下方明确标注的 ADB、SSH 连接命令在电脑终端执行；连接成功后的 SDK 安装、构建和运行命令都在板端 Linux 执行。Windows 可用于编辑文件，以及使用 Python 运行两个 YOLO 入口的 `--dry-run` 查看命令计划；它不会启动硬件任务。
 

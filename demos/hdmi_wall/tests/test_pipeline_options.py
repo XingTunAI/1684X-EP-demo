@@ -30,7 +30,7 @@ class PipelineOptionsTests(unittest.TestCase):
         self.assertTrue(all(v["streams"] == 24 for v in a["device_configuration"]["devices"].values()))
 
     def test_both_modes_reach_workers_with_native_decode_and_preview_policy(self):
-        for mode, preview, wall in (("showcase", 3, 0), ("stress", 3, 0)):
+        for mode, preview, wall in (("showcase", -1, 0), ("stress", 3, 0)):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
                 plan = self.plan("--mode", mode, "--retrieve-every", "2")
                 config = Path(directory) / "device configuration.json"
@@ -38,6 +38,7 @@ class PipelineOptionsTests(unittest.TestCase):
                 options = plan["run_command"][2:]
                 options[options.index("--device-config") + 1] = str(config)
                 args = multi_run.arguments(options)
+                self.assertEqual(args.display_fps, 30 if mode == "showcase" else 10)
                 for worker in multi_run.build_plan(args)["workers"]:
                     command = worker["worker_command"]
                     for key, value in (("decoder", "linear"), ("decoder-buffers", "8"),
@@ -45,6 +46,7 @@ class PipelineOptionsTests(unittest.TestCase):
                         self.assertEqual(command[command.index("--" + key) + 1], value)
                     self.assertEqual(worker["preview_fps"], preview)
                     self.assertEqual(worker["wall_fps"], wall)
+                    self.assertEqual(command[command.index("--local-eof") + 1], "loop" if mode == "showcase" else "fail")
                     self.assertNotIn("LD_PRELOAD", " ".join(command))
 
     def test_invalid_buffers_stride_combination_and_network_material_are_rejected(self):

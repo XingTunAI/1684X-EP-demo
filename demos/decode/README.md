@@ -84,7 +84,7 @@ data/results/decode/<run-id>/
 
 ## 实际运行数据
 
-下表保留 2026-09-08 的历史纯解码结果。2026-09-10 的官方 1080p24 不限速扫描、独立 TPU 负载组见 [容量报告](../hdmi_wall/docs/capacity-validation.md)；与 HDMI 真实视频推理的区别见 [数据总览](../hdmi_wall/docs/current-data.md)。两类素材与并发条件不同，不直接比较峰值。
+下表保留 2026-09-08 的历史纯解码结果。2026-09-10 的官方 1080p24 不限速扫描、独立 TPU 负载组见 [容量报告](../hdmi_wall/docs/archive/capacity-validation.md)；与 HDMI 真实视频推理的区别见 [数据总览](../hdmi_wall/docs/current-data.md)。两类素材与并发条件不同，不直接比较峰值。
 
 以下为 2026-09-08 的纯解码历史记录：RK3588 + 单张 BM1684X，PCIe 3.0 ×2，同一份本地 H.264、1920×1080、25 FPS、约 8 Mbps 视频由 30 路独立读取。视频为本地准备的 20 分钟版本，不是首次运行所用的官方默认样例。
 

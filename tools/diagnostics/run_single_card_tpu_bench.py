@@ -44,12 +44,14 @@ def write_report(directory):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, default=ROOT / 'data/results/tpu',
+                        help='Parent directory for a new, uniquely named run; existing runs are preserved')
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--calculate-times', type=int, default=5000)
     args = parser.parse_args()
     if args.device < 0 or args.calculate_times < 1:
         parser.error('device must be nonnegative and calculate-times positive')
-    directory = ROOT / 'data/results/tpu' / datetime.now().strftime('%Y%m%d_%H%M%S')
+    directory = args.output.resolve() / datetime.now().strftime('%Y%m%d_%H%M%S_%f')
     directory.mkdir(parents=True, exist_ok=False)
     print('Results: ' + str(directory), flush=True)
     results = []

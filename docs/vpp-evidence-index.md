@@ -1,5 +1,8 @@
 # 1684X 根因诊断证据索引（2026-09-28）
 
+目录整理说明：原始研究快照保持逐字节不变；依赖的历史分析器已迁入 `tools/diagnostics/legacy/`。复算时按[兼容说明](../tools/diagnostics/legacy/README.md#原始快照的复算兼容)设置模块搜索路径。
+
+
 本地：项目根目录下的 `local/rootcause-20260928/`。
 
 服务器：`/userdata/1684X-EP-demo/data/results/rootcause-20260928/`

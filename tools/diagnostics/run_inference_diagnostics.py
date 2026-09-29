@@ -159,6 +159,8 @@ def run_stage(a, directory, mode, count):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, default=ROOT / 'data/results/inference-diagnostics',
+                        help='Parent directory for a new, uniquely named run; existing runs are preserved')
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--steps', type=steps, default=[1, 2, 4, 8])
     parser.add_argument('--modes', nargs='+', choices=('compute', 'copy', 'compute-copy', 'overlap'),
@@ -172,7 +174,7 @@ def main():
     if a.device < 0 or not 0 <= a.copy_chunk_bytes <= 64*1024**2 or not a.app.is_file() or not a.bmodel.is_file():
         parser.error('Check device, compiled probe and model')
     a.app, a.bmodel = a.app.resolve(), a.bmodel.resolve()
-    directory = ROOT / 'data/results/inference-diagnostics' / datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+    directory = a.output.resolve() / datetime.now().strftime('%Y%m%d_%H%M%S_%f')
     directory.mkdir(parents=True)
     metadata = {k: str(v) if isinstance(v, Path) else v for k, v in vars(a).items()}
     metadata['host_cpu_affinity'] = sorted(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else None

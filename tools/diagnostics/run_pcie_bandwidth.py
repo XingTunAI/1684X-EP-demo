@@ -78,6 +78,8 @@ def save(directory, state, records):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, default=ROOT / 'data/results/bandwidth',
+                        help='Parent directory for a new, uniquely named run; existing runs are preserved')
     parser.add_argument('--device', type=int, required=True, help='Current bm-smi software index')
     parser.add_argument('--sizes', default='262144,2822400,16777216')
     parser.add_argument('--repeats', type=int, default=3)
@@ -91,7 +93,7 @@ def main():
         parser.error('Sizes must be positive multiples of 4, at most 64 MiB')
     if a.device < 0 or not 1 <= a.repeats <= 20 or not a.app.is_file():
         parser.error('Check device, repeats (1..20), and installed CDMA test')
-    directory = ROOT / 'data/results/bandwidth' / datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+    directory = a.output.resolve() / datetime.now().strftime('%Y%m%d_%H%M%S_%f')
     directory.mkdir(parents=True)
     print('Results: ' + str(directory), flush=True)
     config = {'device': a.device, 'sizes': sizes, 'repeats': a.repeats,

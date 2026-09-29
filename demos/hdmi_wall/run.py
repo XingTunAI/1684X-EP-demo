@@ -128,6 +128,8 @@ def add_pipeline_arguments(parser: argparse.ArgumentParser, decoder="opencv") ->
                         help="Extra decoder surfaces in linear mode (2..8); default 8. Not the inference queue length.")
     parser.add_argument("--retrieve-every", type=int, choices=range(1, 121), default=1,
                         help="Retrieve one of N decoded frames; every compressed frame is still decoded. Default 1.")
+    parser.add_argument("--local-eof", choices=("loop", "fail", "stop"), default="loop",
+                        help="Local file end: loop for display, fail to reject early EOF in a stress run.")
     parser.add_argument("--display-fps", type=int, choices=range(1, 61), default=10,
                         help="Player refresh rate (1..60), independent of inference and preview generation.")
     parser.add_argument("--wall-fps", type=nonnegative_finite, default=10.0,
@@ -230,7 +232,7 @@ def build_plan(args: argparse.Namespace) -> dict:
         str(root / "demos/hdmi_wall/build/hdmi_wall.pcie"),
         "--input", str(source), "--streams", str(args.streams), "--device", str(args.device),
         "--warmup", "3",
-        "--duration", str(args.duration), "--window", str(min(10, args.duration)), "--local-eof", "loop",
+        "--duration", str(args.duration), "--window", str(min(10, args.duration)), "--local-eof", args.local_eof,
         "--output-buffer", args.output_buffer, "--preview-fps", str(args.preview_fps), "--score-gate", args.score_gate,
         "--decoder", args.decoder, "--decoder-buffers", str(args.decoder_buffers),
         "--retrieve-every", str(args.retrieve_every), "--wall-fps", str(args.wall_fps),
@@ -265,7 +267,7 @@ def build_plan(args: argparse.Namespace) -> dict:
         "selected_device": args.device, "streams": args.streams,
         "output_buffer": args.output_buffer, "preview_fps": args.preview_fps,
         "decoder": args.decoder, "decoder_buffers": args.decoder_buffers if args.decoder == "linear" else None,
-        "retrieve_every": args.retrieve_every, "wall_fps": args.wall_fps,
+        "local_eof": args.local_eof, "retrieve_every": args.retrieve_every, "wall_fps": args.wall_fps,
         "gate_merge_budget_kib": args.gate_merge_budget_kib,
         "record_mode": args.record_mode,
         "prime_local_decoders": args.prime_local_decoders,

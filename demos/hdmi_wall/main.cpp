@@ -388,6 +388,7 @@ struct Stream {
     uint64_t previews_submitted = 0, previews_submitted_measured = 0;
     uint64_t baseline_consumed = 0;
     uint64_t decoded_previews_measured = 0;
+    uint64_t decoder_rewinds = 0;
     uint64_t catchups = 0, catchups_measured = 0, source_skipped = 0, source_skipped_measured = 0;
     Metric catchup_cost;
     Metric all_decode_read, decode_source_lag;
@@ -875,11 +876,14 @@ static void stream_thread(Shared& state, size_t id) {
                     if (!source_frame) throw std::runtime_error("Local source returned no frames");
                     if (state.config.eof == "fail") throw std::runtime_error("Local EOF before test deadline");
                     if (state.config.eof == "stop") { stream.eof_seen = true; return nullptr; }
-                    if (!state.config.local_catchup_index.empty() && !drain_decoder()) return nullptr;
-                    cap.release(); configure_capture(cap, source, state.config);
+                    // Drop the empty EOF frame's lease before draining consumers.
+                    frame.reset();
+                    if (!drain_decoder()) return nullptr;
+                    if (cap.rewind_local()) ++stream.decoder_rewinds;
+                    else { cap.release(); configure_capture(cap, source, state.config); }
                     ++source_loop; source_frame = 0; continue;
                 }
-                if (!state.config.local_catchup_index.empty()) frame->decoder_generation = decoder_generation;
+                frame->decoder_generation = decoder_generation;
                 ++sequence; ++source_frame; ++stream.decoded;
                 diagnostic_trace::session().count(static_cast<int>(id), diagnostic_trace::Session::Decoded);
                 if (state.measured(frame->after_decode)) {
@@ -1190,6 +1194,7 @@ int main(int argc, char** argv) {
                 {"retrieve_every", config.retrieve_every}, {"skipped_before_vpp", s.skipped_before_vpp}, {"skipped_before_vpp_measured", s.skipped_before_vpp_measured}, {"decoded_measured", s.decoded_measured}, {"completed_measured", s.completed_measured}, {"decoded_fps", decode_fps}, {"results_readback_measured", s.results_readback_measured}, {"model_only_measured", s.model_only_measured}, {"completed_fps", fps},
                 {"source_width", s.width}, {"source_height", s.height}, {"source_fps", std::isfinite(s.source_fps) ? json(s.source_fps) : json(nullptr)},
                 {"source_ended", s.eof_seen}, {"error", s.error},
+                {"decoder_rewinds_whole_run", s.decoder_rewinds},
                 {"local_catchup", {{"events", s.catchups}, {"events_measured", s.catchups_measured},
                     {"source_frames_skipped", s.source_skipped}, {"source_frames_skipped_measured", s.source_skipped_measured},
                     {"cost_ms", s.catchup_cost.summary()}, {"note", "Source frames skipped before decode; not decoder outputs or policy drops. Source clock is never rebased."}}},

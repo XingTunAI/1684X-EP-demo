@@ -28,6 +28,31 @@ int main(int argc, char** argv) {
             }
             ++frames;
         }
+        // Rewinding while a consumer owns a surface must not invalidate it.
+        bool rejected = false;
+        try { capture.rewind_local(); } catch (const std::runtime_error&) { rejected = true; }
+        if (!rejected) throw std::runtime_error("Outstanding lease was not rejected");
+        retained.release(); lease.reset();
+        for (int loop = 0; loop < 3; ++loop) {
+            if (!capture.rewind_local()) throw std::runtime_error("Linear rewind unsupported");
+            int count = 0;
+            for (;;) {
+                auto owner = capture.lease();
+                cv::Mat frame;
+                capture >> frame;
+                if (frame.empty()) break;
+                if (!count) {
+                    cv::Mat first;
+                    if (cv::bmcv::toMAT(frame, first, true) != BM_SUCCESS ||
+                        cv::norm(reference, first, cv::NORM_INF) != 0)
+                        throw std::runtime_error("Rewind first-frame content mismatch");
+                }
+                ++count;
+            }
+            if (count != frames) throw std::runtime_error("Rewind frame count mismatch");
+        }
+        if (!capture.rewind_local()) throw std::runtime_error("Final rewind failed");
+        lease = capture.lease(); capture >> retained;
         capture.release();
         if (frames != std::atoi(argv[2])) throw std::runtime_error("Decoded frame count differs from reference");
         cv::Mat host;
