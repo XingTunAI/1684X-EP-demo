@@ -1,77 +1,51 @@
 # RK3588 + BM1684X EP Demo
 
-最新长稳：[PCIe3 x1、24路分析＋结果回传＋不限频预览，一小时完成](docs/pcie3-wall24-1h-20260924.md)：总推理284.69FPS、有效预览11.86FPS/路、最长分析空窗0.134秒；不等同32路或四小时验收。
+在 RK3588 Linux 主机上通过 PCIe 使用 BM1684X，提供视频检测、HDMI 多路视频墙、硬件解码与性能诊断。HDMI 展示支持选择 **1–4 张卡**，每卡路数可配置。
 
-**[PCIe性能调查：阅读顺序、文档目的与结论边界](docs/pcie-reading-guide.md)**
+[环境准备](docs/setup.md) · [模型与素材](data/README.md) · [文档导航](docs/README.md) · [性能说明](docs/performance-overview.md)
 
-在 RK3588 Linux ARM64 主机上通过 PCIe 使用 BM1684X，提供视频检测、HDMI 多路视频墙、硬件解码和模型 / 传输诊断。代码用于开发、演示和性能验证；每份实测报告单独注明输入、配置及验证范围。
+## 运行 Demo
 
-**[完整文档索引](docs/README.md)** · **[当前性能数据总览](demos/hdmi_wall/docs/current-data.md)** · [参数与读数](docs/metrics.md)
-
-本轮专项：[PCIe 2.0 ×1 回传、TPU 与双向传输实测](docs/readback-performance.md)（2026-09-22，同卡分阶段对照及 YOLOv8 优化验证）。
-
-## 从哪里开始
-
-1. [进入设备并准备环境](docs/setup.md)：ADB / SSH、在 `/userdata` 取得仓库、SDK 和构建工具。
-2. [准备模型与素材](data/README.md)：官方资源、自有输入、缺失文件恢复和输出位置。Git 不包含 SDK 包、模型、视频和运行日志。
-3. 根据下面的用途选择 Demo，先完成短时运行，再进行多路或长时测试。
-
-## Demo 列表
-
-| 你要做什么 | 入口与说明 |
+| 用途 | 入口 |
 |---|---|
-| 多路画面显示到 HDMI，多卡分页、展示和压测 | **[HDMI 视频墙](demos/hdmi_wall/README.md)** |
-| 用 YOLOv8 做单卡 / 多卡视频检测，保存结果 | [YOLOv8](demos/yolov8/README.md) |
-| 用 YOLO26 做单卡 / 多卡视频检测 | [YOLO26](demos/yolo26/README.md) |
-| 单独测量硬件解码进度和速率 | [硬件解码](demos/decode/README.md) |
-| 检查模型执行、结果回传和 PCIe 传输 | [模型与传输诊断](tools/diagnostics/README.md) |
+| 多卡 HDMI 视频墙、展示与压测 | [HDMI 视频墙](demos/hdmi_wall/README.md) |
+| YOLOv8 单卡 / 多卡视频检测 | [YOLOv8](demos/yolov8/README.md) |
+| YOLO26 单卡 / 多卡视频检测 | [YOLO26](demos/yolo26/README.md) |
+| 单独检查硬件解码 | [解码 Demo](demos/decode/README.md) |
+| 排查计算、回传与解码性能 | [诊断工具：按问题选择](tools/diagnostics/README.md) |
 
-各入口的设备、路数和时长参数以自身文档为准。例如 HDMI 单卡用 `--device`，多卡用 `--devices`；正式测量时长不包含初始化、预热与收尾。
+先按环境说明准备 SDK、模型和素材。以下命令在板端仓库根目录运行，设备编号以实际查询为准：
 
-## HDMI 效果
+```bash
+# 自动识别当前连接的 1–4 张卡，正式运行五分钟。
+# 需要先配置 HDMI 显示环境，并确认所选设备空闲。
+bash demos/hdmi_wall/showcase.sh --devices auto --streams 8 --duration 300 \
+  --preview-fps -1 --display-fps 30
 
-![双卡各 32 路 HDMI 视频墙与解码、检测、TPU 指标](demos/hdmi_wall/images/hdmi-wall-decode-metrics.png)
-
-上图是已记录的板端视频墙截图（早于 READBACK 按钮加入）：两张卡各运行 32 路，当前显示 device 0，device 1 在后台继续处理。顶部按钮可切页，每路显示解码 / 检测 FPS 和时间指标。素材为 SOPHON 官方 1080p24 车辆 / 行人视频，各通道独立读取同一文件；布局支持最多 4 张卡，实体硬件验证目前为 2 张卡。
-
-| HDMI 使用场景 | 查看文档 |
-|---|---|
-| 第一次运行，或不知道选哪个入口 | [快速开始与入口选择](demos/hdmi_wall/README.md#选择运行入口) |
-| 双卡各 32 路低回传展示，按 R 对比回传 ON / OFF | [推荐配置与开关](demos/hdmi_wall/docs/readback-toggle.md) |
-| 复现默认展示 / 压测档位，配置四小时运行 | [showcase / stress](demos/hdmi_wall/docs/showcase.md) |
-| 比较 TPU 高负载前后解码速度、停顿与落后 | [解码观测](demos/hdmi_wall/docs/decoder-observation.md) |
-| 理解 DEC、INF、LAG、AGE、STALE 等读数 | [屏幕指标](demos/hdmi_wall/docs/wall-indicators.md) |
-| 理解命令中的配置参数 | [命令参数](demos/hdmi_wall/docs/parameters.md) |
-| 查实测数据和 PCIe 对比原因 | [实测索引](demos/hdmi_wall/docs/results.md) · [PCIe 对比](demos/hdmi_wall/docs/pcie-comparison.md) |
-
-输入帧率、解码帧率、检测帧率和拼屏刷新率是不同指标。当前官方素材的 32 路目标为 32×24＝768 解码 FPS；输出为一幅 1920×1080 视频墙，默认整墙刷新上限10 FPS；底层程序现支持取消单路预览及整墙主动限频，脚本入口和播放器需分别配置，见[参数说明](demos/hdmi_wall/docs/parameters.md#单路预览不限频2026-09-24)。四小时是长时入口的默认配置，尚未完成四小时稳定性验收。截图来源及历史公路素材署名见 [素材说明](demos/hdmi_wall/docs/results.md#截图素材)。
-
-## 文档与结果
-
-| 内容 | 文档 |
-|---|---|
-| 环境、连接、SDK | [环境准备](docs/setup.md) |
-| PCIe、输出字节数、阶段耗时、FPS 的计算方法 | [完整计算流程](docs/performance-calculations.md) |
-| 卡的理论计算、实测差距与参数释义 | [BM1684X-EP 性能说明](docs/card-performance-explained.md) |
-| 视频、模型、SDK 包和运行产物存放位置 | [数据目录](data/README.md) |
-| FPS、阶段耗时、帧年龄、完整性与统计口径 | [输出指标](docs/metrics.md) |
-| HDMI 当前验证与历史记录 | [HDMI 实测索引](demos/hdmi_wall/docs/results.md) |
-| 其他 Demo 的实测 | [YOLOv8](demos/yolov8/README.md#实际运行数据) · [YOLO26](demos/yolo26/README.md#实际运行数据) · [解码](demos/decode/README.md#实际运行数据) · [诊断](tools/diagnostics/README.md#实际运行数据) |
-
-## 仓库结构
-
-```text
-demos/
-  hdmi_wall/       HDMI 视频墙、展示 / 压测、解码观测
-  yolov8/          YOLOv8 源码、构建与运行
-  yolo26/          YOLO26 源码、构建与运行
-  decode/          视频硬件解码
-  common/          两个 YOLO 入口共用的进程管理
-docs/              环境、输出指标等共享说明
-scripts/           SDK 安装与官方资源准备
-tools/diagnostics/ 模型与传输诊断
-data/              本地输入、模型、结果及 SDK 包
-third_party/       下载到本地的官方依赖源码和资源
+# 提前结束由该入口启动的任务。
+bash demos/hdmi_wall/showcase.sh --stop
 ```
 
-官方参考：[SOPHON 示例](https://github.com/sophgo/sophon-demo)、[开发资料](https://developer.sophgo.com/site/index/material/all/all.html)。
+也可手动选择设备：`--devices 0`（单卡）、`--devices 0,1`（双卡）、`--devices 0,1,2`（三卡）、`--devices 0,1,2,3`（四卡）。这些编号仅作示例，可使用实际存在的不连续编号；一次只运行其中一种配置。`--streams 16` 可将每卡路数改为 16。
+
+上面的命令使用每卡 8 路，取消单路预览限频，并将播放器刷新率设为 30 FPS；本轮每路预览提交约 24 FPS。16 / 24 路分别约 17–18 / 11–12 FPS；32 路约 7.5–8.7 FPS，保留多路展示用途，但达不到源视频 24 FPS 的流畅度。[4 / 8 / 16 / 24 / 32 路效果](demos/hdmi_wall/docs/layouts.md)。
+
+showcase 不附加上述预览参数时，默认采用线性解码输出、8 块额外缓冲、官方 1080p24 素材、每卡 32 路、每路预览上限 3 FPS。完整配置与素材限制见[运行说明](demos/hdmi_wall/docs/linear-materials.md)。
+
+## 已记录的测试结果
+
+2026-09-29，三卡各 32 路、每卡正式 300 秒：两张 PCIe2 ×1 卡分别为 **278.10 / 280.91 FPS**，一张 PCIe3 ×1 卡为 **281.09 FPS**。96 路都有检测结果，卡 0 有年龄超限丢帧。详见[三卡测试记录](demos/hdmi_wall/docs/three-card.md)。
+
+这些是每卡全部通道合计的检测速度，平均每路约 8.7–8.8 FPS；各通道独立读取同一本地视频。三卡结果只代表本次配置；四卡尚未上板验证，不能按单卡结果直接相乘。五分钟测试不代表四小时稳定性或独立网络摄像头验收。[指标解释](docs/performance-overview.md) · [完整数据与历史对照](demos/hdmi_wall/docs/current-data.md) · [线性输出优化机制](docs/vpp-root-cause.md)
+
+## HDMI 画面
+
+![历史双卡视频墙截图](demos/hdmi_wall/images/hdmi-wall-decode-metrics.png)
+
+上图为历史双卡界面，不是本次三卡测试截图。各卡分页显示，切页时其他卡继续处理。截图来源见[素材与历史记录](demos/hdmi_wall/docs/results.md#截图素材)。
+
+## 目录
+
+`demos/` 保存运行入口与源码，`tools/diagnostics/` 保存诊断工具，`scripts/` 准备资源，`docs/` 保存共享说明与调查报告。模型、视频、SDK 和完整日志放在本地 `data/`，不随 Git 分发。历史实验和复算工具通过文档索引查阅。
+
+官方参考：[SOPHON 示例](https://github.com/sophgo/sophon-demo) · [开发资料](https://developer.sophgo.com/site/index/material/all/all.html)

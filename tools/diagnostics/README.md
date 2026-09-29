@@ -1,12 +1,46 @@
 # 模型与传输诊断
 
-2026-09-28 的 VPP 等待及解码格式调查见[根因报告](../../docs/vpp-root-cause.md)。当时使用的观察器、采集和分析脚本以及选定输入摘要保存在[研究快照](studies/rootcause-20260928/README.md)，按原始路径恢复后复算。
+[仓库首页](../../README.md) · [完整脚本清单](SCRIPT_GUIDE.md) · [性能说明](../../docs/performance-overview.md)
 
-最新诊断结果：[同卡DMA/VPP矩阵](../../docs/dma-vpp-link-20260924.md)、[无飞线PCIe2带宽](../../docs/pcie2-direct-bandwidth-20260924.md)、[传输成本计算](../../docs/pcie-transfer-cost-20260924.md)。矩阵脚本包含特定设备/BDF及链路变速操作，属于实验入口，运行前须核对目标、空闲状态和恢复配置，不是通用即用基准。应用DMA上限不等同物理链路饱和。
+先按要解决的问题选择入口。日常使用下面五项即可；本目录其他脚本主要保留特定日期的性能调查过程，不需要逐个运行。
 
-[仓库首页](../../README.md) / [文档索引](../../docs/README.md)
+## 我应该运行哪个
 
-本目录包含独立模型执行、输出回传、PCIe 传输和 YOLOv8 图像结果检查，以及文末的多路业务对照。所有命令从仓库根目录执行，运行依赖对应 SOPHON SDK；多路业务对照会按配置启动视频墙和编码。
+| 要解决的问题 | 入口 | 先看什么结果 |
+|---|---|---|
+| 选择 1–4 张卡跑视频，观察整体性能和稳定性 | [showcase](../../demos/hdmi_wall/docs/linear-materials.md)，不需要诊断脚本 | 各卡 summary、正式窗口 TPU、最慢一路和最长无结果间隔；[三卡五分钟记录](../../demos/hdmi_wall/docs/three-card.md) |
+| 分清模型计算慢，还是完整输出回读慢 | `run_inference_diagnostics.py` | `report.md` 的 compute / copy / compute-copy 对比 |
+| 单独测主机与卡之间的传输速度 | `run_pcie_bandwidth.py` | `bandwidth.csv`，分方向、数据块大小和计时范围比较 |
+| 单独测模型 batch 1 / 4 的计算时间 | `run_single_card_tpu_bench.py` | 输出目录中的计时记录，区分每 batch 与每张图 |
+| 检测负载是否拖慢解码 | `run_decode_capacity.py` | 同一路数的 baseline / loaded 对比及 `full_load_observed` |
+| 检查一张图的检测框是否正确 | `build/detector_check.pcie` | 输出 JSON 中的类别、框与分数；不自动计算准确率 |
+
+## 第一次使用：一次只回答一个问题
+
+以下命令在 Linux 板端仓库根目录运行，先确认所选卡空闲。设备编号以现场查询为准。已有 SDK、模型和构建产物时，无需重复下载。
+
+```bash
+# 先看模型计算与输出读取，每种模式一个进程、正式 10 秒。
+python3 tools/diagnostics/run_inference_diagnostics.py \
+  --device 0 --steps 1 --modes compute copy compute-copy \
+  --warmup 3 --duration 10
+
+# 如需进一步检查传输，再单独运行；此入口不修改 PCIe 链路速率。
+python3 tools/diagnostics/run_pcie_bandwidth.py --device 0
+```
+
+每次运行记下终端打印的结果目录。先检查状态和错误，再读汇总；固定输入的模型速度不等于视频检测速度。如果目标只是运行优化后的 Demo，直接使用 showcase，线性输出＋8 块额外缓冲已经接入，无需加载历史诊断包装库。
+
+前三个 Python 常用工具以及 `run_decode_capacity.py` 支持 `--help`，可查看参数。**不要把这一点推广到所有历史脚本**：例如 `run_dma_vpp_matrix.py` 有固定 BDF 和链路切换逻辑，应先阅读对应报告、脚本配置和恢复步骤。
+
+## 如何选择后续诊断
+
+- 检测速度低：先看逐路结果是否持续，再用驻留模型工具区分计算与输出读取；不要只看 TPU 利用率。
+- 预处理时间高：先确认使用线性输出和 8 块额外缓冲，已有机制说明见 [VPP 根因报告](../../docs/vpp-root-cause.md)。
+- 换素材后画面长期不更新：先检查源帧率、逐路 STALE 和年龄淘汰，参考[素材验收](../../demos/hdmi_wall/docs/linear-materials.md)，再决定是否复现素材实验。
+- 需要复算旧报告：在[完整脚本清单](SCRIPT_GUIDE.md)找到分析器和对应报告，按报告的数据路径准备输入；不需要重跑硬件实验。
+
+下文保留各常用工具的完整参数、输出与历史结果。
 
 ## 构建与入口
 

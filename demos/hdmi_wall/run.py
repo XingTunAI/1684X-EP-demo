@@ -75,9 +75,11 @@ def observation_preview_fps(value: str) -> float:
 
 
 def detection_preview_fps(value: str) -> float:
+    if value in ("-1", "-1.0"):
+        return -1.0
     number = nonnegative_finite(value)
     if number > 10:
-        raise argparse.ArgumentTypeError("must be between 0 and 10 FPS; 0 disables detection previews")
+        raise argparse.ArgumentTypeError("must be -1 (uncapped) or between 0 and 10 FPS; 0 disables previews")
     return number
 
 
@@ -126,6 +128,8 @@ def add_pipeline_arguments(parser: argparse.ArgumentParser, decoder="opencv") ->
                         help="Extra decoder surfaces in linear mode (2..8); default 8. Not the inference queue length.")
     parser.add_argument("--retrieve-every", type=int, choices=range(1, 121), default=1,
                         help="Retrieve one of N decoded frames; every compressed frame is still decoded. Default 1.")
+    parser.add_argument("--display-fps", type=int, choices=range(1, 61), default=10,
+                        help="Player refresh rate (1..60), independent of inference and preview generation.")
     parser.add_argument("--wall-fps", type=nonnegative_finite, default=10.0,
                         help="Wall composition rate, 0..120; 0 removes pacing, independently of per-stream preview FPS.")
 
@@ -252,7 +256,7 @@ def build_plan(args: argparse.Namespace) -> dict:
     worker.extend(["--output", str(output)])
     player = [
         "/usr/bin/ffplay", "-fs", "-f", "rawvideo", "-pixel_format", "bgr24",
-        "-video_size", "1920x1080", "-framerate", "10", "-an", "-i", str(output / "preview.bgr"),
+        "-video_size", "1920x1080", "-framerate", str(args.display_fps), "-an", "-i", str(output / "preview.bgr"),
     ]
     return {
         "output": str(output), "worker_command": worker, "player_command": player,

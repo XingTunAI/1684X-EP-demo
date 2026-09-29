@@ -54,8 +54,8 @@ def normalize_device_overrides(value: object) -> dict:
                     raise ValueError(f"Device {key}: output_buffer must be baseline or reuse")
                 continue
             if name == "preview_fps":
-                if type(number) not in (int, float) or not math.isfinite(number) or not 0 <= number <= 10:
-                    raise ValueError(f"Device {key}: preview_fps must be finite and in [0,10]")
+                if type(number) not in (int, float) or not math.isfinite(number) or not (number == -1 or 0 <= number <= 10):
+                    raise ValueError(f"Device {key}: preview_fps must be -1 (uncapped) or finite and in [0,10]")
                 continue
             low, high = (1, 32) if name == "streams" else (0, 32) if name == "active_limit" else (0, 1024)
             if not isinstance(number, int) or isinstance(number, bool) or not low <= number <= high:
@@ -212,7 +212,7 @@ def build_plan(args: argparse.Namespace) -> dict:
                      "streams": item["streams"], "status": "starting",
                      **({"pcie_link_label": pcie_labels[item["device"]]} if item["device"] in pcie_labels else {})}
                     for item in workers],
-        "width": 1920, "height": 1080, "fps": 10, "supervised_close": True,
+        "width": 1920, "height": 1080, "fps": args.display_fps, "supervised_close": True,
         "readback_control": str(output / "readback-control.json") if args.inference == "on" else None,
     }
     return {

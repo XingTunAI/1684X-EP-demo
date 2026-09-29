@@ -344,6 +344,8 @@ private:
         cv::putText(canvas, text, cv::Point(x, y), cv::FONT_HERSHEY_SIMPLEX,
                     scale, color, weight, cv::LINE_AA);
     }
+    int grid_columns() const { return count_ <= 1 ? 1 : count_ <= 4 ? 2 : count_ <= 16 ? 4 : 6; }
+    int grid_rows() const { return static_cast<int>((count_ + grid_columns() - 1) / grid_columns()); }
     cv::Mat render(const std::vector<Frame>& frames, Time now, const ViewSnapshot& view) {
         if (!readback_enabled_.load()) {
             cv::Mat canvas(1080, 1920, CV_8UC3, cv::Scalar(18, 11, 7));
@@ -363,17 +365,19 @@ private:
             if (row.target_fps > 0) target += row.target_fps; else target_known = false;
         }
         label(canvas, "TOTAL DEC " + number(decoded) + " / TARGET " + (target_known ? number(target) : "--") +
-              " FPS | TOTAL INF " + number(inferred) + " FPS | Rolling 2s | HDMI cap 10 FPS", 20, 58, .52, cyan);
-        for (size_t id = 0; id < 36; ++id) {
-            const int x = static_cast<int>(id % 6) * 320;
-            const int y = 72 + static_cast<int>(id / 6) * 168;
-            const cv::Rect tile(x + 1, y + 1, 318, 166);
+              " FPS | TOTAL INF " + number(inferred) + " FPS | Rolling 2s | Wall " + (wall_fps_ > 0 ? number(wall_fps_) + " FPS cap" : "uncapped"), 20, 58, .52, cyan);
+        const int columns = grid_columns(), rows = grid_rows();
+        const int cell_width = 1920 / columns, cell_height = 1008 / rows;
+        for (size_t id = 0; id < static_cast<size_t>(columns * rows); ++id) {
+            const int x = static_cast<int>(id % columns) * cell_width;
+            const int y = 72 + static_cast<int>(id / columns) * cell_height;
+            const cv::Rect tile(x + 1, y + 1, cell_width - 2, cell_height - 2);
             cv::rectangle(canvas, tile, cv::Scalar(40, 38, 34), -1);
             if (id >= frames.size()) {
                 const size_t note = (id - frames.size()) % 4;
                 const std::string channel_title = std::to_string(count_) + " INDEPENDENT CHANNELS";
                 const char* headings[] = {channel_title.c_str(), "DECODE TIMING", "DISPLAY RATE", "SOURCE AND STATUS"};
-                const char* lines[] = {"DEC / INF: separate FPS", "LAG: decode vs source clock", "Preview capped 10 FPS", "SLOW / STALL: decoder"};
+                const char* lines[] = {"DEC / INF: separate FPS", "LAG: decode vs source clock", "Preview cap set by launcher", "SLOW / STALL: decoder"};
                 const char* sublines[] = {"All decodes before dropping", "AGE: since last decode", "SRC: result source age", "STALE: old detection image"};
                 label(canvas, headings[note], x + 12, y + 46, .49, cyan, 1);
                 label(canvas, lines[note], x + 12, y + 83, .50, white);
@@ -389,21 +393,21 @@ private:
                 // source count, while the image and its boxes stay together.
                 if (scaled.image.empty() || scaled.source_count != frame.count ||
                     scaled.source_updated != frame.updated) {
-                    const double scale = std::min(316.0 / frame.image.cols, 164.0 / frame.image.rows);
-                    const int width = std::max(1, std::min(316, static_cast<int>(frame.image.cols * scale)));
-                    const int height = std::max(1, std::min(164, static_cast<int>(frame.image.rows * scale)));
+                    const double scale = std::min((cell_width - 4.0) / frame.image.cols, (cell_height - 4.0) / frame.image.rows);
+                    const int width = std::max(1, std::min(cell_width - 4, static_cast<int>(frame.image.cols * scale)));
+                    const int height = std::max(1, std::min(cell_height - 4, static_cast<int>(frame.image.rows * scale)));
                     cv::resize(frame.image, scaled.image, cv::Size(width, height), 0, 0, cv::INTER_LINEAR);
                     scaled.source_count = frame.count;
                     scaled.source_updated = frame.updated;
                 }
                 const int width = scaled.image.cols, height = scaled.image.rows;
-                scaled.image.copyTo(canvas(cv::Rect(x + (320 - width) / 2, y + (168 - height) / 2, width, height)));
+                scaled.image.copyTo(canvas(cv::Rect(x + (cell_width - width) / 2, y + (cell_height - height) / 2, width, height)));
             } else {
                 scaled.image.release();
                 label(canvas, "WAITING FOR INFERENCE", x + 32, y + 91, .48, gray);
             }
-            cv::rectangle(canvas, cv::Rect(x + 2, y + 2, 316, 23), cv::Scalar(16, 15, 12), -1);
-            cv::rectangle(canvas, cv::Rect(x + 2, y + 131, 316, 35), cv::Scalar(16, 15, 12), -1);
+            cv::rectangle(canvas, cv::Rect(x + 2, y + 2, cell_width - 4, 23), cv::Scalar(16, 15, 12), -1);
+            cv::rectangle(canvas, cv::Rect(x + 2, y + cell_height - 37, cell_width - 4, 35), cv::Scalar(16, 15, 12), -1);
             std::ostringstream top, bottom, timing;
             const auto& row = view.metrics[id];
             top << "CH " << std::setw(2) << std::setfill('0') << id + 1 << "  DEC " << number(row.decode_fps) << "  INF " << number(row.infer_fps);
@@ -415,12 +419,12 @@ private:
             timing << "  drop " << frame.policy_drops;
             label(canvas, top.str(), x + 9, y + 18, .45, white);
             const cv::Scalar decode_color = row.stalled ? red : row.sustained_slow ? cv::Scalar(90, 185, 250) : gray;
-            label(canvas, bottom.str(), x + 9, y + 144, .38, decode_color);
-            label(canvas, timing.str(), x + 9, y + 160, .38, gray);
+            label(canvas, bottom.str(), x + 9, y + cell_height - 24, .38, decode_color);
+            label(canvas, timing.str(), x + 9, y + cell_height - 8, .38, gray);
             if (row.stalled || row.sustained_slow) cv::rectangle(canvas, tile, decode_color, 2);
             if (age_ms > 2000) {
-                cv::rectangle(canvas, cv::Rect(x + 237, y + 29, 78, 23), cv::Scalar(16, 15, 12), -1);
-                label(canvas, "STALE", x + 245, y + 46, .46, red, 2);
+                cv::rectangle(canvas, cv::Rect(x + cell_width - 83, y + 29, 78, 23), cv::Scalar(16, 15, 12), -1);
+                label(canvas, "STALE", x + cell_width - 75, y + 46, .46, red, 2);
                 cv::rectangle(canvas, tile, red, 2);
             }
         }
@@ -657,7 +661,7 @@ private:
             std::ofstream file(status + ".tmp", std::ios::trunc);
             file.exceptions(std::ios::failbit | std::ios::badbit);
             file << "{\n  \"timestamp_unix_ms\": " << unix_millis()
-                 << ",\n  \"width\": 1920, \"height\": 1080, \"columns\": 6, \"rows\": 6,"
+                 << ",\n  \"width\": 1920, \"height\": 1080, \"columns\": " << grid_columns() << ", \"rows\": " << grid_rows() << ","
                  << "\n  \"preview_fps_cap\": " << wall_fps_ << ", \"channels\": " << count_
                  << ", \"device\": " << device_ << ", \"model\": " << quote(model_name_)
                  << ", \"policy\": " << quote(policy_)

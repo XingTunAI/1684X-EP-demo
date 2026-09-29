@@ -1,59 +1,34 @@
-# 文档索引
+# 文档导航
 
-**[PCIe性能调查：阅读顺序、文档目的与结论边界](pcie-reading-guide.md)**
-
-2026-09-28 更新：[VPP 预处理等待根因与解码格式验证](vpp-root-cause.md)，附[原始归档和复算索引](vpp-evidence-index.md)。
-
-新增实测：[PCIe 2.0 ×1 回传影响、双向传输与各 Demo 对照](readback-performance.md)。
-
-[仓库首页](../README.md)
-
-从运行指南找到可执行命令，从指标文档确认口径，再阅读对应测试报告。所有运行命令除另有标注外，均在板端仓库根目录 `/userdata/1684X-EP-demo` 执行。
+[仓库首页](../README.md) · [全部文档目录](catalog.md)
 
 ## 准备与运行
 
-| 内容 | 文档 |
+| 目的 | 文档 |
 |---|---|
-| ADB / SSH、刷机后恢复、SDK、源码更新 | [环境准备](setup.md) |
-| 模型、视频、长素材缓存、输出目录 | [数据与资源](../data/README.md) |
-| HDMI 单卡、多卡与演示入口选择 | [HDMI README](../demos/hdmi_wall/README.md) |
-| 双卡各 32 路低回传展示、R 键开关 | [回传开关与推荐命令](../demos/hdmi_wall/docs/readback-toggle.md) |
-| 旧默认 showcase / stress、四小时设置 | [展示与压测](../demos/hdmi_wall/docs/showcase.md) |
-| YOLOv8 / YOLO26 检测并保存结果 | [YOLOv8](../demos/yolov8/README.md) · [YOLO26](../demos/yolo26/README.md) |
-| 纯解码、模型计算和传输隔离 | [硬件解码](../demos/decode/README.md) · [诊断工具](../tools/diagnostics/README.md) |
+| 连接设备、准备 SDK 与构建环境 | [环境准备](setup.md) |
+| 下载模型与素材、查找输出位置 | [数据与资源](../data/README.md) |
+| 选择路数、看实际画面与流畅度 | [4 / 8 / 16 / 24 / 32 路效果](../demos/hdmi_wall/docs/layouts.md) |
+| 运行多卡视频墙与当前优化配置 | [HDMI 入口](../demos/hdmi_wall/README.md)、[线性解码与素材](../demos/hdmi_wall/docs/linear-materials.md) |
+| 运行其他 Demo | [YOLOv8](../demos/yolov8/README.md)、[YOLO26](../demos/yolo26/README.md)、[硬件解码](../demos/decode/README.md) |
+| 不出画面、设备或进程异常 | [显示排错](../demos/hdmi_wall/docs/display.md)、[多设备运行](../demos/hdmi_wall/docs/multi-device.md) |
 
-普通 YOLOv8 主入口固定要求 1080p25，本板官方默认素材为 1080p24；按其 README 显式准备兼容输入。HDMI 与 YOLO26 使用各自的输入契约，不要混用不同入口的参数。
+## 理解结果与排查性能
 
-## 参数、读数和计算
-
-| 要解决的问题 | 文档 |
+| 目的 | 文档 |
 |---|---|
-| 每个命令参数怎么用 | [HDMI 参数](../demos/hdmi_wall/docs/parameters.md)；其他入口见各自 README |
-| 屏幕 DEC、INF、TPU、LAG、AGE、STALE 的含义 | [屏幕指标](../demos/hdmi_wall/docs/wall-indicators.md) |
-| JSON / CSV 字段、帧计数、耗时和回传开关统计 | [指标定义](metrics.md) |
-| TPU / VPU、理论算力与真实业务有什么区别 | [卡的能力说明](card-performance-explained.md) |
-| PCIe 带宽、输出字节数、调用时间与 FPS 怎么计算 | [计算流程](performance-calculations.md) |
+| 理解路数、FPS、TPU 与测试范围 | [性能说明](performance-overview.md) |
+| 看最新实测与历史差异 | [三卡五分钟测试](../demos/hdmi_wall/docs/three-card.md)、[数据总览](../demos/hdmi_wall/docs/current-data.md) |
+| 选择诊断工具 | [常用诊断入口](../tools/diagnostics/README.md)、[完整脚本清单](../tools/diagnostics/SCRIPT_GUIDE.md) |
+| 理解线性输出＋额外缓冲解决的问题 | [VPP 根因报告](vpp-root-cause.md) |
+| 追溯 PCIe 调查过程 | [调查阅读顺序](pcie-reading-guide.md)、[证据索引](vpp-evidence-index.md) |
+| 查看参数和指标定义 | [命令参数](../demos/hdmi_wall/docs/parameters.md)、[屏幕指标](../demos/hdmi_wall/docs/wall-indicators.md)、[输出字段](metrics.md) |
+| 核对公式与硬件规格 | [计算流程](performance-calculations.md)、[卡的参数说明](card-performance-explained.md) |
 
-## 数据与证据
+## 维护约定
 
-| 范围 | 文档 |
-|---|---|
-| 当前配置、旧默认、ON / OFF 与隔离测试放在一起比较 | **[当前数据总览](../demos/hdmi_wall/docs/current-data.md)** |
-| 所有 HDMI 测试的日期、时长、run ID 与原报告 | [实测索引](../demos/hdmi_wall/docs/results.md) |
-| 真实解码图像与推理结果的放大对照 | [解码观测](../demos/hdmi_wall/docs/decoder-observation.md) |
-| 旧默认 20 / 32 路差异与调用耗时 | [PCIe 对比分析](../demos/hdmi_wall/docs/pcie-comparison.md) |
-| 驻留模型、完整输出回读、TPU 满载时独立解码 | [容量与瓶颈实测](../demos/hdmi_wall/docs/capacity-validation.md) |
-| 四小时未通过的已知证据 | [长跑故障记录](../demos/hdmi_wall/docs/incident-20260910.md) |
+运行入口与模块测试放在对应 Demo；共享定义和跨模块调查放在 `docs/`。常用诊断入口与历史实验的用途分别在诊断 README 和脚本清单说明。
 
-历史报告保留原始数字与命令，标题或开头注明测试阶段；不代表当前推荐。新报告需记录输入实际 FPS、模型、链路、单卡 / 双卡并发、所有关键配置、预热 / 正式时长、计数区间、TPU 样本和已知限制。跨版本比较说明同时变化的条件，不把配置允许值或短测峰值写成已验收能力。
+新增报告记录输入、模型、设备链路、关键配置、正式时长和逐路连续性，注明适用范围。历史结果保留原条件；当前推荐只在运行说明维护，其他页面用链接引用。修改后检查受影响测试、文档链接及 `git diff --check`。
 
-## 开发与排错
-
-| 内容 | 文档 |
-|---|---|
-| 通过 ADB / SSH 启动到 HDMI、显示权限 | [显示排错](../demos/hdmi_wall/docs/display.md) |
-| 多卡切页、进程与停止 | [多设备运行](../demos/hdmi_wall/docs/multi-device.md) |
-| latest 调度、帧所有权、计数与测试 | [实时调度实现](../demos/hdmi_wall/docs/realtime.md) |
-| 检测器来源与输出缓冲适配 | [检测器代码说明](../demos/yolov8/detector/README.md) |
-
-Git 保存代码、文档、截图及选定的汇总 JSON；完整日志、模型、视频、SDK 和故障原始归档保留在本地数据目录。文档中的本地证据路径是定位说明，不应做成 GitHub 上不存在的下载链接。
+模型、视频、SDK、完整日志与本地工作资料按 `.gitignore` 保存，忽略不代表可以删除。日期报告的忽略例外需逐项添加。历史脚本和证据清单保留路径，移动前检查导入、命令引用和校验清单；本地证据路径用代码文字表示，避免形成无法在线访问的下载链接。

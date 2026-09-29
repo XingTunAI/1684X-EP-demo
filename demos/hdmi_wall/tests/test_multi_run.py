@@ -41,7 +41,8 @@ class PlanTests(unittest.TestCase):
             self.assertEqual(worker["infer_fps"], 0)
             self.assertEqual(worker["output_buffer"], "reuse")
         self.assertEqual(runner.normalize_device_overrides({"0": {"preview_fps": 0}})["0"]["preview_fps"], 0)
-        for value in (True, -1, 11, float("nan"), "3"):
+        self.assertEqual(runner.normalize_device_overrides({"0": {"preview_fps": -1}})["0"]["preview_fps"], -1)
+        for value in (True, -0.5, 11, float("nan"), "3"):
             with self.assertRaises(ValueError):
                 runner.normalize_device_overrides({"0": {"preview_fps": value}})
 

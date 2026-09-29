@@ -1,5 +1,7 @@
 # 线性输出＋8个缓冲后的总推理FPS优化
 
+当前使用入口：线性输出＋8 块额外缓冲已接入正式 showcase 默认配置，见[运行配置与验收](../demos/hdmi_wall/docs/linear-materials.md)。本文保留接入前的诊断方法与原始实验条件。
+
 后续换用1080p25公路素材时，32路在PCIe2和PCIe3均出现大面积STALE，见[失败记录](linear-1080p25-stale.md)。下列结果限定本次1080p24素材，不能推广为通用稳定配置。
 
 2026-09-28。本轮固定线性解码输出、8个额外缓冲、YOLOv8s INT8 batch1、32路1080p24长素材、每帧retrieve（不抽帧）、latest、250ms门槛、reuse、score gate与64KiB合并。检测结果和NMS始终保留。每档预热30秒、正式60秒，同一个独立实验二进制，ffplay统一60FPS参数。

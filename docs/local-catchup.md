@@ -17,7 +17,7 @@
 
 追赶版正式窗口发生 228 / 233 次跳转，跳过 36,766 / 37,873 个源帧；平均跳转准备开销为 1092 / 1305ms。跳帧和秒级更新空窗仍然明显。两张卡实验均正常退出，32 路账目完整；这验证本地文件追赶机制可以恢复输出，不是正式产品验收。
 
-原始数据：[完整有效实验](../data/results/catchup32-drain-20260923/catchup-analysis.json)、[首版失败实验](../data/results/catchup32-20260923/catchup-analysis.json)、[第二版中断实验](../data/results/catchup32-adaptive-20260923/plan.json)。失败轮不纳入成功对比。
+原始数据：完整有效实验（本地证据：`data/results/catchup32-drain-20260923/catchup-analysis.json`）、首版失败实验（本地证据：`data/results/catchup32-20260923/catchup-analysis.json`）、第二版中断实验（本地证据：`data/results/catchup32-adaptive-20260923/plan.json`）。失败轮不纳入成功对比。
 
 验证包括板端 6 项 C++ 测试、Windows 68 项启动器测试、4 项原对照脚本测试，以及源视频/分段像素一致性检查。实验代码已在主仓库 `C:\QIU\XingTunAI\1684X-EP-demo`。
 

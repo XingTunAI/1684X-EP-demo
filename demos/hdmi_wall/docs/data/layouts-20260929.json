@@ -1,0 +1,364 @@
+{
+  "date": "2026-09-29",
+  "duration_seconds": 45,
+  "devices": {
+    "0": "PCIe2 x1",
+    "1": "PCIe2 x1",
+    "2": "PCIe3 x1"
+  },
+  "preview_fps_cap": -1,
+  "display_fps": 30,
+  "wall_fps_cap": 0,
+  "stages": {
+    "4": {
+      "run_id": "20260929T033904Z-c3722dcf",
+      "devices": {
+        "0": {
+          "total_inference_fps": 96.0,
+          "mean_preview_submissions_fps_per_channel": 24.0,
+          "minimum_inference_fps_per_channel": 24.0,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.0697975400000006,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 292.0,
+            "min_percent": 26.0,
+            "max_percent": 42.0,
+            "mean_percent": 32.44444444444444,
+            "start_monotonic_s": 95788.86450202,
+            "end_monotonic_s": 95833.86450202,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        },
+        "1": {
+          "total_inference_fps": 96.0,
+          "mean_preview_submissions_fps_per_channel": 24.0,
+          "minimum_inference_fps_per_channel": 24.0,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.06933116000000084,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 258.0,
+            "min_percent": 22.0,
+            "max_percent": 34.0,
+            "mean_percent": 28.666666666666668,
+            "start_monotonic_s": 95788.809957369,
+            "end_monotonic_s": 95833.809957369,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        },
+        "2": {
+          "total_inference_fps": 96.0,
+          "mean_preview_submissions_fps_per_channel": 24.0,
+          "minimum_inference_fps_per_channel": 24.0,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.059676587000000225,
+          "formal_tpu": {
+            "samples": 8,
+            "valid_samples": 8,
+            "read_failures": 0,
+            "sum_percent": 230.0,
+            "min_percent": 22.0,
+            "max_percent": 38.0,
+            "mean_percent": 28.75,
+            "start_monotonic_s": 95788.237801383,
+            "end_monotonic_s": 95833.237801383,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        }
+      },
+      "source_sha256": {
+        "card-0-summary.json": "7414773a5d89c6c16d8f6325b48bf4cbcf2c70ba4ae150f0fa022ea28166402c",
+        "card-1-summary.json": "bfa2594b0ea5cf16c4b2bf7ed5c599ba906231f0705b21d5a75181e009ef852e",
+        "card-2-summary.json": "65d54cf548a4ace47d26a8efda067c49cf11f03dee34b9c03850bab26ada72c9"
+      }
+    },
+    "8": {
+      "run_id": "20260929T033955Z-7a7b6dd3",
+      "devices": {
+        "0": {
+          "total_inference_fps": 192.0222222222222,
+          "mean_preview_submissions_fps_per_channel": 24.002777777777776,
+          "minimum_inference_fps_per_channel": 23.977777777777778,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.09578272599999949,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 536.0,
+            "min_percent": 56.0,
+            "max_percent": 64.0,
+            "mean_percent": 59.55555555555556,
+            "start_monotonic_s": 95841.716559472,
+            "end_monotonic_s": 95886.716559472,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        },
+        "1": {
+          "total_inference_fps": 192.0,
+          "mean_preview_submissions_fps_per_channel": 24.0,
+          "minimum_inference_fps_per_channel": 23.977777777777778,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.08318024199999918,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 546.0,
+            "min_percent": 54.0,
+            "max_percent": 66.0,
+            "mean_percent": 60.666666666666664,
+            "start_monotonic_s": 95841.702753849,
+            "end_monotonic_s": 95886.702753849,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        },
+        "2": {
+          "total_inference_fps": 192.0,
+          "mean_preview_submissions_fps_per_channel": 24.0,
+          "minimum_inference_fps_per_channel": 24.0,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.07316866600000083,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 536.0,
+            "min_percent": 54.0,
+            "max_percent": 62.0,
+            "mean_percent": 59.55555555555556,
+            "start_monotonic_s": 95840.569866165,
+            "end_monotonic_s": 95885.569866165,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        }
+      },
+      "source_sha256": {
+        "card-0-summary.json": "bd212bb1968145c8098e89e80bbed6d961408050c819a1a895099d8000ce0dbf",
+        "card-1-summary.json": "117480bb747760d37036a76c800adea0aef0bd4f802194bf6a6dd972f9271019",
+        "card-2-summary.json": "c65426de277dd0d7baa3a64ad9351a138b58b0993111eebd4332168aa7d79bca"
+      }
+    },
+    "16": {
+      "run_id": "20260929T034048Z-c8e70741",
+      "devices": {
+        "0": {
+          "total_inference_fps": 278.26666666666665,
+          "mean_preview_submissions_fps_per_channel": 17.391666666666666,
+          "minimum_inference_fps_per_channel": 17.244444444444444,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.13198628499999998,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 840.0,
+            "min_percent": 82.0,
+            "max_percent": 100.0,
+            "mean_percent": 93.33333333333333,
+            "start_monotonic_s": 95897.23025213,
+            "end_monotonic_s": 95942.23025213,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        },
+        "1": {
+          "total_inference_fps": 286.8222222222222,
+          "mean_preview_submissions_fps_per_channel": 17.926388888888887,
+          "minimum_inference_fps_per_channel": 17.77777777777778,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.1385990320000019,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 864.0,
+            "min_percent": 88.0,
+            "max_percent": 100.0,
+            "mean_percent": 96.0,
+            "start_monotonic_s": 95897.128234078,
+            "end_monotonic_s": 95942.128234078,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        },
+        "2": {
+          "total_inference_fps": 295.24444444444447,
+          "mean_preview_submissions_fps_per_channel": 18.45277777777778,
+          "minimum_inference_fps_per_channel": 18.377777777777776,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.10262501800000012,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 890.0,
+            "min_percent": 96.0,
+            "max_percent": 100.0,
+            "mean_percent": 98.88888888888889,
+            "start_monotonic_s": 95894.93462692,
+            "end_monotonic_s": 95939.93462692,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        }
+      },
+      "source_sha256": {
+        "card-0-summary.json": "9b84953d2df965f845dafab349354658451f2762afdc5fd2040b281a5dc19f67",
+        "card-1-summary.json": "c8234ab089647209f02c7b5a4a2f28719d505fafbed4cd70d3f370039eaa0853",
+        "card-2-summary.json": "e83d09e6b0ce89a4ec2f68059f8eebbd931c5e3d2071df1cdc50a8976917bac8"
+      }
+    },
+    "24": {
+      "run_id": "20260929T034144Z-9373c301",
+      "devices": {
+        "0": {
+          "total_inference_fps": 266.22222222222223,
+          "mean_preview_submissions_fps_per_channel": 11.092592592592593,
+          "minimum_inference_fps_per_channel": 11.0,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.20895687399999963,
+          "formal_tpu": {
+            "samples": 8,
+            "valid_samples": 8,
+            "read_failures": 0,
+            "sum_percent": 718.0,
+            "min_percent": 80.0,
+            "max_percent": 96.0,
+            "mean_percent": 89.75,
+            "start_monotonic_s": 95955.451547341,
+            "end_monotonic_s": 96000.451547341,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        },
+        "1": {
+          "total_inference_fps": 285.0,
+          "mean_preview_submissions_fps_per_channel": 11.875,
+          "minimum_inference_fps_per_channel": 11.822222222222223,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.18825121100000075,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 892.0,
+            "min_percent": 96.0,
+            "max_percent": 100.0,
+            "mean_percent": 99.11111111111111,
+            "start_monotonic_s": 95955.331722242,
+            "end_monotonic_s": 96000.331722242,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        },
+        "2": {
+          "total_inference_fps": 287.2222222222223,
+          "mean_preview_submissions_fps_per_channel": 11.967592592592593,
+          "minimum_inference_fps_per_channel": 11.933333333333334,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.13291933900000075,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 900.0,
+            "min_percent": 100.0,
+            "max_percent": 100.0,
+            "mean_percent": 100.0,
+            "start_monotonic_s": 95951.978449941,
+            "end_monotonic_s": 95996.978449941,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        }
+      },
+      "source_sha256": {
+        "card-0-summary.json": "df817f7a0c6a046ba854ef26bd5f983bdfb8c2b2ee9d044020196bb04a0f385f",
+        "card-1-summary.json": "6893fee3c5e69f7c581f1fff3ade70e4080316798467953520a44031be55696c",
+        "card-2-summary.json": "b798565b517e1a895db1ad1e290acc3b88763ea07032d87a027c763624fbba27"
+      }
+    },
+    "32": {
+      "run_id": "20260929T034242Z-95e200d0",
+      "devices": {
+        "0": {
+          "total_inference_fps": 238.8222222222222,
+          "mean_preview_submissions_fps_per_channel": 7.4631944444444445,
+          "minimum_inference_fps_per_channel": 7.377777777777778,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.3230914949999999,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 766.0,
+            "min_percent": 76.0,
+            "max_percent": 100.0,
+            "mean_percent": 85.11111111111111,
+            "start_monotonic_s": 96016.309005426,
+            "end_monotonic_s": 96061.309005426,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        },
+        "1": {
+          "total_inference_fps": 265.7777777777778,
+          "mean_preview_submissions_fps_per_channel": 8.305555555555555,
+          "minimum_inference_fps_per_channel": 8.222222222222221,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.290176516999999,
+          "formal_tpu": {
+            "samples": 9,
+            "valid_samples": 9,
+            "read_failures": 0,
+            "sum_percent": 858.0,
+            "min_percent": 90.0,
+            "max_percent": 100.0,
+            "mean_percent": 95.33333333333333,
+            "start_monotonic_s": 96016.08452849,
+            "end_monotonic_s": 96061.08452849,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        },
+        "2": {
+          "total_inference_fps": 277.2222222222223,
+          "mean_preview_submissions_fps_per_channel": 8.663194444444445,
+          "minimum_inference_fps_per_channel": 8.622222222222222,
+          "stale_drops_whole_run": 0,
+          "max_no_result_gap_seconds": 0.1856005129999998,
+          "formal_tpu": {
+            "samples": 8,
+            "valid_samples": 8,
+            "read_failures": 0,
+            "sum_percent": 800.0,
+            "min_percent": 100.0,
+            "max_percent": 100.0,
+            "mean_percent": 100.0,
+            "start_monotonic_s": 96011.740931584,
+            "end_monotonic_s": 96056.740931584,
+            "worker_summary_status": "measured",
+            "accounting_complete": true
+          }
+        }
+      },
+      "source_sha256": {
+        "card-0-summary.json": "4c1940c4fa04c71455d1433eee809ebfe90a0dadc600490bf796d5b0644b6ace",
+        "card-1-summary.json": "281364af915f345a3a1392455dd871c5555261e7161d6320630fc57c4bc94aef",
+        "card-2-summary.json": "a9af7dbebfc86a17b45ade905f6312158d04037a1b77f78fcd46e0c654ecd7f5"
+      }
+    }
+  }
+}

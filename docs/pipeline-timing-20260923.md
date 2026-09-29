@@ -47,4 +47,4 @@
 
 30 分钟内最大分析空窗达到 99.09 秒，长空窗与 600 秒本地文件循环重开时刻对应。已完成帧的平均耗时不能掩盖该问题；当前不能作为稳定告警验收。
 
-[原始逐路汇总](../data/results/restore24-live-preview10-20260923/r0_preview10/worker/summary.json) / [加权计时结果](../data/results/restore24-live-preview10-20260923/pipeline-timing-analysis.json) / [三档对照及循环问题](restore24-preview-results.md)。
+原始逐路汇总（本地证据：`data/results/restore24-live-preview10-20260923/r0_preview10/worker/summary.json`） / 加权计时结果（本地证据：`data/results/restore24-live-preview10-20260923/pipeline-timing-analysis.json`） / [三档对照及循环问题](restore24-preview-results.md)。

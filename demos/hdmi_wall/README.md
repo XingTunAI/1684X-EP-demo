@@ -1,8 +1,10 @@
 # HDMI 视频墙
 
-当前进展：[PCIe3 x1 24路不限频同步预览已完成一小时](../../docs/pcie3-wall24-1h-20260924.md)。默认脚本仍保持原配置；32路短测、历史Gen3 x2和新24路长测分开列于[数据总览](docs/current-data.md)。
+视频墙支持 1–4 张卡，每卡路数独立于卡数。优先看[4 / 8 / 16 / 24 / 32 路效果与命令](docs/layouts.md)：本轮 4 / 8 路每路约 24 FPS，16 / 24 路逐步降低，32 路约 7.5–8.7 FPS。**32 路可用于多路检测展示，但当前模型与流程达不到每路 24 FPS 的流畅播放。**
 
-在 RK3588 上调用 BM1684X，逐路解码、执行 YOLOv8 检测，并把图像和同帧检测框显示到 HDMI。每张卡支持配置 1–32 路，最多选择 4 张卡；多设备各有一个页面，切页时所有卡继续工作。已完成双实体卡验证，4 卡尚未上板验证。
+线性输出＋8 块额外缓冲已接入正式入口。画面展示用不限频预览配置；复现 TPU / 吞吐结果用原预览 3 FPS 配置，见[配置与素材](docs/linear-materials.md)、[数据总览](docs/current-data.md)。
+
+在 RK3588 上调用 BM1684X，逐路解码、执行 YOLOv8 检测，并把图像和同帧检测框显示到 HDMI。每张卡支持配置 1–32 路，最多选择 4 张卡；多设备各有一个页面，切页时所有卡继续工作。已完成[三卡各 32 路五分钟测试](docs/three-card.md)，4 卡尚未上板验证。
 
 ![双卡各 32 路，当前显示 device 0](images/hdmi-wall-decode-metrics.png)
 
@@ -12,7 +14,7 @@
 
 ## 2026-09-28：优化状态与调用指令
 
-现有入口可显式启用输出缓冲复用、score gate 回传合并和降低预览频率；不指定参数仍使用原默认值。板端 `build-async/hdmi_wall.pcie` 是独立实验构建，`run.py` 当前没有 `--preview-mode` 参数，也不会自动选择该构建。
+showcase / stress 已默认启用线性解码、8 块额外缓冲、输出复用、预览上限 3 FPS 和墙面不限频。普通 run / multi_run 保留 OpenCV 兼容默认值；使用下方单卡命令可显式启用线性优化。板端 `build-async/hdmi_wall.pcie` 是独立实验构建，`run.py` 当前没有 `--preview-mode` 参数，也不会自动选择该构建。
 
 ### 现有入口：单卡 32 路低回传配置
 
@@ -30,7 +32,8 @@ sudo env DISPLAY=:0 \
   --device 0 --streams 32 --model s --duration 300 \
   --input /userdata/1684X-EP-demo/data/inputs/hdmi_wall_demo_loop_2400s.mp4 \
   --policy latest --infer-fps 0 --max-frame-age-ms 250 \
-  --score-gate on --output-buffer reuse \
+  --decoder linear --decoder-buffers 8 --retrieve-every 1 \
+  --wall-fps 0 --score-gate on --output-buffer reuse \
   --gate-merge-budget-kib 64 --prime-local-decoders on \
   --preview-fps 3 --record-mode summary
 ```
@@ -43,6 +46,10 @@ sudo bash /userdata/1684X-EP-demo/demos/hdmi_wall/run.sh --stop
 
 此命令使用现有启动器及默认构建，启动器预热为 3 秒。显式指定本板已有的 2400 秒素材，其他设备先按长素材说明准备并核对路径。2026-09-28 实测默认 24.73 秒短片循环时出现 EOF 重开日志，多路源滞后达数秒，超过 250 ms 门槛后持续丢帧并显示 STALE。不要省略长素材参数；长素材规避本次 300 秒运行中的 EOF 重开，不等于已经修复循环追赶机制，也不保证任意负载下不再落后。
 
+## 路数与画面效果
+
+[每卡 4 / 8 / 16 / 24 / 32 路效果](docs/layouts.md)：自适应布局、真实截图和各档实际预览帧率。希望画面更流畅时，使用其中的 `--preview-fps -1 --display-fps 30` 示例。
+
 ## 选择运行入口
 
 多设备播放器新增 **READBACK ON / OFF** 按钮（快捷键 **R**）：所有卡一起停止或恢复模型结果与预览回传；关闭时保留真实解码、预处理和推理，改为显示各卡吞吐与 TPU 仪表页。双卡各 32 路的低回传配置、统计口径与实测见 [回传开关](docs/readback-toggle.md)。
@@ -52,7 +59,7 @@ sudo bash /userdata/1684X-EP-demo/demos/hdmi_wall/run.sh --stop
 | 首次确认单卡推理和 HDMI 正常 | `run.sh` | device 0、1 路、1800 秒，系统 ffplay | [单设备运行](docs/single-device.md) |
 | 自己指定多卡、路数和检测参数 | `multi_run.sh` | devices 0,1、每卡 32 路、1800 秒，按钮切页 | [多设备运行](docs/multi-device.md) |
 | 双卡各 32 路、已测双 TPU 100% 的展示配置 | `showcase.sh --devices 0,2` | 原 1080p24，线性 + 8 缓冲，预览 3 FPS；R 键切换 | [当前展示配置](docs/linear-materials.md) |
-| 复现默认每卡 32 路展示 | `showcase.sh --mode showcase` | 自动识别设备、每卡 32 路、4 小时 | [展示与压测](docs/showcase.md) |
+| 运行当前默认每卡 32 路展示 | `showcase.sh --mode showcase` | 自动识别设备、每卡 32 路、4 小时 | [展示与压测](docs/showcase.md) |
 | 多卡并行，采用已测高 TPU 负载档位 | `showcase.sh --mode stress` | Gen2 ×1 为 20 路，Gen3 ×2 为 32 路、4 小时 | [展示与压测](docs/showcase.md) |
 | 比较开启推理前后，解码是否降速或停顿 | `observe.sh` | 自动识别设备、每卡后台 32 路、300 秒，选 2 路放大对照 | [解码观测](docs/decoder-observation.md) |
 | 复现 device 1 的历史 30 路基准 | `benchmark.sh` | device 1、30 路、300 秒 | [单卡基准](docs/performance-30.md#每次使用统一基准入口) |
@@ -99,7 +106,7 @@ sudo env DISPLAY=:0 \
   --devices auto --mode showcase --duration 60
 ```
 
-以上命令已包含当前推荐的线性输出、8 块额外缓冲、输出复用和预览 3 FPS，不需要另加低回传 profile。本轮实测设备为 0、2，分别为 PCIe2 ×1 / PCIe3 ×1；设备编号以实际板卡为准。
+以上命令使用线性输出、8 块额外缓冲、输出复用和预览 3 FPS 的吞吐对照配置，不需要另加低回传 profile。本轮实测设备为 0、2，分别为 PCIe2 ×1 / PCIe3 ×1；设备编号以实际板卡为准。
 
 使用压测模式时，将 `--mode showcase` 改为 `--mode stress`。需要正式运行四小时，删除 `--duration 60` 或改为 `--duration 14400`；长素材准备、校验耗时及磁盘空间见 [长素材说明](docs/showcase.md#长素材与磁盘空间)。
 

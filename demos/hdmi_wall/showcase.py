@@ -171,7 +171,8 @@ def build_plan(args) -> dict:
     wall_fps = args.wall_fps if args.wall_fps is not None else 0.0
     pipeline = ["--decoder", args.decoder, "--decoder-buffers", str(args.decoder_buffers),
                 "--retrieve-every", str(args.retrieve_every), "--output-buffer", "reuse",
-                "--preview-fps", str(preview_fps), "--wall-fps", str(wall_fps)]
+                "--preview-fps", str(preview_fps), "--wall-fps", str(wall_fps),
+                "--display-fps", str(args.display_fps)]
     config_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:8]
     config_path = root / "data/results/hdmi-showcase" / config_id / "device-config.json"
     context = {"entrypoint": "showcase", "mode": args.mode, "mode_goal": MODE_GOALS[args.mode], "duration_seconds": args.duration,

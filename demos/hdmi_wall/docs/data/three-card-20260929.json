@@ -1,0 +1,85 @@
+{
+  "run_id": "20260929T023919Z-a09c6fb6",
+  "formal_seconds_per_device": 300,
+  "devices": {
+    "0": {
+      "link": "PCIe 2.0 x1",
+      "status": "measured",
+      "accounting_complete": true,
+      "streams": 32,
+      "total_inference_fps": 278.1,
+      "minimum_stream_inference_fps": 8.653333333333334,
+      "max_no_result_gap_seconds": 0.6125444870000081,
+      "stale_drops_whole_run": 126,
+      "worker_errors": 0,
+      "formal_tpu": {
+        "samples": 59,
+        "valid_samples": 59,
+        "read_failures": 0,
+        "sum_percent": 5858.0,
+        "min_percent": 94.0,
+        "max_percent": 100.0,
+        "mean_percent": 99.28813559322033,
+        "start_monotonic_s": 92212.939095624,
+        "end_monotonic_s": 92512.939095624,
+        "worker_summary_status": "measured",
+        "accounting_complete": true
+      }
+    },
+    "1": {
+      "link": "PCIe 2.0 x1",
+      "status": "measured",
+      "accounting_complete": true,
+      "streams": 32,
+      "total_inference_fps": 280.9066666666667,
+      "minimum_stream_inference_fps": 8.76,
+      "max_no_result_gap_seconds": 0.2742375109999955,
+      "stale_drops_whole_run": 0,
+      "worker_errors": 0,
+      "formal_tpu": {
+        "samples": 59,
+        "valid_samples": 59,
+        "read_failures": 0,
+        "sum_percent": 5900.0,
+        "min_percent": 100.0,
+        "max_percent": 100.0,
+        "mean_percent": 100.0,
+        "start_monotonic_s": 92212.601310738,
+        "end_monotonic_s": 92512.601310738,
+        "worker_summary_status": "measured",
+        "accounting_complete": true
+      }
+    },
+    "2": {
+      "link": "PCIe 3.0 x1",
+      "status": "measured",
+      "accounting_complete": true,
+      "streams": 32,
+      "total_inference_fps": 281.09333333333336,
+      "minimum_stream_inference_fps": 8.76,
+      "max_no_result_gap_seconds": 0.15901459199999124,
+      "stale_drops_whole_run": 0,
+      "worker_errors": 0,
+      "formal_tpu": {
+        "samples": 59,
+        "valid_samples": 59,
+        "read_failures": 0,
+        "sum_percent": 5900.0,
+        "min_percent": 100.0,
+        "max_percent": 100.0,
+        "mean_percent": 100.0,
+        "start_monotonic_s": 92208.261400741,
+        "end_monotonic_s": 92508.261400741,
+        "worker_summary_status": "measured",
+        "accounting_complete": true
+      }
+    }
+  },
+  "source_sha256": {
+    "data/results/three-card-20260929/20260929T023919Z-a09c6fb6/device_0/summary.json": "1206b339ccd2a417ed77b6ec1d1f59fe34f04e5e4dc1578a445105367032af6e",
+    "data/results/three-card-20260929/20260929T023919Z-a09c6fb6/device_1/summary.json": "a3f491478cd2ff8990335c068cd436ec5a38604050ef3bec07d8db110a478d45",
+    "data/results/three-card-20260929/20260929T023919Z-a09c6fb6/device_2/summary.json": "3f7a8d0a807fcf2f8657a5ab2525b03263898c2bbb034c2eeabdb563575a33b5",
+    "data/results/three-card-20260929/20260929T023919Z-a09c6fb6/telemetry-summary.json": "6727cb43eb0627b2f23fe7f0119273c131205b948d8c1eb0d9f3a7f18f86032b"
+  },
+  "aggregate_inference_fps": 840.1000000000001
+}

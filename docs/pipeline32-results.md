@@ -59,9 +59,9 @@
 
 ## 视频与原始证据
 
-- [全部 128 个视频及逐路帧数](../data/results/pipeline32-comparison-20260923/video-index.md)：共核验 3,869 帧，H.264、1920×1080、名义 25 FPS。
-- [device 0 保存视频样例](../data/results/pipeline32-comparison-20260923/videos/p0_r0_d0_encode_bgr_stream00.mp4) / [device 1 样例](../data/results/pipeline32-comparison-20260923/videos/p0_r1_d1_encode_bgr_stream00.mp4)。已抽帧目视确认包含检测框，未做标注精度验收。
-- [20 个正式阶段完整表](../data/results/pipeline32-comparison-20260923/all-stages.md) / [完整计时与逐路数据](../data/results/pipeline32-comparison-20260923/comparison.json) / [本地文件校验](../data/results/pipeline32-comparison-20260923/verification.json)。
+- 全部 128 个视频及逐路帧数（本地证据：`data/results/pipeline32-comparison-20260923/video-index.md`）：共核验 3,869 帧，H.264、1920×1080、名义 25 FPS。
+- device 0 保存视频样例（本地证据：`data/results/pipeline32-comparison-20260923/videos/p0_r0_d0_encode_bgr_stream00.mp4`） / device 1 样例（本地证据：`data/results/pipeline32-comparison-20260923/videos/p0_r1_d1_encode_bgr_stream00.mp4`）。已抽帧目视确认包含检测框，未做标注精度验收。
+- 20 个正式阶段完整表（本地证据：`data/results/pipeline32-comparison-20260923/all-stages.md`） / 完整计时与逐路数据（本地证据：`data/results/pipeline32-comparison-20260923/comparison.json`） / 本地文件校验（本地证据：`data/results/pipeline32-comparison-20260923/verification.json`）。
 - [实验设计与复跑入口](pipeline32-comparison.md)。
 
 视频播放时长约 0.60–1.68 秒，包括预热及收尾处理的帧。测试运行 90/120 秒而结果视频很短，是因为慢速逐帧处理只读到了源视频的一小段；不能把名义 25 FPS 或测试运行时长当成实时编码吞吐。

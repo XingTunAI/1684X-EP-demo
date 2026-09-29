@@ -23,11 +23,11 @@
 这是单次顺序短测，没有随机化或交换顺序复测，也不是摄像头告警/长稳验收。历史约 95.18% 来自另一环境的双卡运行和多设备播放器；本轮单卡使用 ffplay，恢复的是核心业务参数，不是完整历史环境。不能将两轮差值全部归因于某一项。
 
 原始证据：
-- [两档预览数据](../data/results/restore24-preview-ab-20260923/comparison.json)
-- [无预览数据](../data/results/restore24-no-preview-20260923/comparison.json)
-- [合并分析、命令一致性和文件校验](../data/results/restore24-preview-ab-20260923/preview-analysis.json)
-- [3 FPS 运行中画面](../data/results/restore24-preview-ab-20260923/preview3-live.bmp)
-- [素材生成记录](../data/results/restore24-preview-ab-20260923/material-manifest.json)
+- 两档预览数据（本地证据：`data/results/restore24-preview-ab-20260923/comparison.json`）
+- 无预览数据（本地证据：`data/results/restore24-no-preview-20260923/comparison.json`）
+- 合并分析、命令一致性和文件校验（本地证据：`data/results/restore24-preview-ab-20260923/preview-analysis.json`）
+- 3 FPS 运行中画面（本地证据：`data/results/restore24-preview-ab-20260923/preview3-live.bmp`）
+- 素材生成记录（本地证据：`data/results/restore24-preview-ab-20260923/material-manifest.json`）
 
 复跑入口为 tools/diagnostics/run_preview_ab.py。可使用 --rates 3 10 或 --rates 0，默认每档预热 30 秒、正式 120 秒。复跑必须使用新输出目录。
 
@@ -54,4 +54,4 @@
 
 下一步应先使用覆盖整场时长的长文件消除测试中的循环重开因素，再检查预览开销和短时停顿。不得通过重置源时钟或直接关闭过期门槛，把旧帧伪装成实时恢复。真实摄像头没有这个本地 EOF 循环，但网络中断或积压恢复仍需独立验收。
 
-[30 分钟原始统计](../data/results/restore24-live-preview10-20260923/comparison.json)及其逐秒快照已取回主仓库，49 个原始文件逐一 SHA-256 核对通过。板端测试进程已退出。
+30 分钟原始统计（本地证据：`data/results/restore24-live-preview10-20260923/comparison.json`）及其逐秒快照已取回主仓库，49 个原始文件逐一 SHA-256 核对通过。板端测试进程已退出。

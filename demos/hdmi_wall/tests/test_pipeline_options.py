@@ -56,6 +56,21 @@ class PipelineOptionsTests(unittest.TestCase):
             with self.subTest(options=options), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 parser(["--root", "/board", *options])
 
+    def test_display_refresh_reaches_viewer_without_changing_preview_limit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            plan = self.plan("--display-fps", "30", "--preview-fps", "-1")
+            config = Path(directory) / "devices.json"
+            config.write_text(json.dumps(plan["device_configuration"]), encoding="utf-8")
+            options = plan["run_command"][2:]
+            options[options.index("--device-config") + 1] = str(config)
+            args = multi_run.arguments(options)
+            self.assertEqual(args.display_fps, 30)
+            self.assertEqual(args.preview_fps, -1)
+            multi = multi_run.build_plan(args)
+            manifests = [v for v in multi.values() if isinstance(v, dict) and "fps" in v]
+            self.assertEqual(len(manifests), 1)
+            self.assertEqual(manifests[0]["fps"], 30)
+
     def test_legacy_capture_remains_explicitly_selectable(self):
         plan = self.plan("--decoder", "opencv", "--preview-fps", "7", "--wall-fps", "12")
         command = plan["run_command"]

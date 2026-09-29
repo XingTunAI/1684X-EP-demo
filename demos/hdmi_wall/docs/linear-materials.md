@@ -1,14 +1,21 @@
 # 线性解码接入与指定素材验收（2026-09-28）
 
-showcase 现在只推荐一套标准展示配置：**官方 1080p24、每卡 32 路、线性输出、8 块额外解码缓冲、输出复用、64 KiB 合并预算、每路预览上限 3 FPS、墙面合成不限频**。不抽帧，不关闭检测结果回传，不修改素材帧率。此配置在本板 PCIe2 ×1 / PCIe3 ×1 双卡并行测试中，正式窗口的 TPU 采样均为 100%。其他素材放在 stress 用法中按路数验证。
+本页记录 09-28 的吞吐优先配置：**官方 1080p24、每卡 32 路、线性输出、8 块额外解码缓冲、输出复用、64 KiB 合并预算、每路预览上限 3 FPS、墙面合成不限频**。不抽帧，不关闭检测结果回传，不修改素材帧率。此配置在本板 PCIe2 ×1 / PCIe3 ×1 双卡并行测试中，正式窗口的 TPU 采样均为 100%。其他素材放在 stress 用法中按路数验证。
 
-## 直接运行
+## 如何选择配置
 
-在板端仓库根目录执行。原有 DISPLAY / XAUTHORITY 配置沿用；以下设备 0、2 是本次实测卡，不能按编号推断其他板子的链路。
+- 观看画面：按[五档布局与流畅度](layouts.md)选择路数，使用 `--preview-fps -1 --display-fps 30`；本轮 4 / 8 路接近源视频 24 FPS，32 路为 7.5–8.7 FPS。
+- 复现本页吞吐数据：保留预览 3 FPS。下表各项成绩与该配置绑定，不能用来描述不限频预览的速度。
+
+入口仍支持选择 1–4 张卡，32 路不是所有场景的固定要求。
+
+## 复现吞吐优先配置
+
+在板端仓库根目录执行，沿用已配置的 DISPLAY / XAUTHORITY。入口支持 1–4 张卡：`--devices auto` 自动选择当前设备，也可显式指定单卡或多卡；设备编号与链路以现场查询为准。
 
 ```bash
-# 标准 showcase：所有优化已是默认值，无需附加 profile 或 LD_PRELOAD。
-sudo bash demos/hdmi_wall/showcase.sh --devices 0,2 --duration 300
+# 吞吐优先：采用默认预览 3 FPS，无需附加 profile 或 LD_PRELOAD。
+sudo bash demos/hdmi_wall/showcase.sh --devices auto --duration 300
 
 # 上一轮结束后，测试指定的 highway 1080p25，已测配置为每卡 24 路。
 sudo bash demos/hdmi_wall/showcase.sh --mode stress --devices 0,2 \
@@ -18,7 +25,11 @@ sudo bash demos/hdmi_wall/showcase.sh --mode stress --devices 0,2 \
 sudo bash demos/hdmi_wall/showcase.sh --stop
 ```
 
-省略 duration 仍为 4 小时。**本次是短测，尚未完成四小时认证，也不保证未来每次 TPU 采样都为 100%。** 板上另有 device 1；`--devices auto` 会把它一起选入，三卡同时运行不属于下面的双卡验收范围。手动覆盖输入、路数、profile 或预览参数后，需要重新验证，不能沿用标准展示结论。
+省略 duration 仍为 4 小时。**本次是短测，尚未完成四小时认证，也不保证未来每次 TPU 采样都为 100%。** `--devices auto` 会选入现场识别到的所有设备（1–4 张）。下表是指定双卡的历史测试；后续[三卡五分钟结果](three-card.md)单独记录，四卡尚未上板验证。手动覆盖输入、路数、profile 或预览参数后，需要重新验证，不能沿用标准展示结论。
+
+## 怎样理解这些成绩
+
+总 INF 是每张卡全部通道合计的检测帧率。280.30 / 281.43 FPS 对应平均每路约 8.76 / 8.79 FPS，低于源视频每路 24 FPS；“不抽帧”指每帧均进入解码获取流程，latest 调度仍会覆盖等待中的帧。[性能说明](../../../docs/performance-overview.md) · [已核对的数据摘要](data/linear-showcase-20260928.json)。
 
 ## 正式入口实测
 

@@ -195,4 +195,4 @@ HDMI wall 使用 latest、250 ms 过期限制、10 秒预热、30 秒窗口。�
 
 完整回传两轮均异常：11 / 16 路正式窗口内零结果，最长空窗覆盖整个 60 秒；不能将其与 gate64 的吞吐比值称为纯传输加速。model_only 同时关闭结果读取、筛选和后处理，不是只关闭 DMA 的实验。本轮未单独改变全双工或新增计算/回传重叠实现。
 
-[16 档原始结果](../data/results/readback32-original24-20260923/comparison.json)及每档命令、逐秒状态、SDK 日志和 summary 已取回。725 个普通文件逐一 SHA-256 校验一致，见 [校验记录](../data/results/readback32-original24-20260923/verification.json)；16 个 FIFO 为运行时管道，不作为数据文件复制。测试已结束。
+16 档原始结果（本地证据：`data/results/readback32-original24-20260923/comparison.json`）及每档命令、逐秒状态、SDK 日志和 summary 已取回。725 个普通文件逐一 SHA-256 校验一致，见 校验记录（本地证据：`data/results/readback32-original24-20260923/verification.json`）；16 个 FIFO 为运行时管道，不作为数据文件复制。测试已结束。

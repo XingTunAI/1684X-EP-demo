@@ -38,7 +38,8 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(self.command_value(plan, "--output-buffer"), "reuse")
         self.assertEqual(plan["infer_fps"], 0)
         self.assertEqual(self.parse("--preview-fps", "0").preview_fps, 0)
-        for value in ("-1", "11", "nan"):
+        self.assertEqual(self.parse("--preview-fps", "-1").preview_fps, -1)
+        for value in ("-0.5", "11", "nan"):
             with patch("sys.stderr", new_callable=io.StringIO), self.assertRaises(SystemExit):
                 self.parse("--preview-fps", value)
 

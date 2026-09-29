@@ -1,0 +1,68 @@
+{
+  "run_id": "20260928T094642Z-752ce1f8",
+  "test_date": "2026-09-28",
+  "source_scope": "Selected fields recomputed from local worker summaries and formal-window telemetry; not a new hardware run.",
+  "configuration": {
+    "input": "official 1080p24 local video independently read by each channel",
+    "model": "YOLOv8s INT8 batch 1",
+    "channels_per_device": 32,
+    "decoder": "linear",
+    "extra_decoder_buffers": 8,
+    "preview_fps_cap_per_channel": 3,
+    "wall_fps_cap": 0,
+    "formal_duration_seconds_per_device": 60
+  },
+  "devices": {
+    "0": {
+      "link": "PCIe 2.0 x1",
+      "completed_inferences": 16818,
+      "total_inference_fps": 280.3,
+      "mean_inference_fps_per_channel": 8.759375,
+      "minimum_inference_fps_per_channel": 8.733333333333333,
+      "all_channels_have_results": true,
+      "stale_drops_whole_run": 0,
+      "overwritten_frames_whole_run": 30680,
+      "formal_tpu": {
+        "samples": 12,
+        "valid_samples": 12,
+        "read_failures": 0,
+        "sum_percent": 1200.0,
+        "min_percent": 100.0,
+        "max_percent": 100.0,
+        "mean_percent": 100.0,
+        "start_monotonic_s": 31455.817805221,
+        "end_monotonic_s": 31515.817805221,
+        "worker_summary_status": "measured",
+        "accounting_complete": true
+      }
+    },
+    "2": {
+      "link": "PCIe 3.0 x1",
+      "completed_inferences": 16886,
+      "total_inference_fps": 281.43333333333334,
+      "mean_inference_fps_per_channel": 8.794791666666667,
+      "minimum_inference_fps_per_channel": 8.75,
+      "all_channels_have_results": true,
+      "stale_drops_whole_run": 0,
+      "overwritten_frames_whole_run": 30618,
+      "formal_tpu": {
+        "samples": 12,
+        "valid_samples": 12,
+        "read_failures": 0,
+        "sum_percent": 1200.0,
+        "min_percent": 100.0,
+        "max_percent": 100.0,
+        "mean_percent": 100.0,
+        "start_monotonic_s": 31451.271740177,
+        "end_monotonic_s": 31511.271740177,
+        "worker_summary_status": "measured",
+        "accounting_complete": true
+      }
+    }
+  },
+  "source_sha256": {
+    "data/results/linear-integration-20260928/20260928T094642Z-752ce1f8/device_0/summary.json": "a38f7c1e0e7cbeb3fe7db91fab8c206e31d74f08996590c8aff7f3243395578e",
+    "data/results/linear-integration-20260928/20260928T094642Z-752ce1f8/device_2/summary.json": "a08d54726938b8ac325a4de7d5e83c3794c106f893a291c849fdcab8212802fe",
+    "data/results/linear-integration-20260928/20260928T094642Z-752ce1f8/telemetry-summary.json": "0aeaebc4336db9d32b61032e5ce6ae18fc4448c097fe5bd6de5c71a32fbe331d"
+  }
+}
